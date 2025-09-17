@@ -8,7 +8,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faQuestion } from '@fortawesome/free-solid-svg-icons';
 
 import EquationLine from "../components/EquationLine";
-import VariableReference from "../components/VarReferenceLine";
+import VariableLine from "../components/VariableLine";
 
 export default function Home() {
   const [equations, setEquations] = useState([{ id: nanoid(), latex: "" }]);
@@ -89,7 +89,7 @@ export default function Home() {
           </thead>
           <tbody>
             {variables.map(v => (
-              <VariableReference
+              <VariableLine
                 key={v.id}
                 variable={v.variable}
                 excelRef={v.excelRef}

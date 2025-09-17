@@ -5,13 +5,11 @@ const config: NextConfig = {
 
   // Export Settings
   output: 'export',
-  // assetPrefix: './',
   trailingSlash: true,
   images: { unoptimized: true },
 
   // GitHub Pages Settings
   basePath: '/mathquiver',
 };
-console.log(config);
 
 export default config;

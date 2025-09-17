@@ -5,7 +5,7 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
-export default function VariableReference({
+export default function VariableLine({
   variable,
   excelRef,
   onChange,
