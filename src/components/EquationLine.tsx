@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { MathfieldElement } from "mathlive";
-import { FaFileExcel, FaRegImage, FaTrashAlt } from "react-icons/fa";
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faFileExcel, faImage, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 export default function EquationLine({
   index,
@@ -88,7 +90,7 @@ export default function EquationLine({
               onClick={copyToClipboard}
               className="p-2 rounded hover:bg-gray-200"
             >
-              <FaFileExcel />
+              <FontAwesomeIcon icon={faFileExcel} />
             </button>
             <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
               {!copied ? "Copy Excel Formula" : "Copied!"}
@@ -100,7 +102,7 @@ export default function EquationLine({
               onClick={copyPNGToClipboard}
               className="p-2 rounded hover:bg-gray-200"
             >
-              <FaRegImage />
+              <FontAwesomeIcon icon={faImage} />
             </button>
             <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
               {!imageCopied ? "Copy Image" : "Copied!"}
@@ -113,7 +115,7 @@ export default function EquationLine({
             onClick={onDelete}
             className="ml-2 p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700"
           >
-            <FaTrashAlt />
+            <FontAwesomeIcon icon={faTrashCan} />
           </button>
         )}
       </div>

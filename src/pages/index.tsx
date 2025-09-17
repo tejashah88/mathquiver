@@ -3,7 +3,9 @@ import "mathlive/fonts.css";
 import { useState } from "react";
 import { nanoid } from "nanoid";
 import ReactMarkdown from "react-markdown";
-import { FaQuestion } from "react-icons/fa";
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faQuestion } from '@fortawesome/free-solid-svg-icons';
 
 import EquationLine from "../components/EquationLine";
 import VariableReference from "../components/VarReferenceLine";
@@ -113,7 +115,7 @@ export default function Home() {
         onClick={() => setHelpOpen(true)}
         className="fixed bottom-6 right-6 bg-blue-600 text-white p-4 rounded-full shadow-lg hover:bg-blue-700"
       >
-        <FaQuestion />
+        <FontAwesomeIcon icon={faQuestion} />
       </button>
 
       {/* Help Modal */}

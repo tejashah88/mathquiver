@@ -1,5 +1,6 @@
 import { NextConfig } from "next";
-import withPWAInit from "next-pwa";
+
+import withPWAInit, { PWAConfig } from "next-pwa";
 
 const isExport = process.env.NEXT_STATIC_EXPORT === "true";
 
@@ -10,7 +11,7 @@ const withPWA = withPWAInit({
   skipWaiting: true,      // activate new SW immediately
 });
 
-const config: NextConfig = {
+const config: PWAConfig = withPWA({
   reactStrictMode: true,
 
   // Export Settings
@@ -21,11 +22,6 @@ const config: NextConfig = {
 
   // GitHub Pages Settings
   basePath: isExport ? "/mathquiver" : undefined,
-};
+});
 
-console.log(process.env.NEXT_RUNTIME)
-console.log(process.env.NODE_ENV)
-
-export default isExport
-  ? withPWA(config) // Webpack build
-  : config;         // Turbopack dev (ignores pwa)
+export default config;

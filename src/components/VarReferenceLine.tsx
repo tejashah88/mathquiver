@@ -1,6 +1,9 @@
 import { useEffect, useRef } from "react";
 import { MathfieldElement } from "mathlive";
-import { FaTrashAlt } from "react-icons/fa";
+
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
+
 
 export default function VariableReference({
   variable,
@@ -57,7 +60,7 @@ export default function VariableReference({
           onClick={onDelete}
           className="p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700"
         >
-          <FaTrashAlt />
+          <FontAwesomeIcon icon={faTrashCan} />
         </button>
       </td>
     </tr>
