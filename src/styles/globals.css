@@ -1,0 +1,5 @@
+@import "tailwindcss";
+
+math-field {
+  --contains-highlight-background-color: none;
+}
