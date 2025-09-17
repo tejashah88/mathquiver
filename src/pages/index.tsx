@@ -1,10 +1,12 @@
+import "mathlive/fonts.css";
+
 import { useState } from "react";
-import EquationLine from "../components/EquationLine";
-import VariableReference from "../components/VarReferenceLine";
 import { nanoid } from "nanoid";
 import ReactMarkdown from "react-markdown";
-
 import { FaQuestion } from "react-icons/fa";
+
+import EquationLine from "../components/EquationLine";
+import VariableReference from "../components/VarReferenceLine";
 
 export default function Home() {
   const [equations, setEquations] = useState([{ id: nanoid(), latex: "" }]);

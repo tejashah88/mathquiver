@@ -1,4 +1,7 @@
-import withPWAInit, { PWAConfig } from "next-pwa";
+import { NextConfig } from "next";
+import withPWAInit from "next-pwa";
+
+const isExport = process.env.NEXT_STATIC_EXPORT === "true";
 
 // Enable offline support out-of-the-box
 const withPWA = withPWAInit({
@@ -7,17 +10,22 @@ const withPWA = withPWAInit({
   skipWaiting: true,      // activate new SW immediately
 });
 
-const nextConfig: PWAConfig = withPWA({
+const config: NextConfig = {
   reactStrictMode: true,
 
   // Export Settings
   output: 'export',
-  assetPrefix: './',
+  assetPrefix: isExport ? './' : undefined,
   trailingSlash: true,
   images: { unoptimized: true },
 
   // GitHub Pages Settings
-  basePath: "/mathquiver",
-});
+  basePath: isExport ? "/mathquiver" : undefined,
+};
 
-export default nextConfig;
+console.log(process.env.NEXT_RUNTIME)
+console.log(process.env.NODE_ENV)
+
+export default isExport
+  ? withPWA(config) // Webpack build
+  : config;         // Turbopack dev (ignores pwa)
