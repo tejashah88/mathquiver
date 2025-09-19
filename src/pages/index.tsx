@@ -9,7 +9,6 @@ import { faBars, faPlus } from '@fortawesome/free-solid-svg-icons';
 
 import EquationLine from '../components/EquationLine';
 import VariableLine from '../components/VariableLine';
-import { Expression } from 'mathlive';
 import { mathjsonToExcel } from '@/logic/mj-excel';
 import { BoxedExpression } from '@cortex-js/compute-engine';
 import { VarMapping } from '@/logic/types';
@@ -28,7 +27,7 @@ export default function Home() {
   const [enableCompactView, setEnableCompactView] = useState(false);
 
   useEffect(() => {
-    const handleResize = () => setEnableCompactView(window.innerWidth < (window.screen.availWidth * 0.5));
+    const handleResize = () => setEnableCompactView(window.innerWidth < (window.screen.availWidth * 0.55));
     handleResize();
 
     window.addEventListener('resize', handleResize);
@@ -52,7 +51,7 @@ export default function Home() {
       <div
         className={`p-4 border-gray-300 overflow-y-auto ${
           enableCompactView
-            ? 'h-1/2 border-b'
+            ? 'h-2/3 border-b'
             : 'md:flex-[3_1_70%] md:h-auto border-b md:border-b-0 md:border-r'
         }`}
       >
@@ -107,8 +106,8 @@ export default function Home() {
       <div
         className={`p-4 bg-gray-50 border-gray-300 overflow-y-auto ${
           enableCompactView
-            ? 'h-1/2 border-t'
-            : 'md:flex-[1_1_30%] md:h-auto border-t md:border-t-0 md:border-l'
+            ? 'h-1/3 border-t'
+            : 'md:flex-[1_1_30%] min-w-[350px] md:h-auto border-t md:border-t-0 md:border-l'
         } min-w-0`}
       >
         <div className="flex items-center justify-between mb-4">
@@ -122,35 +121,35 @@ export default function Home() {
         </div>
 
         <table className="w-full border-collapse text-sm min-w-0">
-            <thead>
-              <tr className="bg-gray-200">
-                <th className="border p-2 text-left">Variable</th>
-                <th className="border p-2 text-left">Starting Excel Variable</th>
-              </tr>
-            </thead>
+          <thead>
+            <tr className="bg-gray-200">
+              <th className="border p-2 text-left">Variable</th>
+              <th className="border p-2 text-left">Excel Reference</th>
+            </tr>
+          </thead>
 
-            <tbody>
-              {variables.map((v) => (
-                <VariableLine
-                  key={v.id}
-                  equationVar={v.variable}
-                  excelRef={v.excelRef}
-                  onVarChange={(val) => {
-                    setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, variable: val } : line));
-                  }}
-                  onExcelChange={(val) => {
-                    setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, excelRef: val } : line));
-                  }}
-                  onDelete={() =>
-                    setVariables((prev) =>
-                      prev.filter((line) => line.id !== v.id)
-                    )
-                  }
-                  enableCompactView={enableCompactView}
-                />
-              ))}
-            </tbody>
-          </table>
+          <tbody>
+            {variables.map((v) => (
+              <VariableLine
+                key={v.id}
+                equationVar={v.variable}
+                excelRef={v.excelRef}
+                onVarChange={(val) => {
+                  setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, variable: val } : line));
+                }}
+                onExcelChange={(val) => {
+                  setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, excelRef: val } : line));
+                }}
+                onDelete={() =>
+                  setVariables((prev) =>
+                    prev.filter((line) => line.id !== v.id)
+                  )
+                }
+                enableCompactView={enableCompactView}
+              />
+            ))}
+          </tbody>
+        </table>
       </div>
 
       {/* Floating Help Button */}

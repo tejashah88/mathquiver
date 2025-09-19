@@ -6,7 +6,7 @@ import '@cortex-js/compute-engine';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileExcel, faImage, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
-import { checkMathjsonToExcel, mathjsonToExcel } from '@/logic/mj-excel';
+import { checkMathjsonToExcel } from '@/logic/mj-excel';
 import { BoxedExpression } from '@cortex-js/compute-engine';
 
 const MF_BORDER_STYLES = {
@@ -84,31 +84,6 @@ export default function EquationLine({
       containerRef.current.appendChild(mf);
     }
   }, [value, onMathInput]);
-
-  // const copyToClipboard = async (mfExpression) => {
-  //   const excelFormula = mathjsonToExcel(mfExpression.json);
-
-  //   await navigator.clipboard.writeText(excelFormula);
-
-  //   setCopiedFormulaTooltip(true);
-  //   setTimeout(() => setCopiedFormulaTooltip(false), 1250);
-  // };
-
-  // const copyPNGToClipboard = async (mfExpression) => {
-  //   const latex = encodeURIComponent(mfExpression.latex);
-  //   const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
-
-  //   try {
-  //     const res = await fetch(url);
-  //     const blob = await res.blob();
-  //     await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-
-  //     setCopiedImageTooltip(true);
-  //     setTimeout(() => setCopiedImageTooltip(false), 1250);
-  //   } catch (err) {
-  //     console.error('Failed to copy PNG:', err);
-  //   }
-  // };
 
   return (
     <div className="flex items-center mb-2 w-full">

@@ -122,7 +122,7 @@ function checkMathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): bo
     try {
         _mathjsonToExcel(mathJson, varMap);
         return true;
-    } catch (err) {
+    } catch {
         return false;
     }
 }
