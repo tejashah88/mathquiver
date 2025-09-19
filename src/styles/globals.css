@@ -1,5 +1,16 @@
 @import "tailwindcss";
 
+button:disabled {
+  background-color: #ccc;
+  color: #666;
+  cursor: not-allowed;
+}
+
+
 math-field {
   --contains-highlight-background-color: none;
+}
+
+.varMathField::part(menu-toggle) {
+  display: none;
 }

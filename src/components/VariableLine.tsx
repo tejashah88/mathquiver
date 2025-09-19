@@ -1,67 +1,80 @@
-import { useEffect, useRef } from "react";
-import { MathfieldElement } from "mathlive";
+import { useEffect, useRef } from 'react';
+import { MathfieldElement } from 'mathlive';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
 export default function VariableLine({
-  variable,
+  equationVar,
   excelRef,
-  onChange,
+  onVarChange,
+  onExcelChange,
   onDelete,
-  editableVariable = true,
+  enableCompactView = false,
 }: {
-  variable: string;
+  equationVar: string;
   excelRef: string;
-  onChange?: (val: string) => void;
+  onVarChange?: (val: string) => void;
+  onExcelChange?: (val: string) => void;
   onDelete?: () => void;
   editableVariable?: boolean;
   count?: number;
+  enableCompactView?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mathfieldRef = useRef<MathfieldElement | null>(null);
 
   useEffect(() => {
-    if (editableVariable && !mathfieldRef.current && containerRef.current) {
+    if (!mathfieldRef.current && containerRef.current) {
       const mf = new MathfieldElement();
-      mf.value = variable;
-      mf.style.fontSize = "1rem";
-      mf.style.width = "100%";
-      mf.style.border = "1px solid #ccc";
-      mf.style.borderRadius = "0.25rem";
-      mf.style.padding = "0.1rem 0.2rem";
+      mf.value = equationVar;
 
-      mf.addEventListener("input", (e) => {
-        const val = (e.target as MathfieldElement).value;
-        onChange?.(val);
+      mf.className = 'varMathField';
+      mf.style.fontSize = '1rem';
+      mf.style.width = '100%';
+      mf.style.border = '1px solid #ccc';
+      mf.style.borderRadius = '0.25rem';
+      mf.style.padding = '0.1rem 0.2rem';
+
+      MathfieldElement.soundsDirectory = null;
+
+      mf.addEventListener('mount', () => {
+        mf.menuItems = [];
+      });
+
+      mf.addEventListener('input', (event) => {
+        onVarChange?.(mf.expression.json);
       });
 
       mathfieldRef.current = mf;
       containerRef.current.appendChild(mf);
     }
-  }, [variable, onChange, editableVariable]);
+  }, [equationVar, onVarChange]);
 
   return (
-    <tr>
-      <td className="border p-2 items-center space-x-2">
-        {editableVariable ? <div ref={containerRef}></div> : <span>{variable}</span>}
+    <tr className="w-full">
+      {/* Equation variable cell */}
+      <td className="border p-2">
+        <div ref={containerRef} className="h-full w-full" />
       </td>
-      <td className="border p-2 flex items-center space-x-2">
-        <input
-          type="text"
-          value={excelRef}
-          onChange={(e) => onChange?.(e.target.value)}
-          className="w-full border rounded px-1 py-0.5"
-        />
 
-        {/* Delete Button */}
-        <button
-          onClick={onDelete}
-          className="p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700"
-        >
-          <FontAwesomeIcon icon={faTrashCan} />
-        </button>
+      {/* Excel variable cell */}
+      <td className="border p-2 min-w-0">
+        <div className="flex gap-2 items-center w-full min-w-0">
+          <input
+            type="text"
+            value={excelRef}
+            onChange={(e) => onExcelChange?.(e.target.value)}
+            className={`flex-1 min-w-0 border rounded py-2 px-2 ${enableCompactView ? 'w-full' : 'w-auto'}`}
+          />
+          <button
+            onClick={onDelete}
+            className="flex-none border rounded bg-red-100 hover:bg-red-200 text-red-700 p-2"
+          >
+            <FontAwesomeIcon icon={faTrashCan} />
+          </button>
+        </div>
       </td>
     </tr>
   );
