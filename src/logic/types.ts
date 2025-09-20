@@ -12,7 +12,6 @@ type ActionMapping = {
     }
 };
 
-
 type VarMapping = {
     [key: string]: string
 };

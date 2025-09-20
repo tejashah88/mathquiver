@@ -16,55 +16,31 @@ class MjTranslateError extends Error {
 }
 
 
-const LATEX_CONSTANTS: ConstantMapping = {
-    // Pi
-    pi: 'PI()',
+// NOTE: Any future defined constants should have 15 significant digits (to match Excel's standards)
+const MATHJSON_CONSTANTS: ConstantMapping = {
     Pi: 'PI()',
-    PI: 'PI()',
-
-    // Euler's number
-    e: 'EXP(1)',
-    E: 'EXP(1)',
-
-    // Golden ratio
-    phi: '((1+SQRT(5))/2)',
-    varphi: '((1+SQRT(5))/2)',
-    Phi: '((1+SQRT(5))/2)',
-
-    // Euler–Mascheroni constant
-    gamma: '0.5772156649',
-    EulerGamma: '0.5772156649',
-    Gamma: '0.5772156649',
-
-    // Imaginary unit
-    i: 'COMPLEX(0,1)',
-    j: 'COMPLEX(0,1)',
-
-    // Infinity
-    infty: '1E+307',
-    infinity: '1E+307',
-    Infinity: '1E+307'
+    ExponentialE: 'EXP(1)',
+    CatalanConstant: '0.915965594177219',
+    GoldenRatio: '((1+SQRT(5))/2)',
+    EulerGamma: '0.577215664901533',
+    ImaginaryUnit: 'COMPLEX(0,1)',
+    PositiveInfinity : '1E+307',
+    NegativeInfinity: '-1E+307',
 };
 
 
-const MATHJSON_TO_EXCEL: ActionMapping = {
+const MATHJSON_FUNCTIONS: ActionMapping = {
+    // Basics
+    Negate: { type: 'function', custom: (args: string[]) => `(-${args[0]})` },
+    Parentheses: { type: 'function', custom: (args: string[]) => `(${args[0]})` },
+
     // Arithmetic
     Add: { type: 'operator', symbol: '+' },
     Subtract: { type: 'operator', symbol: '-' },
     Multiply: { type: 'operator', symbol: '*' },
     Divide: { type: 'operator', symbol: '/' },
+    Square: { type: 'function', custom: (args: string[]) => `(${args[0]}^2` },
     Power: { type: 'operator', symbol: '^' },
-
-    // Negation
-    Negate: { type: 'function', custom: (args: string[]) => `(-${args[0]})` },
-
-    // Parentheses (force explicit grouping)
-    Parentheses: { type: 'function', custom: (args: string[]) => `(${args[0]})` },
-
-    // Rational numbers
-    Rational: { type: 'function', custom: (args: string[]) => `(${args[0]}/${args[1]})` },
-
-    // Roots
     Sqrt: { type: 'function', name: 'SQRT' },
     Root: { type: 'function', custom: (args: string[]) => `(${args[0]}^(1/${args[1]}))` },
 
@@ -72,23 +48,69 @@ const MATHJSON_TO_EXCEL: ActionMapping = {
     Sin: { type: 'function', name: 'SIN' },
     Cos: { type: 'function', name: 'COS' },
     Tan: { type: 'function', name: 'TAN' },
-    Csc: { type: 'function', custom: (args: string[]) => `1/SIN(${args[0]})` },
-    Sec: { type: 'function', custom: (args: string[]) => `1/COS(${args[0]})` },
-    Cot: { type: 'function', custom: (args: string[]) => `1/TAN(${args[0]})` },
+    Csc: { type: 'function', name: 'CSC' },
+    Sec: { type: 'function', name: 'SEC' },
+    Cot: { type: 'function', name: 'COT' },
 
-    // Exponentials & logs
+    // Inverse Trigonometry
+    Arcsin: { type: 'function', name: 'ASIN' },
+    Arccos: { type: 'function', name: 'ACOS' },
+    Arctan: { type: 'function', name: 'ATAN' },
+    Acsc: { type: 'function', name: 'ACSC' },
+    Asec: { type: 'function', name: 'ASEC' },
+    Acot: { type: 'function', name: 'ACOT' },
+
+    // Hyperbolic Trigonometry
+    Sinh: { type: 'function', name: 'SINH' },
+    Cosh: { type: 'function', name: 'COSH' },
+    Tanh: { type: 'function', name: 'TANH' },
+    Csch: { type: 'function', name: 'CSCH' },
+    Sech: { type: 'function', name: 'SECH' },
+    Coth: { type: 'function', name: 'COTH' },
+
+    // Inverse Hyperbolic Trigonometry
+    Arsinh: { type: 'function', name: 'ASINH' },
+    Arcosh: { type: 'function', name: 'ACOSH' },
+    Artanh: { type: 'function', name: 'ATANH' },
+    Acsch: { type: 'function', name: 'ACSCH' },
+    Asech: { type: 'function', name: 'ASECH' },
+    Arcoth: { type: 'function', name: 'ACOTH' },
+
+    // Transcendental Functions
     Exp: { type: 'function', name: 'EXP' },
     Ln: { type: 'function', name: 'LN' },
-    Log: { type: 'function', name: 'LOG10' },
+    Log: { type: 'function', name: 'LOG' },
+    Lb: { type: 'function', custom: (args: string[]) => `LOG(${args[0]},2)` },
+    Lg: { type: 'function', custom: (args: string[]) => `LOG(${args[0]})` },
+    LogOnePlus: { type: 'function', custom: (args: string[]) => `LN(${args[0]} + 1)` },
 
-    // Absolute & rounding
+    // Rounding
     Abs: { type: 'function', name: 'ABS' },
+    Ceil: { type: 'function', custom: (args: string[]) => `CEILING.MATH(${args[0]},1)` },
     Floor: { type: 'function', custom: (args: string[]) => `FLOOR(${args[0]},1)` },
-    Ceil: { type: 'function', custom: (args: string[]) => `CEILING(${args[0]},1)` },
 
-    // Min/Max
+    // Extra Functions
+    Rational: { type: 'function', custom: (args: string[]) => `(${args[0]}/${args[1]})` },
+    Mod: { type: 'function', custom: (args: string[]) => `MOD(${args[0]}, ${args[1]})` },
+
+    // Complex Numbers
+    Complex: { type: 'function', name: 'COMPLEX' },
+    Real: { type: 'function', name: 'IMREAL' },
+    Imaginary: { type: 'function', name: 'IMAGINARY' },
+    Conjugate: { type: 'function', name: 'IMCONJUGATE' },
+    Magnitude: { type: 'function', name: 'IMABS' },
+    Norm: { type: 'function', name: 'IMABS' },
+    Argument: { type: 'function', name: 'IMARGUMENT' },
+
+    // Statistics
+    Median: { type: 'function', name: 'MEDIAN' },
+    Mean: { type: 'function', name: 'AVERAGE' },
     Min: { type: 'function', name: 'MIN' },
-    Max: { type: 'function', name: 'MAX' }
+    Max: { type: 'function', name: 'MAX' },
+    Mode: { type: 'function', name: 'MODE.SNGL' },
+    PopulationStandardDeviation: { type: 'function', name: 'STDEV.P' },
+    StandarDeviation: { type: 'function', name: 'STDEV.S' },
+    Variance: { type: 'function', name: 'VAR.P' },
 };
 
 
@@ -97,13 +119,13 @@ function _mathjsonToExcel(node: Expression, varMap: VarMapping = {}): string {
 
     // Handle constants
     if (typeof node === 'string') {
-        if (LATEX_CONSTANTS[node]) return LATEX_CONSTANTS[node];
+        if (MATHJSON_CONSTANTS[node]) return MATHJSON_CONSTANTS[node];
         return varMap[node] || node;
     }
 
     if (Array.isArray(node)) {
         const [op, ...args] = node;
-        const mapping = MATHJSON_TO_EXCEL[op];
+        const mapping = MATHJSON_FUNCTIONS[op];
         if (!mapping) throw new MjTranslateError(`Unsupported operator: ${op}`);
 
         const excelArgs = args.map(arg => _mathjsonToExcel(arg, varMap));
@@ -134,4 +156,10 @@ function mathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): string 
 }
 
 
-export { checkMathjsonToExcel, mathjsonToExcel, MjTranslateError };
+export {
+    MATHJSON_CONSTANTS,
+    MATHJSON_FUNCTIONS,
+    checkMathjsonToExcel,
+    mathjsonToExcel,
+    MjTranslateError
+};
