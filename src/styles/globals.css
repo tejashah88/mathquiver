@@ -11,6 +11,6 @@ math-field {
   --contains-highlight-background-color: none;
 }
 
-.varMathField::part(menu-toggle) {
+math-field.hide-menu::part(menu-toggle) {
   display: none;
 }

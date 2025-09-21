@@ -20,6 +20,7 @@ const MF_BORDER_STYLES = {
   [EQUATION_STATES.INVALID]: '4px solid #fa0',
   [EQUATION_STATES.ERROR]: '4px solid #f00',
   undefined: '1px solid #ccc',
+  null: '1px solid #ccc',
 };
 
 export default function EquationLine({
@@ -120,14 +121,14 @@ export default function EquationLine({
         {index + 1})
       </span>
 
-      <div className="flex-1 flex items-center border rounded px-2 py-1 bg-gray-50 min-h-[2.5rem] relative">
+      <div className="flex flex-1 items-center border rounded px-2 py-1 bg-gray-50 min-h-[2.5rem] relative">
         <math-field
           ref={mathfieldRef}
           className="flex-1"
           style={{
             fontSize: '1.2rem',
             width: '100%',
-            border: MF_BORDER_STYLES[inputEquationState],//'1px solid #ccc',
+            border: MF_BORDER_STYLES[inputEquationState],
             borderRadius: '0.25rem',
             padding: '0.1rem 0.2rem',
           }}

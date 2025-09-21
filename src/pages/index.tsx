@@ -15,6 +15,7 @@ import { VarMapping } from '@/logic/types';
 
 export default function Home() {
   const [isMathliveLoaded, setMathliveLoaded] = useState(false);
+  const [enableCompactView, setEnableCompactView] = useState(false);
 
   const [equations, setEquations] = useState([
     { id: nanoid(), latex: '' }
@@ -25,8 +26,6 @@ export default function Home() {
   ]);
 
   const [helpOpen, setHelpOpen] = useState(false);
-
-  const [enableCompactView, setEnableCompactView] = useState(false);
 
   useEffect(() => {
     const handleResize = () => setEnableCompactView(window.innerWidth < (window.screen.availWidth * 0.55));
@@ -72,10 +71,10 @@ export default function Home() {
   }
 
   return (
-    <div className={`flex flex-col bg-gray-100 h-screen overflow-hidden ${enableCompactView ? '' : 'md:flex-row'}`}>
+    <div className={`flex bg-gray-100 h-dvh overflow-y-hidden ${enableCompactView ? 'flex-col' : 'md:flex-row'}`}>
       {/* Equations Panel */}
       <div
-        className={`p-4 border-gray-300 border-b overflow-y-auto overscroll-contain ${
+        className={`flex flex-col p-4 border-gray-300 border-b overflow-y-auto ${
           enableCompactView
             ? 'h-2/3'
             : 'md:flex-[3_1_70%] md:h-auto md:border-b-0 md:border-r'
@@ -118,7 +117,7 @@ export default function Home() {
 
       {/* Variables Panel */}
       <div
-        className={`p-4 bg-gray-50 border-gray-300 border-t overflow-y-auto ${
+        className={`flex flex-col p-4 bg-gray-50 border-gray-300 border-t overflow-y-auto ${
           enableCompactView
             ? 'h-1/3'
             : 'md:flex-[1_1_30%] min-w-[350px] md:h-auto md:border-t-0 md:border-l'
@@ -134,33 +133,30 @@ export default function Home() {
           </button>
         </div>
 
-        <table className="w-full text-sm min-w-0">
-          <thead>
-            <tr className="bg-gray-200">
-              <th className="border p-2 text-left">Variable</th>
-              <th className="border p-2 text-left">Excel Reference</th>
-            </tr>
-          </thead>
+        <div className="w-full border border-gray-700">
+          {/* Header */}
+          <div className="grid grid-cols-[1fr_2fr_auto] bg-gray-200 font-bold">
+            <div className="p-2 border-r border-gray-700 text-sm text-left">Variable</div>
+            <div className="p-2 text-sm text-left">Excel Reference</div>
+          </div>
 
-          <tbody>
-            {variables.map((v) => (
-              <VariableLine
-                key={v.id}
-                latexVar={v.latexVar}
-                excelVar={v.excelVar}
-                onVarInput={(val) => {
-                  setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, latexVar: val } : line));
-                }}
-                onExcelInput={(val) => {
-                  setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, excelVar: val } : line));
-                }}
-                onDelete={() =>
-                  setVariables((prev) => prev.filter((line) => line.id !== v.id))
-                }
-              />
-            ))}
-          </tbody>
-        </table>
+          {variables.map((v) => (
+            <VariableLine
+              key={v.id}
+              latexVar={v.latexVar}
+              excelVar={v.excelVar}
+              onVarInput={(val) => {
+                setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, latexVar: val } : line));
+              }}
+              onExcelInput={(val) => {
+                setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, excelVar: val } : line));
+              }}
+              onDelete={() =>
+                setVariables((prev) => prev.filter((line) => line.id !== v.id))
+              }
+            />
+          ))}
+        </div>
       </div>
 
       {/* Floating Help Button */}
@@ -191,7 +187,7 @@ export default function Home() {
               <p className="text-gray-500">(markdown)</p>
             </div>
 
-            {/* Buttons */}
+            {/* Import/Export buttons */}
             <div className="flex justify-between items-center">
               <button
                 onClick={() => {
@@ -246,7 +242,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
     </div>
   );
 }
