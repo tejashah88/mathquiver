@@ -8,19 +8,21 @@ import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
 export default function VariableLine({
   equationVar,
   excelRef,
+
+  // Listeners
   onVarChange,
   onExcelChange,
+  onInputEnter,
   onDelete,
-  enableCompactView = false,
 }: {
   equationVar: string;
   excelRef: string;
+
+  // Listeners
   onVarChange?: (val: string) => void;
   onExcelChange?: (val: string) => void;
+  onInputEnter?: () => void;
   onDelete?: () => void;
-  editableVariable?: boolean;
-  count?: number;
-  enableCompactView?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mathfieldRef = useRef<MathfieldElement | null>(null);
@@ -47,30 +49,43 @@ export default function VariableLine({
         onVarChange?.(mf.expression.json);
       });
 
+      mf.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          onInputEnter?.();
+        }
+      });
+
       mathfieldRef.current = mf;
       containerRef.current.appendChild(mf);
     }
-  }, [equationVar, onVarChange]);
+  }, [equationVar, onVarChange, onInputEnter]);
 
   return (
     <tr className="w-full">
       {/* Equation variable cell */}
       <td className="border p-2">
-        <div ref={containerRef} className="h-full w-full" />
+        <div ref={containerRef} className="w-full" />
       </td>
 
       {/* Excel variable cell */}
-      <td className="border p-2 min-w-0">
-        <div className="flex gap-2 items-center w-full min-w-0">
+      <td className="border p-2">
+        <div className="flex gap-2 items-center w-full">
           <input
             type="text"
             value={excelRef}
             onChange={(e) => onExcelChange?.(e.target.value)}
-            className={`flex-1 min-w-0 border rounded py-2 px-2 ${enableCompactView ? 'w-full' : 'w-auto'}`}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                event.preventDefault();
+                onInputEnter?.();
+              }
+            }}
+            className={`w-full border rounded py-2 px-2`}
           />
           <button
             onClick={onDelete}
-            className="flex-none border rounded bg-red-100 hover:bg-red-200 text-red-700 p-2"
+            className="border rounded bg-red-100 hover:bg-red-200 text-red-700 p-2"
           >
             <FontAwesomeIcon icon={faTrashCan} />
           </button>

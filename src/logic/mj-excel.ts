@@ -92,6 +92,9 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
     // Extra Functions
     Rational: { type: 'function', custom: (args: string[]) => `(${args[0]}/${args[1]})` },
     Mod: { type: 'function', custom: (args: string[]) => `MOD(${args[0]}, ${args[1]})` },
+    // Currently broken, see https://github.com/arnog/mathlive/issues/2858
+    // GCD: { type: 'function', name: 'GCD' },
+    LCM: { type: 'function', name: 'LCM' },
 
     // Complex Numbers
     Complex: { type: 'function', name: 'COMPLEX' },

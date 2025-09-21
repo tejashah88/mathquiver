@@ -46,13 +46,13 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   return (
-    <div className={`flex bg-gray-100 h-screen ${enableCompactView ? 'flex-col' : 'flex-col md:flex-row'}`}>
+    <div className={`flex flex-col bg-gray-100 h-screen overflow-hidden ${enableCompactView ? '' : 'md:flex-row'}`}>
       {/* Equations Panel */}
       <div
-        className={`p-4 border-gray-300 overflow-y-auto ${
+        className={`p-4 border-gray-300 border-b overflow-y-auto overscroll-contain ${
           enableCompactView
-            ? 'h-2/3 border-b'
-            : 'md:flex-[3_1_70%] md:h-auto border-b md:border-b-0 md:border-r'
+            ? 'h-2/3'
+            : 'md:flex-[3_1_70%] md:h-auto md:border-b-0 md:border-r'
         }`}
       >
         <div className="flex items-center justify-between mb-4">
@@ -67,12 +67,13 @@ export default function Home() {
 
         {equations.map((eq, idx) => (
           <EquationLine
-          index={idx}
+            index={idx}
             key={eq.id}
             value={eq.mathJson}
             onMathInput={(mathJson) => {
               setEquations((prev) => prev.map((line) => (line.id === eq.id ? { ...line, mathJson } : line)));
             }}
+            onInputEnter={() => addEquation()}
             onCopyExcel={async (mfExpression: BoxedExpression) => {
               const variableMap = variables.reduce((acc, entry) => {
                 if (entry.variable)
@@ -83,18 +84,6 @@ export default function Home() {
 
               await navigator.clipboard.writeText(excelFormula);
             }}
-            onCopyImage={async (mfExpression: BoxedExpression) => {
-              const latex = encodeURIComponent(mfExpression.latex);
-              const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
-
-              try {
-                const res = await fetch(url);
-                const blob = await res.blob();
-                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-              } catch (err) {
-                console.error('Failed to copy PNG:', err);
-              }
-            }}
             onDeleteLine={() => {
               setEquations((prev) => prev.filter((line) => line.id !== eq.id));
             }}
@@ -104,11 +93,11 @@ export default function Home() {
 
       {/* Variables Panel */}
       <div
-        className={`p-4 bg-gray-50 border-gray-300 overflow-y-auto ${
+        className={`p-4 bg-gray-50 border-gray-300 border-t overflow-y-auto ${
           enableCompactView
-            ? 'h-1/3 border-t'
-            : 'md:flex-[1_1_30%] min-w-[350px] md:h-auto border-t md:border-t-0 md:border-l'
-        } min-w-0`}
+            ? 'h-1/3'
+            : 'md:flex-[1_1_30%] min-w-[350px] md:h-auto md:border-t-0 md:border-l'
+        }`}
       >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-2xl font-semibold">Variables</h2>
@@ -120,7 +109,7 @@ export default function Home() {
           </button>
         </div>
 
-        <table className="w-full border-collapse text-sm min-w-0">
+        <table className="w-full text-sm min-w-0">
           <thead>
             <tr className="bg-gray-200">
               <th className="border p-2 text-left">Variable</th>
@@ -140,12 +129,10 @@ export default function Home() {
                 onExcelChange={(val) => {
                   setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, excelRef: val } : line));
                 }}
+                onInputEnter={() => addVariable()}
                 onDelete={() =>
-                  setVariables((prev) =>
-                    prev.filter((line) => line.id !== v.id)
-                  )
+                  setVariables((prev) => prev.filter((line) => line.id !== v.id))
                 }
-                enableCompactView={enableCompactView}
               />
             ))}
           </tbody>
@@ -181,7 +168,7 @@ export default function Home() {
             </div>
 
             {/* Buttons */}
-            <div className="flex justify-center space-x-6">
+            <div className="flex justify-between items-center">
               <button
                 onClick={() => {
                   fileInputRef.current?.click();
@@ -198,6 +185,8 @@ export default function Home() {
 
                   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
                   saveAs(blob, `mq-workspace-${timestamp}.json`);
+
+                  setHelpOpen(false);
                 }}
                 className="border px-6 py-2 hover:bg-gray-100"
               >
@@ -218,6 +207,8 @@ export default function Home() {
                       const parsed = JSON.parse(reader.result as string);
                       setEquations(parsed.equations || []);
                       setVariables(parsed.variables || []);
+
+                      setHelpOpen(false);
                     } catch (err) {
                       console.error('Invalid JSON file', err);
                     }

@@ -4,7 +4,7 @@ import { MathfieldElement } from 'mathlive';
 import '@cortex-js/compute-engine';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFileExcel, faImage, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faFileExcel, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 import { checkMathjsonToExcel } from '@/logic/mj-excel';
 import { BoxedExpression } from '@cortex-js/compute-engine';
@@ -21,8 +21,8 @@ export default function EquationLine({
 
   // Listeners
   onMathInput,
+  onInputEnter,
   onCopyExcel,
-  onCopyImage,
   onDeleteLine,
 }: {
   index: number;
@@ -30,18 +30,18 @@ export default function EquationLine({
 
   // Listeners
   onMathInput?: (val: string) => void;
+  onInputEnter?: () => void;
   onCopyExcel?: (val: BoxedExpression) => void;
-  onCopyImage?: (val: BoxedExpression) => void;
   onDeleteLine?: () => void;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mathfieldRef = useRef<MathfieldElement | null>(null);
 
-  const [isExpressionValid, setIsExpressionValid] = useState(false);
+  const [invalidatedInput, setInvalidatedInput] = useState(false);
+  const [isExpressionValid, setIsExpressionValid] = useState(true);
   const [hasComputeError, setHasComputeError] = useState(false);
 
   const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState(false);
-  const [showCopiedImageTooltip, setCopiedImageTooltip] = useState(false);
 
   useEffect(() => {
     if (!mathfieldRef.current && containerRef.current) {
@@ -57,10 +57,41 @@ export default function EquationLine({
       MathfieldElement.soundsDirectory = null;
 
       mf.addEventListener('mount', () => {
-        mf.menuItems = mf.menuItems.filter(item =>
+        // Keep relevent default items
+        const defaultMenuItems = mf.menuItems.filter(item =>
           !!item && 'id' in item && item.id !== undefined &&
           ['cut', 'copy', 'paste', 'select-all'].includes(item.id)
         );
+
+        const insertCopyImageIndex = defaultMenuItems.findIndex(item =>
+          !!item && 'id' in item && item.id !== undefined && item.id === 'paste'
+        );
+
+        // Compile final menu for equation editor
+        mf.menuItems = [
+          ...defaultMenuItems.slice(0, insertCopyImageIndex),
+          // Add new menu item to allow copying of LaTeX rendered image
+          {
+            id: 'copy-image',
+            label: 'Copy Image',
+            onMenuSelect: async () => {
+              const latex = encodeURIComponent(mf.expression.latex);
+                const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
+
+                try {
+                  const res = await fetch(url);
+                  const blob = await res.blob();
+                  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+                } catch (err) {
+                  console.error('Failed to copy PNG:', err);
+                }
+            },
+          },
+          ...defaultMenuItems.slice(insertCopyImageIndex),
+        ];
+
+        // Invalidate the input once to force an expression check
+        setInvalidatedInput(true);
       });
 
       mf.addEventListener('input', (event) => {
@@ -71,19 +102,34 @@ export default function EquationLine({
         if (isExprValid) {
           const mathJson = mf.expression.json;
           onMathInput?.(mathJson);
+          setInvalidatedInput(true);
+        }
+      });
 
-          const canProcessEquation = checkMathjsonToExcel(mathJson);
-          setHasComputeError(!canProcessEquation);
-          if (!canProcessEquation) {
-            mf.style.border = MF_BORDER_STYLES.computeError;
-          }
+      mf.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          onInputEnter?.();
         }
       });
 
       mathfieldRef.current = mf;
       containerRef.current.appendChild(mf);
     }
-  }, [value, onMathInput]);
+  }, [value, onMathInput, onInputEnter]);
+
+  if (mathfieldRef.current && invalidatedInput) {
+    const mf = mathfieldRef.current;
+    const mathJson = mf.expression.json;
+    const canProcessEquation = checkMathjsonToExcel(mathJson);
+
+    setHasComputeError(!canProcessEquation);
+    if (!canProcessEquation) {
+      mf.style.border = MF_BORDER_STYLES.computeError;
+    }
+
+    setInvalidatedInput(false);
+  }
 
   return (
     <div className="flex items-center mb-2 w-full">
@@ -118,28 +164,6 @@ export default function EquationLine({
             </button>
             <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
               {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
-            </span>
-          </div>
-
-          <div className="relative group">
-            <button
-              disabled={!isExpressionValid || hasComputeError}
-              onClick={() => {
-                if (!mathfieldRef.current) {
-                  return;
-                } else {
-                  onCopyImage?.(mathfieldRef.current?.expression);
-                }
-
-                setCopiedImageTooltip(true);
-                setTimeout(() => setCopiedImageTooltip(false), 1250);
-              }}
-              className="p-2 rounded hover:bg-gray-200"
-            >
-              <FontAwesomeIcon icon={faImage} />
-            </button>
-            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
-              {!showCopiedImageTooltip ? 'Copy Image' : 'Copied!'}
             </span>
           </div>
         </div>
