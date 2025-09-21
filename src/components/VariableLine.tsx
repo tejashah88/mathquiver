@@ -6,66 +6,57 @@ import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 
 export default function VariableLine({
-  equationVar,
-  excelRef,
+  latexVar,
+  excelVar,
 
   // Listeners
-  onVarChange,
-  onExcelChange,
-  onInputEnter,
+  onVarInput,
+  onExcelInput,
   onDelete,
 }: {
-  equationVar: string;
-  excelRef: string;
+  latexVar: string;
+  excelVar: string;
 
   // Listeners
-  onVarChange?: (val: string) => void;
-  onExcelChange?: (val: string) => void;
-  onInputEnter?: () => void;
+  onVarInput?: (val: string) => void;
+  onExcelInput?: (val: string) => void;
   onDelete?: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const mathfieldRef = useRef<MathfieldElement | null>(null);
 
   useEffect(() => {
-    if (!mathfieldRef.current && containerRef.current) {
-      const mf = new MathfieldElement();
-      mf.value = equationVar;
+    if (!mathfieldRef.current) return;
+    const mf = mathfieldRef.current;
 
-      mf.className = 'varMathField';
-      mf.style.fontSize = '1rem';
-      mf.style.width = '100%';
-      mf.style.border = '1px solid #ccc';
-      mf.style.borderRadius = '0.25rem';
-      mf.style.padding = '0.1rem 0.2rem';
-
-      MathfieldElement.soundsDirectory = null;
-
-      mf.addEventListener('mount', () => {
-        mf.menuItems = [];
-      });
-
-      mf.addEventListener('input', (event) => {
-        onVarChange?.(mf.expression.json);
-      });
-
-      mf.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          onInputEnter?.();
-        }
-      });
-
-      mathfieldRef.current = mf;
-      containerRef.current.appendChild(mf);
-    }
-  }, [equationVar, onVarChange, onInputEnter]);
+    // NOTE: We need an additional mount component since certain UI elements are not loaded in the DOM by them
+    // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
+    mf.addEventListener('mount', () => {
+      mf.menuItems = [];
+    });
+  }, [mathfieldRef]);
 
   return (
     <tr className="w-full">
       {/* Equation variable cell */}
       <td className="border p-2">
-        <div ref={containerRef} className="w-full" />
+        <math-field
+          ref={mathfieldRef}
+          className="w-full varMathField"
+          style={{
+            fontSize: '1rem',
+            width: '100%',
+            border: '1px solid #ccc',
+            borderRadius: '0.25rem',
+            padding: '0.1rem 0.2rem',
+          }}
+
+          onInput={(event) => {
+            const mf = event.target as MathfieldElement;
+            onVarInput?.(mf.value);
+          }}
+        >
+          {latexVar}
+        </math-field>
       </td>
 
       {/* Excel variable cell */}
@@ -73,14 +64,8 @@ export default function VariableLine({
         <div className="flex gap-2 items-center w-full">
           <input
             type="text"
-            value={excelRef}
-            onChange={(e) => onExcelChange?.(e.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === 'Enter') {
-                event.preventDefault();
-                onInputEnter?.();
-              }
-            }}
+            value={excelVar}
+            onChange={(e) => onExcelInput?.(e.target.value)}
             className={`w-full border rounded py-2 px-2`}
           />
           <button

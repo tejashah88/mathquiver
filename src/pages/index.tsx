@@ -14,12 +14,14 @@ import { BoxedExpression } from '@cortex-js/compute-engine';
 import { VarMapping } from '@/logic/types';
 
 export default function Home() {
+  const [isMathliveLoaded, setMathliveLoaded] = useState(false);
+
   const [equations, setEquations] = useState([
-    { id: nanoid(), mathJson: '' }
+    { id: nanoid(), latex: '' }
   ]);
 
   const [variables, setVariables] = useState([
-    { id: nanoid(), variable: '', excelRef: '' },
+    { id: nanoid(), latexVar: '', excelVar: '' },
   ]);
 
   const [helpOpen, setHelpOpen] = useState(false);
@@ -34,16 +36,40 @@ export default function Home() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Properly load mathlive to prevent hydration issues with dev mode
+  // Source: https://github.com/RaksaOC/KOMPLEX/blob/78fc3b10381edbc99513deaf476a5c45d49092e7/apps/web/src/components/common/Editor.tsx#L123
+  useEffect(() => {
+    setMathliveLoaded(true);
+
+    // Initialize MathLive when component mounts
+    if (typeof window !== 'undefined') {
+      import('mathlive').then((mathlive) => {
+        // MathLive is now available globally
+        mathlive.MathfieldElement.soundsDirectory = null;
+
+        console.log(`MathLive version ${mathlive.version.mathlive} loaded and configured!`);
+      }).catch(console.error);
+    }
+  }, []);
+
   const addEquation = () =>
-    setEquations((prev) => [...prev, { id: nanoid(), mathJson: '' }]);
+    setEquations((prev) => [...prev, { id: nanoid(), latex: '' }]);
 
   const addVariable = () =>
     setVariables((prev) => [
       ...prev,
-      { id: nanoid(), variable: '', excelRef: '' },
+      { id: nanoid(), latexVar: '', excelVar: '' },
     ]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  if (!isMathliveLoaded) {
+    return (
+      <div className="flex items-center justify-center bg-gray-100 h-screen overflow-hidden">
+        <h1 className="text-3xl">Loading...</h1>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex flex-col bg-gray-100 h-screen overflow-hidden ${enableCompactView ? '' : 'md:flex-row'}`}>
@@ -69,15 +95,14 @@ export default function Home() {
           <EquationLine
             index={idx}
             key={eq.id}
-            value={eq.mathJson}
-            onMathInput={(mathJson) => {
-              setEquations((prev) => prev.map((line) => (line.id === eq.id ? { ...line, mathJson } : line)));
+            equation={eq.latex}
+            onUserInput={(latex) => {
+              setEquations((prev) => prev.map((line) => (line.id === eq.id ? { ...line, latex } : line)));
             }}
-            onInputEnter={() => addEquation()}
             onCopyExcel={async (mfExpression: BoxedExpression) => {
               const variableMap = variables.reduce((acc, entry) => {
-                if (entry.variable)
-                  acc[entry.variable] = entry.excelRef.trim();
+                if (entry.latexVar)
+                  acc[entry.latexVar] = entry.excelVar.trim();
                 return acc;
               }, {} as VarMapping);
               const excelFormula = mathjsonToExcel(mfExpression.json, variableMap);
@@ -121,15 +146,14 @@ export default function Home() {
             {variables.map((v) => (
               <VariableLine
                 key={v.id}
-                equationVar={v.variable}
-                excelRef={v.excelRef}
-                onVarChange={(val) => {
-                  setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, variable: val } : line));
+                latexVar={v.latexVar}
+                excelVar={v.excelVar}
+                onVarInput={(val) => {
+                  setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, latexVar: val } : line));
                 }}
-                onExcelChange={(val) => {
-                  setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, excelRef: val } : line));
+                onExcelInput={(val) => {
+                  setVariables((prev) => prev.map((line) => line.id === v.id ? { ...line, excelVar: val } : line));
                 }}
-                onInputEnter={() => addVariable()}
                 onDelete={() =>
                   setVariables((prev) => prev.filter((line) => line.id !== v.id))
                 }

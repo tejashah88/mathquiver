@@ -9,126 +9,106 @@ import { faFileExcel, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { checkMathjsonToExcel } from '@/logic/mj-excel';
 import { BoxedExpression } from '@cortex-js/compute-engine';
 
+enum EQUATION_STATES {
+  VALID,
+  INVALID,
+  ERROR,
+};
+
 const MF_BORDER_STYLES = {
-  exprValid: '1px solid #ccc',
-  exprInvalid: '4px solid #fa0',
-  computeError: '4px solid #f00',
+  [EQUATION_STATES.VALID]: '1px solid #ccc',
+  [EQUATION_STATES.INVALID]: '4px solid #fa0',
+  [EQUATION_STATES.ERROR]: '4px solid #f00',
+  undefined: '1px solid #ccc',
 };
 
 export default function EquationLine({
   index,
-  value,
+  equation,
 
   // Listeners
-  onMathInput,
-  onInputEnter,
+  onUserInput,
   onCopyExcel,
   onDeleteLine,
 }: {
   index: number;
-  value: string;
+  equation: string;
 
   // Listeners
-  onMathInput?: (val: string) => void;
-  onInputEnter?: () => void;
+  onUserInput?: (val: string) => void;
   onCopyExcel?: (val: BoxedExpression) => void;
   onDeleteLine?: () => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const mathfieldRef = useRef<MathfieldElement | null>(null);
 
-  const [invalidatedInput, setInvalidatedInput] = useState(false);
-  const [isExpressionValid, setIsExpressionValid] = useState(true);
-  const [hasComputeError, setHasComputeError] = useState(false);
+  const [shouldVerifyInput, setShouldVerifyInput] = useState(false);
+  const [inputEquationState, setInputEquationState] = useState(EQUATION_STATES.VALID);
 
   const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState(false);
 
   useEffect(() => {
-    if (!mathfieldRef.current && containerRef.current) {
-      const mf = new MathfieldElement();
-
-      mf.value = value;
-      mf.style.fontSize = '1.2rem';
-      mf.style.width = '100%';
-      mf.style.border = '1px solid #ccc';
-      mf.style.borderRadius = '0.25rem';
-      mf.style.padding = '0.1rem 0.2rem';
-
-      MathfieldElement.soundsDirectory = null;
-
-      mf.addEventListener('mount', () => {
-        // Keep relevent default items
-        const defaultMenuItems = mf.menuItems.filter(item =>
-          !!item && 'id' in item && item.id !== undefined &&
-          ['cut', 'copy', 'paste', 'select-all'].includes(item.id)
-        );
-
-        const insertCopyImageIndex = defaultMenuItems.findIndex(item =>
-          !!item && 'id' in item && item.id !== undefined && item.id === 'paste'
-        );
-
-        // Compile final menu for equation editor
-        mf.menuItems = [
-          ...defaultMenuItems.slice(0, insertCopyImageIndex),
-          // Add new menu item to allow copying of LaTeX rendered image
-          {
-            id: 'copy-image',
-            label: 'Copy Image',
-            onMenuSelect: async () => {
-              const latex = encodeURIComponent(mf.expression.latex);
-                const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
-
-                try {
-                  const res = await fetch(url);
-                  const blob = await res.blob();
-                  await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-                } catch (err) {
-                  console.error('Failed to copy PNG:', err);
-                }
-            },
-          },
-          ...defaultMenuItems.slice(insertCopyImageIndex),
-        ];
-
-        // Invalidate the input once to force an expression check
-        setInvalidatedInput(true);
-      });
-
-      mf.addEventListener('input', (event) => {
-        const isExprValid = mf.expression.isValid;
-        setIsExpressionValid(isExprValid);
-
-        mf.style.border = isExprValid ? MF_BORDER_STYLES.exprValid : MF_BORDER_STYLES.exprInvalid;
-        if (isExprValid) {
-          const mathJson = mf.expression.json;
-          onMathInput?.(mathJson);
-          setInvalidatedInput(true);
-        }
-      });
-
-      mf.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter') {
-          event.preventDefault();
-          onInputEnter?.();
-        }
-      });
-
-      mathfieldRef.current = mf;
-      containerRef.current.appendChild(mf);
-    }
-  }, [value, onMathInput, onInputEnter]);
-
-  if (mathfieldRef.current && invalidatedInput) {
+    if (!mathfieldRef.current) return;
     const mf = mathfieldRef.current;
-    const mathJson = mf.expression.json;
-    const canProcessEquation = checkMathjsonToExcel(mathJson);
 
-    setHasComputeError(!canProcessEquation);
-    if (!canProcessEquation) {
-      mf.style.border = MF_BORDER_STYLES.computeError;
+    // NOTE: We need an additional mount component since certain UI elements are not loaded in the DOM by them
+    // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
+    mf.addEventListener('mount', (event) => {
+      // Keep relevent default items
+      const defaultMenuItems = mf.menuItems.filter(item =>
+        !!item && 'id' in item && item.id !== undefined &&
+        ['cut', 'copy', 'paste', 'select-all'].includes(item.id)
+      );
+
+      const insertCopyImageIndex = defaultMenuItems.findIndex(item =>
+        !!item && 'id' in item && item.id !== undefined && item.id === 'paste'
+      );
+
+      // Compile final menu for equation editor
+      mf.menuItems = [
+        ...defaultMenuItems.slice(0, insertCopyImageIndex),
+        // Add new menu item to allow copying of LaTeX rendered image
+        {
+          id: 'copy-image',
+          label: 'Copy Image',
+          onMenuSelect: async () => {
+            const latex = encodeURIComponent(mf.expression.latex);
+              const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
+
+              try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+              } catch (err) {
+                console.error('Failed to copy PNG:', err);
+              }
+          },
+        },
+        ...defaultMenuItems.slice(insertCopyImageIndex),
+      ];
+
+      // Invalidate the input once to force an expression check
+      setShouldVerifyInput(true);
+    });
+  }, [mathfieldRef]);
+
+  if (mathfieldRef.current && shouldVerifyInput) {
+    setShouldVerifyInput(false);
+
+    const mf = mathfieldRef.current;
+
+    const isExprValid = mf.expression.isValid;
+    if (!isExprValid) {
+      setInputEquationState(EQUATION_STATES.INVALID);
+      return;
     }
 
-    setInvalidatedInput(false);
+    const canProcessEqu = checkMathjsonToExcel(mf.expression.json);
+    if (!canProcessEqu) {
+      setInputEquationState(EQUATION_STATES.ERROR);
+      return;
+    }
+
+    setInputEquationState(EQUATION_STATES.VALID);
   }
 
   return (
@@ -141,22 +121,37 @@ export default function EquationLine({
       </span>
 
       <div className="flex-1 flex items-center border rounded px-2 py-1 bg-gray-50 min-h-[2.5rem] relative">
-        <div ref={containerRef} className="flex-1"></div>
+        <math-field
+          ref={mathfieldRef}
+          className="flex-1"
+          style={{
+            fontSize: '1.2rem',
+            width: '100%',
+            border: MF_BORDER_STYLES[inputEquationState],//'1px solid #ccc',
+            borderRadius: '0.25rem',
+            padding: '0.1rem 0.2rem',
+          }}
+
+          onInput={(event) => {
+            const mf = event.target as MathfieldElement;
+            onUserInput?.(mf.value);
+            setShouldVerifyInput(true);
+          }}
+        >
+          {equation}
+        </math-field>
 
         {/* Copy buttons with tooltips */}
         <div className="flex flex-col ml-2 space-y-1">
           <div className="relative group">
             <button
-              disabled={!isExpressionValid || hasComputeError}
+              disabled={inputEquationState != EQUATION_STATES.VALID}
               onClick={() => {
-                if (!mathfieldRef.current) {
-                  return;
-                } else {
-                  onCopyExcel?.(mathfieldRef.current?.expression);
-                }
+                if (!mathfieldRef.current) return;
 
+                onCopyExcel?.(mathfieldRef.current?.expression);
                 setCopiedFormulaTooltip(true);
-                setTimeout(() => setCopiedFormulaTooltip(false), 1250);
+                setTimeout(() => setCopiedFormulaTooltip(false), 1000);
               }}
               className="p-2 rounded hover:bg-gray-200"
             >
