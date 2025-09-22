@@ -1,6 +1,14 @@
 # mathquiver
 A Desmos-like experience to type Excel formulas in a more sane manner. Check it out [here](https://tejashah88.github.io/mathquiver/)!
 
+## Features
+- Desmos-like equation typing experience
+- Supports desktop and tablet viewing (mobile not supported)
+- Can convert algebra-level equations to Excel formulas with variable replacement
+- Can export/import working space (as file) for later
+
+## Screenshots
+
 <img src="docs/desktop-view.png" width="1024">
 <img src="docs/excel-result-view.png" width="1024">
 
