@@ -50,50 +50,47 @@ export default function EquationLine({
 
   const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState(false);
 
-  // Simplify the menu and add a 'Copy LaTeX Image' command
+  // Simplify the menu and add a 'Copy LaTeX Image' command when the mathfield is mounted
+  // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
   useEffect(() => {
     if (!mathfieldRef.current) return;
     const mf = mathfieldRef.current;
 
-    // NOTE: We need an additional mount component since certain UI elements are not loaded in the DOM by them
-    // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
-    mf.addEventListener('mount', (event) => {
-      // Keep relevent default items
-      const defaultMenuItems = mf.menuItems.filter(item =>
-        !!item && 'id' in item && item.id !== undefined &&
-        ['cut', 'copy', 'paste', 'select-all'].includes(item.id)
-      );
+    // Keep relevent default items
+    const defaultMenuItems = mf.menuItems.filter(item =>
+      !!item && 'id' in item && item.id !== undefined &&
+      ['cut', 'copy', 'paste', 'select-all'].includes(item.id)
+    );
 
-      const insertCopyImageIndex = defaultMenuItems.findIndex(item =>
-        !!item && 'id' in item && item.id !== undefined && item.id === 'paste'
-      );
+    const insertCopyImageIndex = defaultMenuItems.findIndex(item =>
+      !!item && 'id' in item && item.id !== undefined && item.id === 'paste'
+    );
 
-      // Compile final menu for equation editor
-      mf.menuItems = [
-        ...defaultMenuItems.slice(0, insertCopyImageIndex),
-        // Add new menu item to allow copying of LaTeX rendered image
-        {
-          id: 'copy-image',
-          label: 'Copy Image',
-          onMenuSelect: async () => {
-            const latex = encodeURIComponent(mf.expression.latex);
-              const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
+    // Compile final menu for equation editor
+    mf.menuItems = [
+      ...defaultMenuItems.slice(0, insertCopyImageIndex),
+      // Add new menu item to allow copying of LaTeX rendered image
+      {
+        id: 'copy-image',
+        label: 'Copy Image',
+        onMenuSelect: async () => {
+          const latex = encodeURIComponent(mf.expression.latex);
+            const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
 
-              try {
-                const res = await fetch(url);
-                const blob = await res.blob();
-                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-              } catch (err) {
-                console.error('Failed to copy PNG:', err);
-              }
-          },
+            try {
+              const res = await fetch(url);
+              const blob = await res.blob();
+              await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+            } catch (err) {
+              console.error('Failed to copy PNG:', err);
+            }
         },
-        ...defaultMenuItems.slice(insertCopyImageIndex),
-      ];
+      },
+      ...defaultMenuItems.slice(insertCopyImageIndex),
+    ];
 
-      // Invalidate the input once to force an expression check (to properly render the status border)
-      setShouldVerifyInput(true);
-    });
+    // Invalidate the input once to force an expression check (to properly render the status border)
+    setShouldVerifyInput(true);
   }, [mathfieldRef]);
 
 

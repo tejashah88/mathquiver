@@ -7,7 +7,6 @@ import { nanoid } from 'nanoid';
 import { saveAs } from 'file-saver';
 
 import Markdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 
 import { BoxedExpression } from '@cortex-js/compute-engine';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -37,9 +36,11 @@ export default function Home() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpContent, setHelpContent] = useState('');
 
-  // Setup a resize handler for dynamic responsiveness for custom breakpoints (desktop mode only)
+  // Setup a resize handler for dynamic responsiveness for custom breakpoints (desktop or tablet mode)
   useEffect(() => {
-    const handleResize = () => setEnableCompactView(window.innerWidth < (window.screen.availWidth * 0.55));
+    const handleResize = () => setEnableCompactView(
+      window.innerWidth < (window.screen.availWidth * 0.55) || window.innerWidth <= 768
+    );
     handleResize();
 
     window.addEventListener('resize', handleResize);
@@ -53,7 +54,8 @@ export default function Home() {
       const ua = navigator.userAgent;
       const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i;
       const isMobileUA = mobileRegex.test(ua);
-      const isSmallScreen = window.innerWidth <= 768; // adjust breakpoint if needed
+      // Largest mobile width according to chromium mobile debug viewer
+      const isSmallScreen = window.innerWidth <= 425;
       setIsMobile(isMobileUA && isSmallScreen);
     };
 
@@ -241,7 +243,7 @@ export default function Home() {
 
             {/* Help Section */}
             <div className="border p-6 mb-6 prose max-w-none text-black markdown-content">
-              <Markdown remarkPlugins={[remarkGfm]}>{helpContent}</Markdown>
+              <Markdown>{helpContent}</Markdown>
             </div>
 
             {/* Import/Export buttons */}

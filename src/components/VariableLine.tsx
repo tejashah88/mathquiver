@@ -24,17 +24,13 @@ export default function VariableLine({
 }) {
   const mathfieldRef = useRef<MathfieldElement | null>(null);
 
-
-  // Remove the menu (not needed for variables)
+  // Remove the menu (not needed for variables) when the mathfield is mounted
+  // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
   useEffect(() => {
     if (!mathfieldRef.current) return;
     const mf = mathfieldRef.current;
 
-    // NOTE: We need an additional mount component since certain UI elements are not loaded in the DOM by them
-    // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
-    mf.addEventListener('mount', () => {
-      mf.menuItems = [];
-    });
+    mf.menuItems = [];
   }, [mathfieldRef]);
 
   return (
