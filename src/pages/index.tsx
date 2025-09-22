@@ -5,6 +5,7 @@ import 'mathlive/fonts.css';
 import { useState, useEffect, useRef } from 'react';
 import { nanoid } from 'nanoid';
 import { saveAs } from 'file-saver';
+import { format } from 'date-fns';
 
 import Markdown from 'react-markdown';
 
@@ -262,8 +263,8 @@ export default function Home() {
                   const data = { equations, variables };
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
 
-                  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-                  saveAs(blob, `mq-workspace-${timestamp}.json`);
+                  const formattedTimestamp = format(new Date(), 'yyyy_MM_dd_hh_mm_a');
+                  saveAs(blob, `mathquiver-ws-${formattedTimestamp}.json`);
 
                   setHelpOpen(false);
                 }}
