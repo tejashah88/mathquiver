@@ -17,6 +17,7 @@ import EquationLine from '@/components/EquationLine';
 import VariableLine from '@/components/VariableLine';
 import { mathjsonToExcel } from '@/logic/mj-excel';
 import { VarMapping } from '@/logic/types';
+import { MathfieldElement } from 'mathlive';
 
 
 export default function Home() {
@@ -149,9 +150,17 @@ export default function Home() {
               );
             }}
             onCopyExcel={async (mfExpression: BoxedExpression) => {
+              const ce = MathfieldElement.computeEngine;
+              if (!ce) {
+                alert('Failed to load compute engine!');
+                return;
+              }
+
               const variableMap = variables.reduce((acc, entry) => {
-                if (entry.latexVar)
-                  acc[entry.latexVar] = entry.excelVar.trim();
+                if (entry.latexVar) {
+                  const mjsonVar = ce.parse(entry.latexVar.trim());
+                  acc[mjsonVar.json.toString()] = entry.excelVar.trim();
+                }
                 return acc;
               }, {} as VarMapping);
               const excelFormula = mathjsonToExcel(mfExpression.json, variableMap);
