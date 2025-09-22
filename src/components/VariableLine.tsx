@@ -24,6 +24,8 @@ export default function VariableLine({
 }) {
   const mathfieldRef = useRef<MathfieldElement | null>(null);
 
+
+  // Remove the menu (not needed for variables)
   useEffect(() => {
     if (!mathfieldRef.current) return;
     const mf = mathfieldRef.current;
@@ -37,17 +39,15 @@ export default function VariableLine({
 
   return (
     <div className="grid grid-cols-[1fr_2fr_auto] items-center border-t border-gray-700">
-      {/* Variable input */}
-      <div className="flex flex-1 items-center bg-gray-50 min-h-[2.5rem] relative p-2 border-r border-gray-700 ">
+      <div className="flex flex-1 items-center bg-gray-50 relative p-2 border-r border-gray-700 ">
         <math-field
           ref={mathfieldRef}
           className="w-full hide-menu"
           style={{
-            fontSize: '1rem',
+            fontSize: '1.25rem',
             width: '100%',
             border: '1px solid #ccc',
             borderRadius: '0.25rem',
-            padding: '0.1rem 0.2rem',
           }}
 
           onInput={(event) => {
@@ -74,47 +74,5 @@ export default function VariableLine({
         </button>
       </div>
     </div>
-
-    // <tr className="w-full">
-    //   {/* Equation variable cell */}
-    //   <td className="border p-2">
-    //     <math-field
-    //       ref={mathfieldRef}
-    //       className="w-full hide-menu"
-    //       style={{
-    //         fontSize: '1rem',
-    //         width: '100%',
-    //         border: '1px solid #ccc',
-    //         borderRadius: '0.25rem',
-    //         padding: '0.1rem 0.2rem',
-    //       }}
-
-    //       onInput={(event) => {
-    //         const mf = event.target as MathfieldElement;
-    //         onVarInput?.(mf.value);
-    //       }}
-    //     >
-    //       {latexVar}
-    //     </math-field>
-    //   </td>
-
-    //   {/* Excel variable cell */}
-    //   <td className="border p-2">
-    //     <div className="flex gap-2 items-center w-full">
-    //       <input
-    //         type="text"
-    //         value={excelVar}
-    //         onChange={(e) => onExcelInput?.(e.target.value)}
-    //         className={`w-full border rounded py-2 px-2`}
-    //       />
-    //       <button
-    //         onClick={onDelete}
-    //         className="border rounded bg-red-100 hover:bg-red-200 text-red-700 p-2"
-    //       >
-    //         <FontAwesomeIcon icon={faTrashCan} />
-    //       </button>
-    //     </div>
-    //   </td>
-    // </tr>
   );
 }

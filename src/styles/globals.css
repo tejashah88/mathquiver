@@ -1,4 +1,6 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
 
 button:disabled {
   background-color: #ccc;
@@ -6,11 +8,14 @@ button:disabled {
   cursor: not-allowed;
 }
 
-
 math-field {
   --contains-highlight-background-color: none;
 }
 
 math-field.hide-menu::part(menu-toggle) {
   display: none;
+}
+
+.markdown-content * {
+  line-height: 1.0;
 }

@@ -9,11 +9,13 @@ import { faFileExcel, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import { checkMathjsonToExcel } from '@/logic/mj-excel';
 import { BoxedExpression } from '@cortex-js/compute-engine';
 
+
 enum EQUATION_STATES {
   VALID,
   INVALID,
   ERROR,
 };
+
 
 const MF_BORDER_STYLES = {
   [EQUATION_STATES.VALID]: '1px solid #ccc',
@@ -22,6 +24,7 @@ const MF_BORDER_STYLES = {
   undefined: '1px solid #ccc',
   null: '1px solid #ccc',
 };
+
 
 export default function EquationLine({
   index,
@@ -47,6 +50,7 @@ export default function EquationLine({
 
   const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState(false);
 
+  // Simplify the menu and add a 'Copy LaTeX Image' command
   useEffect(() => {
     if (!mathfieldRef.current) return;
     const mf = mathfieldRef.current;
@@ -87,10 +91,11 @@ export default function EquationLine({
         ...defaultMenuItems.slice(insertCopyImageIndex),
       ];
 
-      // Invalidate the input once to force an expression check
+      // Invalidate the input once to force an expression check (to properly render the status border)
       setShouldVerifyInput(true);
     });
   }, [mathfieldRef]);
+
 
   if (mathfieldRef.current && shouldVerifyInput) {
     setShouldVerifyInput(false);
@@ -112,6 +117,7 @@ export default function EquationLine({
     setInputEquationState(EQUATION_STATES.VALID);
   }
 
+
   return (
     <div className="flex items-center mb-2 w-full">
       <span
@@ -121,16 +127,15 @@ export default function EquationLine({
         {index + 1})
       </span>
 
-      <div className="flex flex-1 items-center border rounded px-2 py-1 bg-gray-50 min-h-[2.5rem] relative">
+      <div className="flex flex-1 items-center border rounded px-2 py-1 bg-gray-50 relative">
         <math-field
           ref={mathfieldRef}
           className="flex-1"
           style={{
-            fontSize: '1.2rem',
+            fontSize: '1.5rem',
             width: '100%',
             border: MF_BORDER_STYLES[inputEquationState],
             borderRadius: '0.25rem',
-            padding: '0.1rem 0.2rem',
           }}
 
           onInput={(event) => {
@@ -158,6 +163,7 @@ export default function EquationLine({
             >
               <FontAwesomeIcon icon={faFileExcel} />
             </button>
+
             <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
               {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
             </span>
