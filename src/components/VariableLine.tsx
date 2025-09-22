@@ -59,7 +59,7 @@ export default function VariableLine({
         <input
           type="text"
           value={excelVar}
-          onChange={(e) => onExcelInput?.(e.target.value)}
+          onChange={(event) => onExcelInput?.(event.target.value)}
           className={`w-full border rounded p-2`}
         />
         <button

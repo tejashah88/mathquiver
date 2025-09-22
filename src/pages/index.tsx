@@ -233,9 +233,9 @@ export default function Home() {
       {/* Floating Help Button */}
       <button
         onClick={() => setHelpOpen(true)}
-        className="fixed bottom-6 right-6 bg-blue-600 text-white p-3 rounded shadow-lg hover:bg-blue-700"
+        className="fixed bottom-4 right-4 bg-blue-600 text-white p-2 rounded shadow-lg hover:bg-blue-700"
       >
-        <FontAwesomeIcon icon={faBars} size="lg" />
+        <FontAwesomeIcon icon={faBars} size="sm" />
       </button>
 
       {helpOpen && (
