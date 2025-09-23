@@ -151,7 +151,7 @@ export default function EquationLine({
         <div className="flex flex-col ml-2 space-y-1">
           <div className="relative group">
             <button
-              disabled={!MathfieldElement.computeEngine || inputEquationState != EQUATION_STATES.VALID}
+              disabled={!MathfieldElement.computeEngine || equation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
               onClick={() => {
                 if (!mathfieldRef.current) return;
 
