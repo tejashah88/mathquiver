@@ -7,7 +7,6 @@ import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faFileExcel, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 import { checkMathjsonToExcel } from '@/logic/mj-excel';
-import { BoxedExpression } from '@cortex-js/compute-engine';
 
 
 enum EQUATION_STATES {
@@ -40,7 +39,7 @@ export default function EquationLine({
 
   // Listeners
   onUserInput?: (val: string) => void;
-  onCopyExcel?: (val: BoxedExpression) => void;
+  onCopyExcel?: (val: string) => void;
   onDeleteLine?: () => void;
 }) {
   const mathfieldRef = useRef<MathfieldElement | null>(null);
@@ -105,7 +104,11 @@ export default function EquationLine({
       return;
     }
 
-    const canProcessEqu = checkMathjsonToExcel(mf.expression.json);
+    const splitLatexEquation = (mf.expression.latex as string).split('=');
+    const rhsLatexEquation = splitLatexEquation[splitLatexEquation.length - 1];
+    const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation);
+
+    const canProcessEqu = checkMathjsonToExcel(boxedExpression.json);
     if (!canProcessEqu) {
       setInputEquationState(EQUATION_STATES.ERROR);
       return;
@@ -148,11 +151,11 @@ export default function EquationLine({
         <div className="flex flex-col ml-2 space-y-1">
           <div className="relative group">
             <button
-              disabled={inputEquationState != EQUATION_STATES.VALID}
+              disabled={!MathfieldElement.computeEngine || inputEquationState != EQUATION_STATES.VALID}
               onClick={() => {
                 if (!mathfieldRef.current) return;
 
-                onCopyExcel?.(mathfieldRef.current?.expression);
+                onCopyExcel?.(mathfieldRef.current?.expression.latex);
                 setCopiedFormulaTooltip(true);
                 setTimeout(() => setCopiedFormulaTooltip(false), 1000);
               }}

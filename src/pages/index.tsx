@@ -9,7 +9,6 @@ import { format } from 'date-fns';
 
 import Markdown from 'react-markdown';
 
-import { BoxedExpression } from '@cortex-js/compute-engine';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
 
@@ -149,21 +148,20 @@ export default function Home() {
                 )
               );
             }}
-            onCopyExcel={async (mfExpression: BoxedExpression) => {
-              const ce = MathfieldElement.computeEngine;
-              if (!ce) {
-                alert('Failed to load compute engine!');
-                return;
-              }
+            onCopyExcel={async (latexExpr: string) => {
+              // If a user adds an equals sign, only copy the RHS
+              const splitLatexEquation = latexExpr.split('=');
+              const rhsLatexEquation = splitLatexEquation[splitLatexEquation.length - 1];
+              const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation);
 
               const variableMap = variables.reduce((acc, entry) => {
                 if (entry.latexVar) {
-                  const mjsonVar = ce.parse(entry.latexVar.trim());
+                  const mjsonVar = MathfieldElement.computeEngine!.parse(entry.latexVar.trim());
                   acc[mjsonVar.json.toString()] = entry.excelVar.trim();
                 }
                 return acc;
               }, {} as VarMapping);
-              const excelFormula = mathjsonToExcel(mfExpression.json, variableMap);
+              const excelFormula = mathjsonToExcel(boxedExpression.json, variableMap);
 
               await navigator.clipboard.writeText(excelFormula);
             }}
