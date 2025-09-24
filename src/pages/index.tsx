@@ -76,7 +76,7 @@ export default function Home() {
 
 
   // Properly load mathlive to prevent hydration issues with Next.js's developer mode
-  // Source: https://github.com/RaksaOC/KOMPLEX/blob/78fc3b10381edbc99513deaf476a5c45d49092e7/apps/web/src/components/common/Editor.tsx#L123
+  // Source: https://github.com/salxz696969/KOMPLEX/blob/ee0869421cbbd42e34bb98aba4ffac49884f5899/src/components/common/Editor.tsx#L129
   useEffect(() => {
     // Initialize MathLive when component mounts
     if (typeof window !== 'undefined') {
