@@ -8,18 +8,22 @@ import { faTrashCan } from '@fortawesome/free-solid-svg-icons';
 export default function VariableLine({
   latexVar,
   excelVar,
+  units,
 
   // Listeners
   onVarInput,
   onExcelInput,
+  onUnitsInput,
   onDelete,
 }: {
   latexVar: string;
   excelVar: string;
+  units: string;
 
   // Listeners
   onVarInput?: (val: string) => void;
   onExcelInput?: (val: string) => void;
+  onUnitsInput?: (val: string) => void;
   onDelete?: () => void;
 }) {
   const mathfieldRef = useRef<MathfieldElement | null>(null);
@@ -34,7 +38,7 @@ export default function VariableLine({
   }, [mathfieldRef]);
 
   return (
-    <div className="grid grid-cols-[1fr_2fr_auto] items-center border-t border-gray-700">
+    <div className="grid grid-cols-[1fr_2fr_auto] items-center border border-gray-700">
       <div className="flex flex-1 items-center bg-gray-50 relative p-2 border-r border-gray-700 ">
         <math-field
           ref={mathfieldRef}
@@ -60,7 +64,14 @@ export default function VariableLine({
           type="text"
           value={excelVar}
           onChange={(event) => onExcelInput?.(event.target.value)}
-          className={`w-full border rounded p-2`}
+          className={`w-1/2 border rounded p-2`}
+        />
+        {/* TODO: Adjust CSS to acomodate sizing */}
+        <input
+          type="text"
+          value={units}
+          onChange={(event) => onUnitsInput?.(event.target.value)}
+          className={`w-1/2 border rounded p-2`}
         />
         <button
           onClick={onDelete}

@@ -26,7 +26,7 @@ const MF_BORDER_STYLES = {
 
 
 export default function EquationLine({
-  index,
+  // index,
   equation,
 
   // Listeners
@@ -34,7 +34,7 @@ export default function EquationLine({
   onCopyExcel,
   onDeleteLine,
 }: {
-  index: number;
+  // index: number;
   equation: string;
 
   // Listeners
@@ -119,14 +119,7 @@ export default function EquationLine({
 
 
   return (
-    <div className="flex items-center mb-2 w-full">
-      <span
-        className="mr-2 font-semibold flex items-center justify-center"
-        style={{ fontSize: '1.2rem', width: '2rem' }}
-      >
-        {index + 1})
-      </span>
-
+    <div className="flex items-center mt-1 mb-1 w-full">
       <div className="flex flex-1 items-center border rounded px-2 py-1 bg-gray-50 relative">
         <math-field
           ref={mathfieldRef}
