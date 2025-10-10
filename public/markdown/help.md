@@ -8,7 +8,9 @@
 3. Click the Excel file icon to copy the corresponding Excel formula.
 
 ### Tips
-- You can directly copy-paste LaTeX expressions into the equations boxes.
+- Press `F4` in the 'Excel Ref' input to cycle between anchors, just like in Excel
 - You can export (and import) this workspace for working on it later.
-- Type starting with '\\' to type in LaTeX mode.
+- Type starting with `\` to type in LaTeX mode.
+- Use the `\text{}` command to type normal text (e.g. `\text{Hello}`).
+- You can directly copy-paste LaTeX expressions into the equations boxes.
 - You can get a LaTeX render of the equation via the "Copy Image" menu command.

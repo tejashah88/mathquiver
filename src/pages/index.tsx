@@ -10,7 +10,7 @@ import { format } from 'date-fns';
 import Markdown from 'react-markdown';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faBars, faGripVertical, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
 
 import EquationLine from '@/components/EquationLine';
 import VariableLine from '@/components/VariableLine';
@@ -19,24 +19,13 @@ import { VarMapping } from '@/logic/types';
 import { MathfieldElement } from 'mathlive';
 
 /* dnd-kit imports */
-import {
-  DndContext,
-  PointerSensor,
-  KeyboardSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-} from '@dnd-kit/core';
-import {
-  SortableContext,
-  useSortable,
-  arrayMove,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { DndContext, PointerSensor, KeyboardSensor, useSensor, useSensors, DragEndEvent, closestCenter } from '@dnd-kit/core';
+import { SortableContext, arrayMove, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { splitVarUnits } from '@/logic/latex-var-parser';
 
 type EquationItem = { id: string; latex: string };
-type VariableItem = { id: string; latexVar: string; excelVar: string; units: string };
+// NOTE: _latexRender is an ugly way to avoid coupling the variables to the input form
+type VariableItem = { id: string; latexVar: string; units: string, excelVar: string; _latexRender: string };
 
 export default function Home() {
   const [isMathliveLoaded, setMathliveLoaded] = useState(false);
@@ -50,7 +39,7 @@ export default function Home() {
   ]);
 
   const [variables, setVariables] = useState<Array<VariableItem>>([
-    { id: nanoid(), latexVar: '', excelVar: '', units: '' },
+    { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
   ]);
 
   const [helpOpen, setHelpOpen] = useState(false);
@@ -59,7 +48,8 @@ export default function Home() {
   // Setup a resize handler for dynamic responsiveness for custom breakpoints (desktop or tablet mode)
   useEffect(() => {
     const handleResize = () => setEnableCompactView(
-      window.innerWidth < (window.screen.availWidth * 0.55) || window.innerWidth <= 768
+      // BUG: Around 60%, there's a tiny scrollbar for the entire website before switching to compact view
+      window.innerWidth < (window.screen.availWidth * 0.60) || window.innerWidth <= 768
     );
     handleResize();
 
@@ -114,7 +104,29 @@ export default function Home() {
      ---------------------- */
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleEquationDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    // Reorder equations if both active and over belong to equations
+    const eqIds = equations.map((e) => e.id);
+    if (eqIds.includes(active.id as string) && eqIds.includes(over.id as string)) {
+      const oldIndex = eqIds.indexOf(active.id as string);
+      const newIndex = eqIds.indexOf(over.id as string);
+      setEquations((prev) => arrayMove(prev, oldIndex, newIndex));
+      return;
+    }
+  };
+
+  if (!isMathliveLoaded) {
+    return (
+      <div className="flex items-center justify-center bg-gray-100 h-screen overflow-hidden">
+        <h1 className="text-3xl">Loading...</h1>
+      </div>
+    );
+  }
+
+  const handleVariableDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -137,97 +149,6 @@ export default function Home() {
     }
   };
 
-  /* ----------------------
-     Sortable wrappers
-     ---------------------- */
-  // Replace existing SortableEquation with this
-  function SortableEquation({
-    id,
-    children,
-    className,
-  }: {
-    id: string;
-    children: React.ReactNode;
-    className?: string;
-  }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-
-    const style: React.CSSProperties = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      zIndex: isDragging ? 999 : undefined,
-    };
-
-    return (
-      <div ref={setNodeRef} style={style} className={className}>
-        <div className="flex items-center gap-1">
-          {/* Drag handle: only this button receives the dnd listeners so inner inputs remain interactive */}
-          <button
-            {...attributes}
-            {...listeners}
-            className="hover:bg-gray-100 cursor-grab active:cursor-grabbing"
-          >
-            <FontAwesomeIcon icon={faGripVertical} style={{color: 'gray'}} />
-          </button>
-
-          {/* The actual equation line sits beside the handle */}
-          <div className="flex-1">
-            {children}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-
-  // Replace existing SortableVariable with this
-  function SortableVariable({
-    id,
-    children,
-    className,
-  }: {
-    id: string;
-    children: React.ReactNode;
-    className?: string;
-  }) {
-    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-
-    const style: React.CSSProperties = {
-      transform: CSS.Transform.toString(transform),
-      transition,
-      zIndex: isDragging ? 999 : undefined,
-    };
-
-    return (
-      <div ref={setNodeRef} style={style} className={className}>
-        <div className="flex items-center gap-1 p-1">
-          {/* Drag handle */}
-          <button
-            {...attributes}
-            {...listeners}
-            className="hover:bg-gray-100 cursor-grab active:cursor-grabbing"
-          >
-            <FontAwesomeIcon icon={faGripVertical} style={{color: 'gray'}} />
-          </button>
-
-          {/* Variable content */}
-          <div className="flex-1">
-            {children}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-
-  if (!isMathliveLoaded) {
-    return (
-      <div className="flex items-center justify-center bg-gray-100 h-screen overflow-hidden">
-        <h1 className="text-3xl">Loading...</h1>
-      </div>
-    );
-  }
-
   if (isMobile) {
     return (
       <div className="flex text-center items-center justify-center bg-gray-100 h-screen overflow-hidden">
@@ -239,42 +160,39 @@ export default function Home() {
     );
   }
 
-  /* ----------------------
-     Render
-     ---------------------- */
   return (
-    <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+    <div
+      className={`flex bg-gray-100 h-dvh overflow-y-hidden ${
+        enableCompactView ? 'flex-col' : 'md:flex-row'
+      }`}
+    >
+      {/* Equations Panel */}
       <div
-        className={`flex bg-gray-100 h-dvh overflow-y-hidden ${
-          enableCompactView ? 'flex-col' : 'md:flex-row'
+        className={`flex flex-col p-4 pb-0 border-gray-300 ${
+          enableCompactView
+            ? 'h-1/2'
+            : 'w-2/3 md:h-auto md:border-b-0 md:border-r'
         }`}
       >
-        {/* Equations Panel */}
-        <div
-          className={`flex flex-col p-4 border-gray-300 border-b overflow-y-auto ${
-            enableCompactView
-              ? 'h-2/3'
-              : 'md:flex-[3_1_70%] md:h-auto md:border-b-0 md:border-r'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold">Equations</h2>
-            <button
-              onClick={() => {
-                setEquations((prev) => [...prev, { id: nanoid(), latex: '' }]);
-              }}
-              className="p-2 border rounded hover:bg-gray-200 font-bold"
-            >
-              <FontAwesomeIcon icon={faPlus} />
-            </button>
-          </div>
+        <div className="flex items-center justify-between mb-2">
+          <h2 className="text-2xl font-semibold">Equations</h2>
+          <button
+            onClick={() => {
+              setEquations((prev) => [...prev, { id: nanoid(), latex: '' }]);
+            }}
+            className="p-2 border rounded hover:bg-gray-200 font-bold"
+          >
+            <FontAwesomeIcon icon={faPlus} />
+          </button>
+        </div>
 
-          {/* Sortable context for equations */}
-          <SortableContext items={equations.map((e) => e.id)} strategy={verticalListSortingStrategy}>
-            {equations.map((eq, idx) => (
-              <SortableEquation key={eq.id} id={eq.id}>
+        <div className="overflow-y-scroll px-0">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleEquationDragEnd}>
+            <SortableContext items={equations.map((e) => e.id)} strategy={verticalListSortingStrategy}>
+              {equations.map((eq, idx) => (
                 <EquationLine
-                  // index={idx}
+                  key={eq.id}
+                  id={eq.id}
                   equation={eq.latex}
                   onUserInput={(latex) => {
                     setEquations((prev) =>
@@ -298,155 +216,201 @@ export default function Home() {
 
                     await navigator.clipboard.writeText(excelFormula);
                   }}
+                  onNewLineRequested={() => {
+                    setEquations((prev) => {
+                      const newEquations = [...prev];
+                      newEquations.splice(idx + 1, 0, { id: nanoid(), latex: '' });
+                      return newEquations;
+                    });
+                  }}
                   onDeleteLine={() => {
                     setEquations((prev) => prev.filter((line) => line.id !== eq.id));
                   }}
                 />
-              </SortableEquation>
-            ))}
-          </SortableContext>
-        </div>
-
-        {/* Variables Panel */}
-        <div
-          className={`flex flex-col p-4 bg-gray-50 border-gray-300 border-t overflow-y-auto ${
-            enableCompactView
-              ? 'h-1/3'
-              : 'md:flex-[1_1_30%] min-w-[350px] md:h-auto md:border-t-0 md:border-l'
-          }`}
-        >
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-semibold">Variables</h2>
-            <button
-              onClick={() => {
-                setVariables((prev) => [
-                  ...prev,
-                  { id: nanoid(), latexVar: '', excelVar: '', units: '' },
-                ]);
-              }}
-              className="p-2 border rounded hover:bg-gray-200 font-bold"
-            >
-              <FontAwesomeIcon icon={faPlus} />
-            </button>
-          </div>
-
-          <div className="w-full border border-gray-700">
-            <div className="grid grid-cols-[1fr_2fr_auto] bg-gray-200 font-bold">
-              <div className="p-2 border-r border-gray-700 text-sm text-left">Variable</div>
-              <div className="p-2 text-sm text-left">Excel Reference</div>
-            </div>
-
-            {/* Sortable context for variables */}
-            <SortableContext items={variables.map((v) => v.id)} strategy={verticalListSortingStrategy}>
-              {variables.map((v) => (
-                <SortableVariable key={v.id} id={v.id}>
-                  <VariableLine
-                    latexVar={v.latexVar}
-                    excelVar={v.excelVar}
-                    units={v.units}
-                    onVarInput={(val) => {
-                      setVariables((prev) =>
-                        prev.map((line) => (line.id === v.id ? { ...line, latexVar: val } : line))
-                      );
-                    }}
-                    onExcelInput={(val) => {
-                      setVariables((prev) =>
-                        prev.map((line) => (line.id === v.id ? { ...line, excelVar: val } : line))
-                      );
-                    }}
-                    onDelete={() => {
-                      // fixed bug: delete from variables list (was deleting equations before)
-                      setVariables((prev) => prev.filter((line) => line.id !== v.id));
-                    }}
-                  />
-                </SortableVariable>
               ))}
             </SortableContext>
-          </div>
+          </DndContext>
+        </div>
+      </div>
+
+      {/* Variables Panel */}
+      <div
+        className={`flex flex-col p-4 bg-gray-50 border-gray-300 border-t ${
+          enableCompactView
+            ? 'h-1/2'
+            : 'w-1/3 min-w-[350px] md:h-auto md:border-t-0 md:border-l'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="text-2xl font-semibold">Variables</h2>
+          <button
+            onClick={() => {
+              setVariables((prev) => [
+                ...prev,
+                { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
+              ]);
+            }}
+            className="p-2 border rounded hover:bg-gray-200 font-bold"
+          >
+            <FontAwesomeIcon icon={faPlus} />
+          </button>
         </div>
 
-        {/* Floating Help Button */}
-        <button
-          onClick={() => setHelpOpen(true)}
-          className="fixed bottom-4 right-4 bg-blue-600 text-white p-2 rounded shadow-lg hover:bg-blue-700"
-        >
-          <FontAwesomeIcon icon={faBars} size="sm" />
-        </button>
+        <div className="w-full  overflow-y-scroll">
+          <div className="grid grid-cols-[2.1rem_2fr_2fr_2.5rem] gap-0 bg-gray-200 font-bold">
+            <div className="p-2 border-x border-t border-gray-700 text-sm text-left"></div>
+            <div className="p-2 border-r border-t border-gray-700 text-sm text-left min-w-[140px]">Variable [Units]</div>
+            <div className="p-2 border-r border-t border-gray-700 text-sm text-left min-w-[80px]">Excel Ref</div>
+            <div className="p-2 border-r border-t border-gray-700 text-sm text-left"></div>
+          </div>
 
-        {helpOpen && (
-          <div className="fixed inset-0 flex items-center justify-center bg-gray-50/75 z-50">
-            <div className="bg-white border p-6 rounded-md max-w-3xl w-full shadow-lg">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-semibold">Main Menu</h2>
-                <button
-                  onClick={() => setHelpOpen(false)}
-                  className="border p-2 text-red-700 hover:bg-gray-100"
-                >
-                  <FontAwesomeIcon icon={faX} />
-                </button>
-              </div>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleVariableDragEnd}>
+            <SortableContext items={variables.map((v) => v.id)} strategy={verticalListSortingStrategy}>
+              {variables.map((v, idx) => (
+                <VariableLine
+                  key={v.id}
+                  id={v.id}
+                  latexInput={v._latexRender}
+                  excelInput={v.excelVar}
+                  onLatexInput={(val) => {
+                    const { latexVar, units } = splitVarUnits(val);
 
-              {/* Help Section */}
-              <div className="border p-6 mb-6 prose max-w-none text-black markdown-content">
-                <Markdown>{helpContent}</Markdown>
-              </div>
-
-              {/* Import/Export buttons */}
-              <div className="flex justify-between items-center">
-                <button
-                  onClick={() => {
-                    fileInputRef.current?.click();
+                    setVariables((prev) =>
+                      prev.map((line) => (line.id === v.id ? { ...line, latexVar, units } : line))
+                    );
                   }}
-                  className="border px-6 py-2 hover:bg-gray-100"
-                >
-                  Import...
-                </button>
+                  onExcelInput={(val) => {
+                    setVariables((prev) =>
+                      prev.map((line) => (line.id === v.id ? { ...line, excelVar: val } : line))
+                    );
+                  }}
+                  onNewLineRequested={() => {
+                    setVariables((prev) => {
+                      const newVariables = [...prev];
+                      newVariables.splice(idx + 1, 0, { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },);
+                      return newVariables;
+                    });
+                  }}
+                  onDelete={() => {
+                    setVariables((prev) => prev.filter((line) => line.id !== v.id));
+                  }}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
+        </div>
+      </div>
 
-                <button
-                  onClick={() => {
-                    const data = { equations, variables };
-                    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      {/* Floating Help Button */}
+      <button
+        onClick={() => setHelpOpen(true)}
+        className="fixed bottom-4 right-4 bg-blue-600 text-white p-2 rounded shadow-lg hover:bg-blue-700"
+      >
+        <FontAwesomeIcon icon={faBars} size="sm" />
+      </button>
 
-                    const formattedTimestamp = format(new Date(), 'yyyy_MM_dd_hh_mm_a');
-                    saveAs(blob, `mathquiver-ws-${formattedTimestamp}.json`);
+      {helpOpen && (
+        <div className="fixed inset-0 flex items-center justify-center bg-gray-50/75 z-50">
+          <div className="bg-white border p-6 rounded-md max-w-3xl w-full shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-semibold">Main Menu</h2>
+              <button
+                onClick={() => setHelpOpen(false)}
+                className="border p-2 text-red-700 hover:bg-gray-100"
+              >
+                <FontAwesomeIcon icon={faX} />
+              </button>
+            </div>
+
+            {/* Help Section */}
+            <div className="border p-6 mb-6 prose max-w-none text-black markdown-content">
+              <Markdown>{helpContent}</Markdown>
+            </div>
+
+            {/* Import/Export buttons */}
+            <div className="flex justify-between items-center">
+              <button
+                onClick={() => {
+                  fileInputRef.current?.click();
+                }}
+                className="border px-6 py-2 hover:bg-gray-100"
+              >
+                Import...
+              </button>
+
+              <button
+                onClick={() => {
+                  const data = {
+                    equations: equations.map(equ => {
+                      equ.latex = equ.latex.trim();
+
+                      return equ;
+                    }),
+                    variables: variables.map(_var => {
+                      // We don't want to keep _latexRender as it's only used for
+                      // input rendering and will be auto-populated
+                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                      const { _latexRender, ...data } = _var;
+                      _var.latexVar = _var.latexVar.trim();
+                      _var.units = _var.units.trim();
+                      _var.excelVar = _var.excelVar.trim();
+
+                      return data;
+                    })
+                  };
+                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+
+                  const formattedTimestamp = format(new Date(), 'yyyy_MM_dd_hh_mm_a');
+                  saveAs(blob, `mathquiver-ws-${formattedTimestamp}.json`);
+
+                  setHelpOpen(false);
+                }}
+                className="border px-6 py-2 hover:bg-gray-100"
+              >
+                Export...
+              </button>
+
+              <input
+                type="file"
+                accept="application/json"
+                ref={fileInputRef}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    let parsed;
+                    try {
+                      parsed = JSON.parse(reader.result as string);
+                    } catch {
+                      alert('Unable to read workspace file! Check its contents for corruption.');
+                      return;
+                    }
+
+                    const parsedEquations = parsed.equations as Array<EquationItem> || [];
+                    const parsedVariables = parsed.variables as Array<VariableItem> || [];
+                    parsedVariables.forEach(_var => {
+                      if (_var.units)
+                        _var._latexRender = `${_var.latexVar}\\left\\lbrack${_var.units}\\right\\rbrack`;
+                      else
+                        _var._latexRender = _var.latexVar;
+                    });
+
+                    setEquations(parsedEquations);
+                    setVariables(parsedVariables);
 
                     setHelpOpen(false);
-                  }}
-                  className="border px-6 py-2 hover:bg-gray-100"
-                >
-                  Export...
-                </button>
+                  };
 
-                <input
-                  type="file"
-                  accept="application/json"
-                  ref={fileInputRef}
-                  onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                    const file = e.target.files?.[0];
-                    if (!file) return;
-
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                      try {
-                        const parsed = JSON.parse(reader.result as string);
-                        setEquations(parsed.equations || []);
-                        setVariables(parsed.variables || []);
-
-                        setHelpOpen(false);
-                      } catch (err) {
-                        console.error('Invalid JSON file', err);
-                      }
-                    };
-
-                    reader.readAsText(file);
-                  }}
-                  className="hidden"
-                />
-              </div>
+                  reader.readAsText(file);
+                }}
+                className="hidden"
+              />
             </div>
           </div>
-        )}
-      </div>
-    </DndContext>
+        </div>
+      )}
+    </div>
   );
 }

@@ -9,7 +9,7 @@ button:disabled {
 }
 
 math-field {
-  --contains-highlight-background-color: none;
+  --contains-highlight-background-color: #ddd;
 }
 
 math-field.hide-menu::part(menu-toggle) {

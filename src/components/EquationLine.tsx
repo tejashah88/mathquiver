@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { MathfieldElement } from 'mathlive';
 import '@cortex-js/compute-engine';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faFileExcel, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import { faGripVertical, faFileExcel, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
 import { checkMathjsonToExcel } from '@/logic/mj-excel';
 
@@ -17,7 +18,7 @@ enum EQUATION_STATES {
 
 
 const MF_BORDER_STYLES = {
-  [EQUATION_STATES.VALID]: '1px solid #ccc',
+  [EQUATION_STATES.VALID]: '1px solid #000',
   [EQUATION_STATES.INVALID]: '4px solid #fa0',
   [EQUATION_STATES.ERROR]: '4px solid #f00',
   undefined: '1px solid #ccc',
@@ -26,21 +27,23 @@ const MF_BORDER_STYLES = {
 
 
 export default function EquationLine({
-  // index,
+  id,
   equation,
 
   // Listeners
-  onUserInput,
-  onCopyExcel,
+  onUserInput = () => {},
+  onCopyExcel = () => {},
+  onNewLineRequested,
   onDeleteLine,
 }: {
-  // index: number;
+  id: string;
   equation: string;
 
   // Listeners
-  onUserInput?: (val: string) => void;
-  onCopyExcel?: (val: string) => void;
-  onDeleteLine?: () => void;
+  onUserInput: (val: string) => void;
+  onCopyExcel: (val: string) => void;
+  onNewLineRequested: () => void;
+  onDeleteLine: () => void;
 }) {
   const mathfieldRef = useRef<MathfieldElement | null>(null);
 
@@ -48,6 +51,15 @@ export default function EquationLine({
   const [inputEquationState, setInputEquationState] = useState(EQUATION_STATES.VALID);
 
   const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState(false);
+
+  // Drag-and-drop logic
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const style: React.CSSProperties = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+    zIndex: isDragging ? 999 : undefined,
+    position: 'relative',
+  };
 
   // Simplify the menu and add a 'Copy LaTeX Image' command when the mathfield is mounted
   // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
@@ -119,58 +131,68 @@ export default function EquationLine({
 
 
   return (
-    <div className="flex items-center mt-1 mb-1 w-full">
-      <div className="flex flex-1 items-center border rounded px-2 py-1 bg-gray-50 relative">
-        <math-field
-          ref={mathfieldRef}
-          className="flex-1"
-          style={{
-            fontSize: '1.5rem',
-            width: '100%',
-            border: MF_BORDER_STYLES[inputEquationState],
-            borderRadius: '0.25rem',
-          }}
+    <div ref={setNodeRef} style={style} className="flex items-center my-1 w-full">
+      <button
+        {...attributes}
+        {...listeners}
+        tabIndex={-1}
+        className="hover:bg-gray-100 cursor-grab active:cursor-grabbing mr-2 place-self-center"
+      >
+        <FontAwesomeIcon icon={faGripVertical} style={{ color: 'gray' }} />
+      </button>
 
-          onInput={(event) => {
-            const mf = event.target as MathfieldElement;
-            onUserInput?.(mf.value);
-            setShouldVerifyInput(true);
-          }}
-        >
-          {equation}
-        </math-field>
+      <math-field
+        ref={mathfieldRef}
+        className="flex-initial"
+        style={{
+          fontSize: '1.5rem',
+          width: '100%',
+          border: MF_BORDER_STYLES[inputEquationState],
+          borderRadius: '0.25rem',
+        }}
 
-        {/* Copy buttons with tooltips */}
-        <div className="flex flex-col ml-2 space-y-1">
-          <div className="relative group">
-            <button
-              disabled={!MathfieldElement.computeEngine || equation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
-              onClick={() => {
-                if (!mathfieldRef.current) return;
+        onInput={(event) => {
+          const mf = event.target as MathfieldElement;
+          onUserInput?.(mf.value);
+          setShouldVerifyInput(true);
+        }}
 
-                onCopyExcel?.(mathfieldRef.current?.expression.latex);
-                setCopiedFormulaTooltip(true);
-                setTimeout(() => setCopiedFormulaTooltip(false), 1000);
-              }}
-              className="p-2 rounded hover:bg-gray-200"
-            >
-              <FontAwesomeIcon icon={faFileExcel} />
-            </button>
+        onKeyUp={e => {
+          if (e.key === 'Enter') {
+            onNewLineRequested?.();
+          }
+        }}
+      >
+        {equation}
+      </math-field>
 
-            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
-              {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
-            </span>
-          </div>
+      <div className="flex gap-2 px-2">
+        <div className="relative group">
+          <button
+            disabled={!MathfieldElement.computeEngine || equation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
+            onClick={() => {
+              if (!mathfieldRef.current) return;
+
+              onCopyExcel?.(mathfieldRef.current?.expression.latex);
+              setCopiedFormulaTooltip(true);
+              setTimeout(() => setCopiedFormulaTooltip(false), 1000);
+            }}
+            className="p-2 border rounded hover:bg-gray-200"
+          >
+            <FontAwesomeIcon icon={faFileExcel} />
+          </button>
+
+          <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
+            {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
+          </span>
         </div>
 
-        {onDeleteLine && (
-          <button
-            onClick={onDeleteLine}
-            className="ml-2 p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700"
-          >
-            <FontAwesomeIcon icon={faTrashCan} />
-          </button>
-        )}
+        <button
+          onClick={onDeleteLine}
+          className="p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700"
+        >
+          <FontAwesomeIcon icon={faTrashCan} />
+        </button>
       </div>
     </div>
   );
