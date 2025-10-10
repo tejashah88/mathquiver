@@ -1,5 +1,22 @@
 import { Expression } from 'mathlive';
-import { ConstantMapping, ActionMapping, VarMapping } from './types';
+
+// Custom types
+type ConstantMapping = {
+  [key: string]: string;
+};
+
+type ActionMapping = {
+  [key: string]: {
+    type: string,
+    name?: string,
+    symbol?: string,
+    custom?: (args: string[]) => string
+  }
+};
+
+type VarMapping = {
+  [key: string]: string
+};
 
 
 // Modified from https://rclayton.silvrback.com/custom-errors-in-node-js
@@ -159,10 +176,12 @@ function mathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): string 
 }
 
 
+export type { VarMapping };
+
 export {
     MATHJSON_CONSTANTS,
     MATHJSON_FUNCTIONS,
     checkMathjsonToExcel,
     mathjsonToExcel,
-    MjTranslateError
+    MjTranslateError,
 };

@@ -1,32 +1,45 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
-import { parseCellRef } from '@/logic/excel-cell-ref';
+import { cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
 
-const validCases = [
-  'A1',
-  '$A$1',
-  'XFD1048576',
-  'AZ100',
-  '$C10',
-  'C$10'
-];
 
-const invalidCases = [
-  'AAA999999',
-  'B0',
-  '1A',
-  'A1048577'
-];
+describe('Excel Cell Reference Parsing', () => {
+  const validCases = [
+    'A1',
+    '$A$1',
+    'XFD1048576',
+    'AZ100',
+    '$C10',
+    'C$10',
+    'AAA999999',
+  ];
 
-test('parseCellRef: valid inputs', () => {
-  for (const t of validCases) {
-    const result = parseCellRef(t);
-    assert.ok(result, `Expected a valid parse for ${t}`);
-  }
+  const invalidCases = [
+    'AAAA999999',
+    'B0',
+    '1A',
+    'A1048577',
+  ];
+
+  test.each(validCases)('valid: %s', (cellRef) => {
+    const result = parseCellRef(cellRef);
+    expect(result).toBeTruthy();
+  });
+
+  test.each(invalidCases)('invalid: %s', (cellRef) => {
+    expect(() => parseCellRef(cellRef)).toThrow();
+  });
 });
 
-test('parseCellRef: invalid inputs', () => {
-  for (const t of invalidCases) {
-    assert.throws(() => parseCellRef(t), Error, `Expected parseCellRef(${t}) to throw`);
-  }
+
+describe('Excel Cell Reference Cycling', () => {
+  const validCases = [
+    ['A1', '$A$1'],
+    ['$A$1', 'A$1'],
+    ['A$1', '$A1'],
+    ['$A1', 'A1'],
+  ];
+
+  test.each(validCases)('valid: %s => %s', (oldRef, newRef) => {
+    const result = cycleCellRef(oldRef);
+    expect(result).toEqual(newRef);
+  });
 });

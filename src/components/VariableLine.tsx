@@ -5,7 +5,7 @@ import { MathfieldElement } from 'mathlive';
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGripVertical, faTrashCan } from '@fortawesome/free-solid-svg-icons';
-import { checkCellRef } from '@/logic/excel-cell-ref';
+import { checkCellRef, cycleCellRef } from '@/logic/excel-cell-ref';
 
 
 enum CELL_REF_STATES {
@@ -20,31 +20,6 @@ const CELL_REF_BORDER_STYLES = {
   undefined: '1px solid #ccc',
   null: '1px solid #ccc',
 };
-
-// Author: ChatGPT: 10/08/2025
-function cycleRef(ref: string) {
-  const match = ref.match(/^(\$?)([A-Z]+)(\$?)(\d+)$/);
-  if (!match) return ref;
-
-  const [, colLock, col, rowLock, row] = match;
-  const states = [
-    [false, false],
-    [true, true],
-    [false, true],
-    [true, false],
-  ];
-
-  const current = states.findIndex(
-    ([c, r]) =>
-      (c ? '$' : '') + col + (r ? '$' : '') + row === ref
-  );
-
-  const next = states[(current + 1) % states.length];
-  const [nextColLock, nextRowLock] = next;
-
-  return `${nextColLock ? '$' : ''}${col}${nextRowLock ? '$' : ''}${row}`;
-}
-
 
 export default function VariableLine({
   id,
@@ -155,7 +130,7 @@ export default function VariableLine({
         onKeyDown={(e) => {
           if (e.key === 'F4') {
             e.preventDefault();
-            onExcelInput?.(cycleRef(excelInput));
+            onExcelInput?.(cycleCellRef(excelInput));
           }
         }}
         onKeyUp={e => {

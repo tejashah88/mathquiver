@@ -14,8 +14,7 @@ import { faBars, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
 
 import EquationLine from '@/components/EquationLine';
 import VariableLine from '@/components/VariableLine';
-import { mathjsonToExcel } from '@/logic/mj-excel';
-import { VarMapping } from '@/logic/types';
+import { mathjsonToExcel, VarMapping } from '@/logic/mj-excel';
 import { MathfieldElement } from 'mathlive';
 
 /* dnd-kit imports */

@@ -1,10 +1,9 @@
-// Made thanks to ChatGPT as of 10/08/2025
-
 const MAX_ROW = 1_048_576;
 const MAX_COL = 16_384;  // corresponds to “XFD”
 const CELL_REGEX = /^\$?([A-Z]{1,3})\$?([1-9][0-9]{0,6})$/;
 
 
+// Author: ChatGPT as of 10/08/2025
 function colLettersToNumber(letters: string) {
     let num = 0;
     for (const ch of letters) {
@@ -18,6 +17,8 @@ function colLettersToNumber(letters: string) {
     return num;
 }
 
+
+// Author: ChatGPT as of 10/08/2025
 function parseCellRef(cellRef: string) {
     const m = cellRef.match(CELL_REGEX);
     if (!m) {
@@ -61,5 +62,27 @@ function checkCellRef(cellRef: string): boolean {
 }
 
 
-export { parseCellRef, checkCellRef };
+// Author: ChatGPT: 10/08/2025
+function cycleCellRef(cellRef: string) {
+    const match = cellRef.match(/^(\$?)([A-Z]+)(\$?)(\d+)$/);
+    if (!match) return cellRef;
 
+    const [, currColLock, col, currRowLock, row] = match;
+    const anchorStates = [
+        [false, false],
+        [true, true],
+        [false, true],
+        [true, false],
+    ];
+
+    const currentStateIdx = anchorStates.findIndex(([colLock, rowLock]) => {
+        return (currColLock == '$') == colLock && (currRowLock == '$') == rowLock;
+    });
+
+    const nextState = anchorStates[(currentStateIdx + 1) % anchorStates.length];
+    const [nextColLock, nextRowLock] = nextState;
+
+    return `${nextColLock ? '$' : ''}${col}${nextRowLock ? '$' : ''}${row}`;
+}
+
+export { parseCellRef, checkCellRef, cycleCellRef };
