@@ -47,6 +47,17 @@ export default function VariableLine({
   const [shouldVerifyCellInput, setShouldVerifyCellInput] = useState(false);
   const [inputCellState, setInputCellState] = useState(CELL_REF_STATES.VALID);
 
+  function addNewLine(evt: InputEvent) {
+    if (evt.data === 'insertLineBreak') {
+      evt.preventDefault();
+      onNewLineRequested?.();
+    }
+  }
+
+  function changeKeyboardLayout() {
+    window.mathVirtualKeyboard.layouts = ['alphabetic', 'greek'];
+  }
+
   // Remove the menu (not needed for variables) when the mathfield is mounted
   // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
   useEffect(() => {
@@ -54,9 +65,14 @@ export default function VariableLine({
     const mf = latexMathfieldRef.current;
 
     mf.menuItems = [];
-    mf.addEventListener('focusin', () => {
-      window.mathVirtualKeyboard.layouts = ['alphabetic', 'greek'];
-    });
+    mf.addEventListener('focusin', changeKeyboardLayout);
+    mf.addEventListener('beforeinput', addNewLine);
+
+    return () => {
+      mf.removeEventListener('focusin', changeKeyboardLayout);
+      mf.removeEventListener('beforeinput', addNewLine);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latexMathfieldRef]);
 
   // Drag-and-drop logic
@@ -104,12 +120,6 @@ export default function VariableLine({
           onInput={(event) => {
             const mf = event.target as MathfieldElement;
             onLatexInput?.(mf.value);
-          }}
-
-          onKeyUp={e => {
-            if (e.key === 'Enter') {
-              onNewLineRequested?.();
-            }
           }}
         >
           {latexInput}

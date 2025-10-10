@@ -61,6 +61,13 @@ export default function EquationLine({
     position: 'relative',
   };
 
+  function addNewLine(evt: InputEvent) {
+    if (evt.data === 'insertLineBreak') {
+      evt.preventDefault();
+      onNewLineRequested?.();
+    }
+  }
+
   // Simplify the menu and add a 'Copy LaTeX Image' command when the mathfield is mounted
   // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
   useEffect(() => {
@@ -93,15 +100,22 @@ export default function EquationLine({
               const blob = await res.blob();
               await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
             } catch (err) {
-              console.error('Failed to copy PNG:', err);
+              alert('Failed to copy LaTeX render:\n' + err);
             }
         },
       },
       ...defaultMenuItems.slice(insertCopyImageIndex),
     ];
 
+    mf.addEventListener('beforeinput', addNewLine);
+
     // Invalidate the input once to force an expression check (to properly render the status border)
     setShouldVerifyInput(true);
+
+    return () => {
+      mf.removeEventListener('beforeinput', addNewLine);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mathfieldRef]);
 
 
@@ -157,11 +171,12 @@ export default function EquationLine({
           setShouldVerifyInput(true);
         }}
 
-        onKeyUp={e => {
-          if (e.key === 'Enter') {
-            onNewLineRequested?.();
-          }
-        }}
+        // onKeyUp={e => {
+        //   if (e.key === 'Enter') {
+        //     console.log(mathfieldRef.current?.mode);
+        //     onNewLineRequested?.();
+        //   }
+        // }}
       >
         {equation}
       </math-field>

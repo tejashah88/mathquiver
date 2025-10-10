@@ -94,7 +94,7 @@ export default function Home() {
 
         setMathliveLoaded(true);
         console.log(`MathLive version ${mathlive.version.mathlive} loaded and configured!`);
-      }).catch(console.error);
+      }).catch(err => alert(`Unable to load Mathlive! Please reload the website.\n\n${err}`));
     }
   }, []);
 
