@@ -1,21 +1,27 @@
-import { useEffect, useRef, useState } from 'react';
+'use client';
+
+// React imports
+import { FormEvent, useEffect, useRef, useState } from 'react';
+
+// Drag-and-drop kit integration
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { MathfieldElement } from 'mathlive';
-import '@cortex-js/compute-engine';
 
+// Mathlive integration
+import { Expression, MathfieldElement } from 'mathlive';
+
+// Font Awesome Icons
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGripVertical, faFileExcel, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
-import { checkMathjsonToExcel } from '@/logic/mj-excel';
+// Local imports
+import { mathjsonToExcel } from '@/logic/mathjson-excel';
+import { extractLatexVariables } from '@/logic/latex-var-extract';
+import { VariableItem, VarMapping } from '@/types';
 
 
-enum EQUATION_STATES {
-  VALID,
-  INVALID,
-  ERROR,
-};
-
+// Equation validation states for border rendering
+enum EQUATION_STATES { VALID, INVALID, ERROR };
 
 const MF_BORDER_STYLES = {
   [EQUATION_STATES.VALID]: '1px solid #000',
@@ -25,74 +31,82 @@ const MF_BORDER_STYLES = {
   null: '1px solid #ccc',
 };
 
+function checkMathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): boolean {
+  try {
+    mathjsonToExcel(mathJson, varMap);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 
 export default function EquationLine({
   id,
   equation,
+  variableList,
 
   // Listeners
-  onUserInput = () => {},
-  onCopyExcel = () => {},
+  onEquInput,
   onNewLineRequested,
   onDeleteLine,
 }: {
   id: string;
   equation: string;
+  variableList: VariableItem[];
 
   // Listeners
-  onUserInput: (val: string) => void;
-  onCopyExcel: (val: string) => void;
+  onEquInput: (val: string) => void;
   onNewLineRequested: () => void;
   onDeleteLine: () => void;
 }) {
-  const mathfieldRef = useRef<MathfieldElement | null>(null);
+  //////////////////////////////
+  // Stage 1: Setup variables //
+  //////////////////////////////
 
-  const [shouldVerifyInput, setShouldVerifyInput] = useState(false);
-  const [inputEquationState, setInputEquationState] = useState(EQUATION_STATES.VALID);
+  const latexMathfieldRef = useRef<MathfieldElement | null>(null);
 
-  const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState(false);
+  // Equation verification
+  const [inputEquationState, setInputEquationState] = useState<EQUATION_STATES>(EQUATION_STATES.VALID);
 
-  // Drag-and-drop logic
+  // Missing variables tracking
+  const [missingLatexVars, setMissingLatexVars] = useState<string[]>([]);
+
+  // 'Copy to Excel' tooltip visibility
+  const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState<boolean>(false);
+
+  // Drag-and-drop integration
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const style: React.CSSProperties = {
-    transform: CSS.Translate.toString(transform),
-    transition,
-    zIndex: isDragging ? 999 : undefined,
-    position: 'relative',
-  };
 
-  function addNewLine(evt: InputEvent) {
-    if (evt.data === 'insertLineBreak') {
-      evt.preventDefault();
-      onNewLineRequested?.();
-    }
-  }
+  ///////////////////////////////////
+  // Stage 2: Setup logic on mount //
+  ///////////////////////////////////
 
-  // Simplify the menu and add a 'Copy LaTeX Image' command when the mathfield is mounted
+  // Setup the mathfield element on mount
   // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
   useEffect(() => {
-    if (!mathfieldRef.current) return;
-    const mf = mathfieldRef.current;
+    if (!latexMathfieldRef.current) return;
+    const mf = latexMathfieldRef.current;
 
-    // Keep relevent default items
+    // Keep relevant default items for equation editing
     const defaultMenuItems = mf.menuItems.filter(item =>
       !!item && 'id' in item && item.id !== undefined &&
       ['cut', 'copy', 'paste', 'select-all'].includes(item.id)
     );
 
+    // Compile final menu for equation editor
     const insertCopyImageIndex = defaultMenuItems.findIndex(item =>
       !!item && 'id' in item && item.id !== undefined && item.id === 'paste'
     );
 
-    // Compile final menu for equation editor
+    // Add new menu item to allow copying of LaTeX rendered image
     mf.menuItems = [
       ...defaultMenuItems.slice(0, insertCopyImageIndex),
-      // Add new menu item to allow copying of LaTeX rendered image
       {
         id: 'copy-image',
         label: 'Copy Image',
         onMenuSelect: async () => {
-          const latex = encodeURIComponent(mf.expression.latex);
+          const latex = encodeURIComponent(mf.value);
             const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
 
             try {
@@ -107,108 +121,189 @@ export default function EquationLine({
       ...defaultMenuItems.slice(insertCopyImageIndex),
     ];
 
+    // Listener to add a new line when pressing Enter/Return
+    function addNewLine(evt: InputEvent) {
+      if (evt.data === 'insertLineBreak') {
+        evt.preventDefault();
+        onNewLineRequested();
+      }
+    }
+
+    // Add necessary event listeners
     mf.addEventListener('beforeinput', addNewLine);
 
-    // Invalidate the input once to force an expression check (to properly render the status border)
-    setShouldVerifyInput(true);
+    // Grab focus to the element in case the user has created a new equation via Enter/Return
+    mf.focus();
 
+    // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
     return () => {
       mf.removeEventListener('beforeinput', addNewLine);
     };
+    // NOTE: We don't expect onNewLineRequested to change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mathfieldRef]);
+  }, [latexMathfieldRef]);
 
+  // Task 1: Re-render the equation input border based on content validity
+  // Task 2: Update the list of missing variables (in case the variables list changes)
+  useEffect(() => {
+    if (!latexMathfieldRef.current) return;
+    const mf = latexMathfieldRef.current;
 
-  if (mathfieldRef.current && shouldVerifyInput) {
-    setShouldVerifyInput(false);
-
-    const mf = mathfieldRef.current;
-
+    // Check if the internal MathJSON expression is valid, otherwise prevent further processing
     const isExprValid = mf.expression.isValid;
     if (!isExprValid) {
       setInputEquationState(EQUATION_STATES.INVALID);
       return;
     }
 
-    const splitLatexEquation = (mf.expression.latex as string).split('=');
+    // Extract the RHS of the equation to allow the user to type f(x) = ...
+    const splitLatexEquation = mf.value.split('=');
     const rhsLatexEquation = splitLatexEquation[splitLatexEquation.length - 1];
-    const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation);
+    const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation, { canonical: true });
 
+    // Extract missing variables from RHS equation
+    const extractedLatexVars = extractLatexVariables(rhsLatexEquation);
+    const definedLatexVars = variableList.map(_var => _var.latexVar);
+    setMissingLatexVars(extractedLatexVars.filter(_foundVar => !definedLatexVars.includes(_foundVar)));
+
+    // Check if the MathJSON expression can be properly converted to an Excel formula, otherwise prevent further processing
+    //   Case 1: There's an invalid expression that's intentionally not implemented
+    //   Case 2: There's an invalid expression that needs to be implemented
     const canProcessEqu = checkMathjsonToExcel(boxedExpression.json);
     if (!canProcessEqu) {
       setInputEquationState(EQUATION_STATES.ERROR);
       return;
     }
 
+    // Assume that the equation is fine and render a default border
     setInputEquationState(EQUATION_STATES.VALID);
-  }
+  }, [equation, variableList]);
 
+  ///////////////////////////////
+  // Stage 3: Render component //
+  ///////////////////////////////
 
   return (
-    <div ref={setNodeRef} style={style} className="flex items-center my-1 w-full">
-      <button
-        {...attributes}
-        {...listeners}
-        tabIndex={-1}
-        className="hover:bg-gray-100 cursor-grab active:cursor-grabbing mr-2 place-self-center"
-      >
-        <FontAwesomeIcon icon={faGripVertical} style={{ color: 'gray' }} />
-      </button>
-
-      <math-field
-        ref={mathfieldRef}
-        className="flex-initial"
-        style={{
-          fontSize: '1.5rem',
-          width: '100%',
-          border: MF_BORDER_STYLES[inputEquationState],
-          borderRadius: '0.25rem',
-        }}
-
-        onInput={(event) => {
-          const mf = event.target as MathfieldElement;
-          onUserInput?.(mf.value);
-          setShouldVerifyInput(true);
-        }}
-
-        // onKeyUp={e => {
-        //   if (e.key === 'Enter') {
-        //     console.log(mathfieldRef.current?.mode);
-        //     onNewLineRequested?.();
-        //   }
-        // }}
-      >
-        {equation}
-      </math-field>
-
-      <div className="flex gap-2 px-2">
-        <div className="relative group">
-          <button
-            disabled={!MathfieldElement.computeEngine || equation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
-            onClick={() => {
-              if (!mathfieldRef.current) return;
-
-              onCopyExcel?.(mathfieldRef.current?.expression.latex);
-              setCopiedFormulaTooltip(true);
-              setTimeout(() => setCopiedFormulaTooltip(false), 1000);
-            }}
-            className="p-2 border rounded hover:bg-gray-200"
-          >
-            <FontAwesomeIcon icon={faFileExcel} />
-          </button>
-
-          <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
-            {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
-          </span>
-        </div>
-
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Translate.toString(transform),
+        transition,
+        zIndex: isDragging ? 999 : undefined,
+        position: 'relative',
+      }}
+      className="flex flex-col"
+    >
+      <div className="flex flex-row w-full my-[2px] items-center">
         <button
-          onClick={onDeleteLine}
-          className="p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700"
+          {...attributes}
+          {...listeners}
+          tabIndex={-1}
+          className="border border-gray-400 rounded hover:bg-gray-200 py-2 mr-2 cursor-grab active:cursor-grabbing"
         >
-          <FontAwesomeIcon icon={faTrashCan} />
+          <FontAwesomeIcon
+            icon={faGripVertical}
+            size="lg"
+            style={{ color: 'gray' }}
+          />
         </button>
+
+        <math-field
+          id={`mathfield-${id}`}
+          ref={latexMathfieldRef}
+          className="flex-1 min-w-0"
+          style={{
+            fontSize: '1.5rem',
+            border: MF_BORDER_STYLES[inputEquationState],
+            borderRadius: '0.25rem',
+          }}
+
+          onInput={(event: FormEvent<MathfieldElement>) => {
+            const mf = event.target as MathfieldElement;
+            onEquInput(mf.value);
+          }}
+        >
+          {equation}
+        </math-field>
+
+        <div className="flex gap-2 px-2 flex-shrink-0">
+          <div className="relative group">
+            <button
+              disabled={!MathfieldElement.computeEngine || equation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
+              onClick={async () => {
+                if (!latexMathfieldRef.current) return;
+                const mf = latexMathfieldRef.current;
+
+                // Extract the RHS of the equation to allow the user to type f(x) = ...
+                const splitLatexEquation = mf.value.split('=');
+                const rhsLatexEquation = splitLatexEquation[splitLatexEquation.length - 1];
+                const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation, { canonical: true });
+
+                // Create the variable map to convert MathJSON variables to Excel cell references
+                const variableMap = variableList.reduce((acc, entry) => {
+                  if (entry.latexVar) {
+                    const mjsonVar = MathfieldElement.computeEngine!.parse(entry.latexVar.trim());
+                    acc[mjsonVar.json.toString()] = entry.excelVar.trim();
+                  }
+                  return acc;
+                }, {} as VarMapping);
+
+                // Generate the Excel Formula and copy it to the clipboard
+                const excelFormula = mathjsonToExcel(boxedExpression.json, variableMap);
+
+                try {
+                  await navigator.clipboard.writeText(excelFormula);
+                } catch (err) {
+                  alert('Failed to copy Excel formula:\n' + err);
+                  return;
+                }
+
+                // Show a tooltip saying that the copy action was successful
+                setCopiedFormulaTooltip(true);
+                setTimeout(() => setCopiedFormulaTooltip(false), 1000);
+              }}
+              className="p-2 border rounded hover:bg-gray-200"
+            >
+              <FontAwesomeIcon icon={faFileExcel} />
+            </button>
+
+            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
+              {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
+            </span>
+          </div>
+
+          <button onClick={onDeleteLine} className="p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700">
+            <FontAwesomeIcon icon={faTrashCan} />
+          </button>
+        </div>
       </div>
+
+      {missingLatexVars.length > 0 && <div className="flex flex-row w-full my-[2px] items-center gap-1">
+        <math-field
+          read-only
+          style={{
+            display: 'inline-block',
+            fontSize: '1.2rem',
+            background: 'none',
+          }}
+        >
+          {'\\text{Missing:}'}
+        </math-field>
+
+        {missingLatexVars.map((_var, idx) => (
+          <math-field
+            key={idx}
+            read-only
+            className="border"
+            style={{
+              display: 'inline-block',
+              fontSize: '1.2rem',
+            }}
+          >
+            {_var}
+          </math-field>
+        ))}
+      </div>}
     </div>
   );
 }

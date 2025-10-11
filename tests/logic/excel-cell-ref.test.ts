@@ -1,4 +1,34 @@
-import { cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
+import { columnLetterToNum, cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
+
+
+describe('Column Letter to Number Conversion', () => {
+  const validCases: [string, number][] = [
+    ['A', 1],
+    ['S', 19],
+    ['Z', 26],
+    ['AA', 27],
+    ['CT', 98],
+    ['ZA', 677],
+    ['ZZ', 702],
+  ];
+
+  const invalidCases = [
+    '12',
+    'A2',
+    '!@#',
+    'b',
+    'q',
+  ];
+
+  test.each(validCases)('valid: %s => %s', (input, expected) => {
+    const result = columnLetterToNum(input);
+    expect(result).toEqual(expected);
+  });
+
+  test.each(invalidCases)('invalid: %s', (input) => {
+    expect(() => columnLetterToNum(input)).toThrow();
+  });
+});
 
 
 describe('Excel Cell Reference Parsing', () => {
@@ -32,10 +62,17 @@ describe('Excel Cell Reference Parsing', () => {
 
 describe('Excel Cell Reference Cycling', () => {
   const validCases = [
+    // Simple cases
     ['A1', '$A$1'],
     ['$A$1', 'A$1'],
     ['A$1', '$A1'],
     ['$A1', 'A1'],
+
+    // Complex cases
+    ['ZZ54', '$ZZ$54'],
+    ['$ZZ$54', 'ZZ$54'],
+    ['ZZ$54', '$ZZ54'],
+    ['$ZZ54', 'ZZ54'],
   ];
 
   test.each(validCases)('valid: %s => %s', (oldRef, newRef) => {

@@ -4,7 +4,7 @@ import { Html, Head, Main, NextScript } from 'next/document';
 export default function Document() {
   const meta = {
     title: 'MathQuiver: Sane Equation Typing for Excel',
-    description: 'This is a website that enables typing equations LaTeX-style and converting to Excel functions.',
+    description: 'A website that enables typing equations LaTeX-style and converting them to Excel functions, with variable mapping support.',
   };
 
   return (

@@ -3,7 +3,7 @@ function splitVarUnits(varExpr: string) {
 
     const latexVar = fragments[0];
     const unitsArr = fragments.slice(1).filter(frag => !!frag);
-    const units = unitsArr.length > 0 ? unitsArr[0] : '';
+    const units = unitsArr.length > 0 ? unitsArr[0].trim() : '';
 
     return { latexVar, units };
 }

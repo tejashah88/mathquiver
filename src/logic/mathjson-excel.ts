@@ -1,22 +1,5 @@
+import { ConstantMapping, ActionMapping, VarMapping } from '@/types';
 import { Expression } from 'mathlive';
-
-// Custom types
-type ConstantMapping = {
-  [key: string]: string;
-};
-
-type ActionMapping = {
-  [key: string]: {
-    type: string,
-    name?: string,
-    symbol?: string,
-    custom?: (args: string[]) => string
-  }
-};
-
-type VarMapping = {
-  [key: string]: string
-};
 
 
 // Modified from https://rclayton.silvrback.com/custom-errors-in-node-js
@@ -50,6 +33,7 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
     // Basics
     Negate: { type: 'function', custom: (args: string[]) => `(-${args[0]})` },
     Parentheses: { type: 'function', custom: (args: string[]) => `(${args[0]})` },
+    Subscript: { type: 'function', custom: (args: string[]) => `${args[0]}_${args[1]}` },
 
     // Arithmetic
     Add: { type: 'operator', symbol: '+' },
@@ -134,10 +118,11 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
 };
 
 
+// Originally authored by ChatGPT as of 09/19/2025
 function _mathjsonToExcel(node: Expression, varMap: VarMapping = {}): string {
     if (typeof node === 'number') return node.toString();
 
-    // Handle constants
+    // Handle variables & constants
     if (typeof node === 'string') {
         if (MATHJSON_CONSTANTS[node]) return MATHJSON_CONSTANTS[node];
         return varMap[node] || node;
@@ -160,28 +145,14 @@ function _mathjsonToExcel(node: Expression, varMap: VarMapping = {}): string {
 }
 
 
-function checkMathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): boolean {
-    try {
-        _mathjsonToExcel(mathJson, varMap);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-
 function mathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): string {
     const excelFormula = _mathjsonToExcel(mathJson, varMap);
     return '=' + excelFormula;
 }
 
-
-export type { VarMapping };
-
 export {
     MATHJSON_CONSTANTS,
     MATHJSON_FUNCTIONS,
-    checkMathjsonToExcel,
     mathjsonToExcel,
     MjTranslateError,
 };

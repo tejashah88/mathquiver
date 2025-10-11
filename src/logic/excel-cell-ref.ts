@@ -4,17 +4,22 @@ const CELL_REGEX = /^\$?([A-Z]{1,3})\$?([1-9][0-9]{0,6})$/;
 
 
 // Author: ChatGPT as of 10/08/2025
-function colLettersToNumber(letters: string) {
-    let num = 0;
-    for (const ch of letters) {
-        // Expect ch in A–Z
-        const v = ch.charCodeAt(0) - 'A'.charCodeAt(0) + 1;
+function columnLetterToNum(letters: string) {
+    const START_BASIS = 'A'.charCodeAt(0) - 1;
+    let acc = 0;
 
-        if (v < 1 || v > 26) throw new Error(`Invalid column letter '${ch}'`);
-        num = num * 26 + v;
+    for (const ch of letters) {
+        // Expect letter to be within A–Z
+        const ascii = ch.charCodeAt(0) - START_BASIS;
+
+        if (ascii < 1 || ascii > 26)
+            throw new Error(`Invalid column letter '${ch}'`);
+
+        // Add to accumulator and shift to the next column
+        acc = acc * 26 + ascii;
     }
 
-    return num;
+    return acc;
 }
 
 
@@ -34,7 +39,7 @@ function parseCellRef(cellRef: string) {
     const rowStart = cellRef.indexOf(rowDigits);
     const rowAbs = (rowStart > 0 && cellRef[rowStart - 1] === '$');
 
-    const colNum = colLettersToNumber(colLetters);
+    const colNum = columnLetterToNum(colLetters);
     const rowNum = parseInt(rowDigits, 10);
 
     if (colNum < 1 || colNum > MAX_COL) {
@@ -50,15 +55,6 @@ function parseCellRef(cellRef: string) {
         isRowAbsolute: rowAbs,
         isColAbsolute: colAbs
     };
-}
-
-function checkCellRef(cellRef: string): boolean {
-    try {
-        parseCellRef(cellRef);
-        return true;
-    } catch {
-        return false;
-    }
 }
 
 
@@ -85,4 +81,4 @@ function cycleCellRef(cellRef: string) {
     return `${nextColLock ? '$' : ''}${col}${nextRowLock ? '$' : ''}${row}`;
 }
 
-export { parseCellRef, checkCellRef, cycleCellRef };
+export { columnLetterToNum, parseCellRef, cycleCellRef };

@@ -19,3 +19,11 @@ math-field.hide-menu::part(menu-toggle) {
 .markdown-content * {
   line-height: 1.0;
 }
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background-color: #a0a0a0; /* gray-300 */
+  /* border-radius: 9999px; */
+}
