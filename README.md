@@ -1,19 +1,22 @@
 # mathquiver
 A Desmos-like experience to type Excel formulas in a more sane manner. Check it out [here](https://tejashah88.github.io/mathquiver/)!
 
+## Screenshots
+
+Try out the example by importing [this workspace file](docs\mathquiver-example.json)!
+
+### Full View
+<img src="docs/desktop-full-view.png" width="1024">
+
+### Split View
+<img src="docs/desktop-split-view.png" width="1024">
+
 ## Features
 - Desmos-like equation typing experience
 - Can convert algebra-level equations to Excel formulas with variable replacement
 - Detects missing variables and invalid Excel references
 - (Should) support desktop and tablet viewing (mobile not supported)
 - Can export/import workspace (as file) for later
-
-## Screenshots
-
-Try out the example by importing [this workspace file](docs\mathquiver-example.json)!
-
-<img src="docs/desktop-view.png" width="1024">
-<img src="docs/excel-result-view.png" width="1024">
 
 ## How to use
 1. Enter your desired equations in the 'Equations' section.

@@ -1,0 +1,42 @@
+{
+  "equations": [
+    {
+      "id": "JWRiaw7b-QoADA_9NwVfI",
+      "latex": "Ax^2+B\\sin\\left(x\\right)+Ce^{3x}"
+    },
+    {
+      "id": "WUqTbf21yGc67xOQKny0J",
+      "latex": "x=\\frac{-B+\\sqrt{B^2+4AC}}{2A}"
+    },
+    {
+      "id": "TYcI7NtJnqf6c-CvzF3pK",
+      "latex": "Dy^3+\\frac{E}{x}\\cos\\left(y_1\\right)"
+    }
+  ],
+  "variables": [
+    {
+      "id": "Jr83CzkdtpwuCpFyjY9hP",
+      "latexVar": "A",
+      "units": "\\frac{N}{m^2}",
+      "excelVar": "$A$1"
+    },
+    {
+      "id": "y3QzrXCNfIWr4T0qXZTlu",
+      "latexVar": "B",
+      "units": "\\frac{N}{m}",
+      "excelVar": "$B$1"
+    },
+    {
+      "id": "AsKHo_Vte2IsPcoUpN8TE",
+      "latexVar": "C",
+      "units": "N",
+      "excelVar": "$C$1"
+    },
+    {
+      "id": "ei6oiUfRj13xYjvt-xV21",
+      "latexVar": "x",
+      "units": "m",
+      "excelVar": "A3"
+    }
+  ]
+}

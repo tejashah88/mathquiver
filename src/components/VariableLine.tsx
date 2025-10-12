@@ -148,7 +148,7 @@ export default function VariableLine({
         {...attributes}
         {...listeners}
         tabIndex={-1}
-        className="border border-gray-400 rounded hover:bg-gray-200 cursor-grab active:cursor-grabbing place-self-center py-2 ml-1"
+        className="hover:bg-gray-200 cursor-grab active:cursor-grabbing place-self-center py-2 ml-1"
       >
         <FontAwesomeIcon icon={faGripVertical} style={{ color: 'gray' }} />
       </button>
