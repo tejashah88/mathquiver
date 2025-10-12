@@ -1,8 +1,5 @@
-/**
-* LaTeX Variable Extractor
-*
-* Authored by Claude Sonnet 4.5 as of 10/11/2025
-*/
+// LaTeX Variable Extractor
+// Authored by Claude Sonnet 4.5 as of 10/11/2025
 
 import { parseMath } from '@unified-latex/unified-latex-util-parse';
 import * as Ast from '@unified-latex/unified-latex-types';
@@ -38,9 +35,7 @@ const VARIABLE_MACROS = new Set([
 
 const KNOWN_CONSTANTS = ['e', '\\pi'];
 
-/**
-* Check if nodes contain any variables (letters or Greek symbols)
-*/
+// Check if nodes contain any variables (letters or Greek symbols)
 function nodeContainsVariable(nodes: (Ast.Node | Ast.Argument)[]): boolean {
     return nodes.some(node => {
         if (node.type === 'string') return /[a-zA-Z]/.test(node.content);
@@ -51,9 +46,7 @@ function nodeContainsVariable(nodes: (Ast.Node | Ast.Argument)[]): boolean {
     });
 }
 
-/**
-* Extract string value from argument, using LaTeX conventions for brace usage
-*/
+// Extract string value from argument, using LaTeX conventions for brace usage
 function extractArgumentValue(arg: Ast.Argument): string {
     const parts = arg.content.map(node => {
         if (node.type === 'string')
@@ -95,14 +88,10 @@ function extractArgumentValue(arg: Ast.Argument): string {
     }
 }
 
-/**
-* Check if string is purely numeric
-*/
+// Check if string is purely numeric
 const isNumeric = (str: string): boolean => /^\d+$/.test(str.replace(/[{}]/g, ''));
 
-/**
-* Process a variable with potential subscript and superscript
-*/
+// Process a variable with potential subscript and superscript
 function processVariable(
     baseName: string,
     nodes: Ast.Node[],
@@ -156,9 +145,7 @@ function processVariable(
     return nextIndex;
 }
 
-/**
-* Extract variables from AST nodes
-*/
+// Extract variables from AST nodes
 function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
     const variables = new Set<string>();
 
@@ -214,9 +201,7 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
     return varList.sort();
 }
 
-/**
-* Extract variables from LaTeX string using parseMath
-*/
+// Extract variables from LaTeX string using parseMath
 function extractLatexVariables(latexExpr: string): string[] {
     const ast = parseMath(latexExpr);
     return extractVariablesFromAST(ast);
