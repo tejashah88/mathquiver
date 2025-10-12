@@ -1,15 +1,10 @@
-# mathquiver
+# MathQuiver: Sane Equation Typing for Excel
 A Desmos-like experience to type Excel formulas in a more sane manner. Check it out [here](https://tejashah88.github.io/mathquiver/)!
 
-## Screenshots
-
-Try out the example by importing [this workspace file](docs\mathquiver-example.json)!
-
-### Full View
 <img src="docs/desktop-full-view.png" width="1024">
-
-### Split View
 <img src="docs/desktop-split-view.png" width="1024">
+
+Try out the example by downloading and importing [this workspace file](docs/mathquiver-example.json)!
 
 ## Features
 - Desmos-like equation typing experience
