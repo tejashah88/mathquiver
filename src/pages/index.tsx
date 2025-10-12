@@ -370,7 +370,9 @@ export default function Home() {
               <button
                 onClick={() => {
                   // Don't import unless the user wants to overwrite their work
-                  if (equations.length > 0 || variables.length > 0) {
+                  const hasNonEmptyEquations = equations.filter(equ => !!equ.latex).length > 0;
+                  const hasNonEmptyVariables = variables.filter(_var => !!_var.latexVar || !!_var.units || !!_var.excelVar).length > 0;
+                  if (hasNonEmptyEquations || hasNonEmptyVariables) {
                     const wantToOverride = confirm('Do you want to overwrite your existing work?');
                     if (!wantToOverride) return;
                   }
@@ -382,20 +384,11 @@ export default function Home() {
                 Import...
               </button>
 
-              <button
-                onClick={() => {
-                  // Don't import unless the user wants to overwrite their work
-                  if (equations.length > 0 || variables.length > 0) {
-                    const wantToOverride = confirm('Do you want to overwrite your existing work?');
-                    if (!wantToOverride) return;
-                  }
-
-                  fileInputRef.current?.click();
-                }}
-                className="border px-6 py-2 hover:bg-gray-100"
-              >
-                Try Example
-              </button>
+              <div className="text">
+                {'Made by Tejas Shah ('}
+                <a target="_blank" rel="noopener noreferrer" className="text-blue-500 underline" href="https://github.com/tejashah88">@tejashah88</a>
+                {')'}
+              </div>
 
               <button
                 className="border px-6 py-2 hover:bg-gray-100"

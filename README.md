@@ -37,6 +37,9 @@ Try out the example by downloading and importing [this workspace file](docs/math
 ### Known Bugs
 - Variables with complex subscripts are not supported like `a_{n+1}+b` or `x_{y+1}^{z}`.
 
+### Planned Features
+- Add a toggle to separate variables in superscript from base variable (`W_{r}^{g}` vs. `W_{r} ^ g`)
+
 ## For developers
 
 ### Setup
@@ -58,4 +61,4 @@ Open [http://localhost:3000/mathquiver](http://localhost:3000/mathquiver) in a n
 npm run build
 ```
 
-Open [out\index.html](out\index.html) in a new browser tab.
+Open `./out/index.html` in a new browser tab.
