@@ -174,7 +174,7 @@ export default function Home() {
   // Show a temporary loading screen until Mathlive is loaded
   if (!isMathliveLoaded) {
     return (
-      <div className="flex items-center justify-center bg-gray-100 h-screen overflow-hidden">
+      <div className="flex items-center justify-center h-screen overflow-hidden bg-gray-100">
         <h1 className="text-3xl">Loading...</h1>
       </div>
     );
@@ -182,7 +182,7 @@ export default function Home() {
 
   if (isMobile) {
     return (
-      <div className="flex text-center items-center justify-center bg-gray-100 h-screen overflow-hidden">
+      <div className="flex items-center justify-center h-screen overflow-hidden bg-gray-100 text-center">
         <h1 className="text-xl">
           Change to &quot;Desktop site&quot; mode<br/>
           for the best viewing experience.
@@ -196,13 +196,13 @@ export default function Home() {
   /////////////////////////////
 
   return (
-    <div className={`flex bg-gray-100 h-dvh overflow-y-hidden ${enableCompactView ? 'flex-col' : 'md:flex-row'}`}>
+    <div className={`flex h-dvh overflow-y-hidden bg-gray-100 ${enableCompactView ? 'flex-col' : 'md:flex-row'}`}>
       {/* Equations Panel */}
-      <div className={`flex flex-col border-gray-300 ${enableCompactView ? 'h-1/2 border-b' : 'w-2/3 h-auto border-r'}`}>
-        <div className="flex items-center justify-between py-2 px-4 border-b border-gray-400">
+      <div className={`flex flex-col border-gray-300 ${enableCompactView ? 'h-1/2 border-b' : 'h-auto w-2/3 border-r'}`}>
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
           <h2 className="text-2xl font-semibold">Equations</h2>
           <button
-            className="p-2 border rounded hover:bg-gray-200 font-bold"
+            className="rounded border p-2 font-bold hover:bg-gray-200"
             onClick={() => {
               setEquations((prev: EquationItem[]) => [
                 ...prev, { id: nanoid(), latex: '' }
@@ -213,7 +213,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="overflow-y-scroll py-4 pr-0 pl-2">
+        <div className="overflow-y-scroll py-4 pl-2 pr-0">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -259,10 +259,10 @@ export default function Home() {
       </div>
 
       {/* Variables Panel */}
-      <div className={`flex flex-col bg-gray-50 border-gray-300 ${
-        enableCompactView ? 'h-1/2 border-t' : 'w-1/3 min-w-[300px] h-auto border-l'
+      <div className={`flex flex-col border-gray-300 bg-gray-50 ${
+        enableCompactView ? 'h-1/2 border-t' : 'h-auto w-1/3 min-w-[300px] border-l'
       }`}>
-        <div className="flex items-center justify-between py-2 px-4 border-b border-gray-400">
+        <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
           <h2 className="text-2xl font-semibold">Variables</h2>
           <button
             onClick={() => {
@@ -271,18 +271,18 @@ export default function Home() {
                 { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
               ]);
             }}
-            className="p-2 border rounded hover:bg-gray-200 font-bold"
+            className="rounded border p-2 font-bold hover:bg-gray-200"
           >
             <FontAwesomeIcon icon={faPlus} />
           </button>
         </div>
 
-        <div className="w-full p-4 overflow-y-scroll">
+        <div className="w-full overflow-y-scroll p-4">
           <div className="grid grid-cols-[1.7rem_2fr_2fr_2.7rem] gap-0 bg-gray-200 font-bold">
-            <div className="p-2 border-x border-t border-gray-700 text-sm text-left"></div>
-            <div className="p-2 border-r border-t border-gray-700 text-sm text-left min-w-[125px]">Variable [Units]</div>
-            <div className="p-2 border-r border-t border-gray-700 text-sm text-left min-w-[80px]">Excel Ref</div>
-            <div className="p-2 border-r border-t border-gray-700 text-sm text-left"></div>
+            <div className="border-x border-t border-gray-700 p-2 text-left text-sm"></div>
+            <div className="min-w-[125px] border-r border-t border-gray-700 p-2 text-left text-sm">Variable [Units]</div>
+            <div className="min-w-[80px] border-r border-t border-gray-700 p-2 text-left text-sm">Excel Ref</div>
+            <div className="border-r border-t border-gray-700 p-2 text-left text-sm"></div>
           </div>
 
           <DndContext
@@ -339,16 +339,16 @@ export default function Home() {
       {/* Floating Help Button */}
       <button
         onClick={() => setHelpOpen(true)}
-        className="fixed bottom-4 right-4 bg-blue-600 text-white p-2 rounded shadow-lg hover:bg-blue-700"
+        className="fixed bottom-4 right-4 rounded bg-blue-600 p-2 text-white shadow-lg hover:bg-blue-700"
       >
         <FontAwesomeIcon icon={faBars} size="sm" />
       </button>
 
       {helpOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-gray-50/75 z-50">
-          <div className="bg-white border rounded-md max-w-3xl w-full max-h-[90vh] shadow-lg flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50/75">
+          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-md border bg-white shadow-lg">
             {/* Header */}
-            <div className="flex justify-between items-center p-4 border-b">
+            <div className="flex items-center justify-between border-b p-4">
               <h2 className="text-2xl font-semibold">Main Menu</h2>
               <button
                 onClick={() => setHelpOpen(false)}
@@ -360,13 +360,13 @@ export default function Home() {
 
             {/* Scrollable content */}
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="border p-6 prose max-w-none text-black markdown-content">
+              <div className="prose markdown-content max-w-none border p-6 text-black">
                 <Markdown>{helpContent}</Markdown>
               </div>
             </div>
 
             {/* Import/Export buttons */}
-            <div className="flex justify-between items-center p-4 border-t">
+            <div className="flex items-center justify-between border-t p-4">
               <button
                 onClick={() => {
                   // Don't import unless the user wants to overwrite their work

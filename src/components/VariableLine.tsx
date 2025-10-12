@@ -142,13 +142,13 @@ export default function VariableLine({
         zIndex: isDragging ? 999 : undefined,
         position: 'relative',
       }}
-      className="grid grid-cols-[1.5rem_2fr_2fr_2.5rem] bg-gray-50 gap-1 justify-center border border-gray-700"
+      className="grid grid-cols-[1.5rem_2fr_2fr_2.5rem] justify-center gap-1 border border-gray-700 bg-gray-50"
     >
       <button
         {...attributes}
         {...listeners}
         tabIndex={-1}
-        className="hover:bg-gray-200 cursor-grab active:cursor-grabbing place-self-center py-2 ml-1"
+        className="ml-1 cursor-grab place-self-center py-2 hover:bg-gray-200 active:cursor-grabbing"
       >
         <FontAwesomeIcon icon={faGripVertical} style={{ color: 'gray' }} />
       </button>
@@ -157,7 +157,7 @@ export default function VariableLine({
         id={`mathfield-${id}`}
         ref={latexMathfieldRef}
         default-mode="inline-math"
-        className="w-full min-w-[120px] hide-menu place-content-center my-2"
+        className="hide-menu w-full min-w-[120px] place-content-center my-2"
         style={{
           fontSize: '1.25rem',
           border: '1px solid #ccc',
@@ -175,7 +175,7 @@ export default function VariableLine({
       <input
         type="text"
         value={excelInput}
-        className="w-full min-w-[80px] border rounded px-1 py-2 place-self-center"
+        className="w-full min-w-[80px] place-self-center rounded border px-1 py-2"
         style={{
           border: CELL_REF_BORDER_STYLES[inputCellState],
           borderRadius: '0.25rem',
@@ -196,10 +196,10 @@ export default function VariableLine({
         }}
       />
 
-      <div className="place-self-center mr-1">
+      <div className="mr-1 place-self-center">
         <button
           onClick={onDelete}
-          className="p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700"
+          className="rounded border bg-red-100 p-2 text-red-700 hover:bg-red-200"
         >
           <FontAwesomeIcon icon={faTrashCan} />
         </button>

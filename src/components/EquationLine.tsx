@@ -194,12 +194,12 @@ export default function EquationLine({
       }}
       className="flex flex-col"
     >
-      <div className="flex flex-row w-full my-[2px] items-center">
+      <div className="flex w-full flex-row items-center my-[2px]">
         <button
           {...attributes}
           {...listeners}
           tabIndex={-1}
-          className="border border-gray-400 rounded hover:bg-gray-200 py-2 mr-2 cursor-grab active:cursor-grabbing"
+          className="mr-2 cursor-grab rounded border border-gray-400 py-2 hover:bg-gray-200 active:cursor-grabbing"
         >
           <FontAwesomeIcon
             icon={faGripVertical}
@@ -211,7 +211,7 @@ export default function EquationLine({
         <math-field
           id={`mathfield-${id}`}
           ref={latexMathfieldRef}
-          className="flex-1 min-w-0"
+          className="min-w-0 flex-1"
           style={{
             fontSize: '1.5rem',
             border: MF_BORDER_STYLES[inputEquationState],
@@ -226,8 +226,8 @@ export default function EquationLine({
           {equation}
         </math-field>
 
-        <div className="flex gap-2 px-2 flex-shrink-0">
-          <div className="relative group">
+        <div className="flex flex-shrink-0 gap-2 px-2">
+          <div className="group relative">
             <button
               disabled={!MathfieldElement.computeEngine || equation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
               onClick={async () => {
@@ -262,23 +262,23 @@ export default function EquationLine({
                 setCopiedFormulaTooltip(true);
                 setTimeout(() => setCopiedFormulaTooltip(false), 1000);
               }}
-              className="p-2 border rounded hover:bg-gray-200"
+              className="rounded border p-2 hover:bg-gray-200"
             >
               <FontAwesomeIcon icon={faFileExcel} />
             </button>
 
-            <span className="absolute right-full top-1/2 -translate-y-1/2 mr-2 hidden group-hover:block bg-gray-700 text-white text-xs px-2 py-1 rounded shadow">
+            <span className="absolute right-full top-1/2 mr-2 hidden -translate-y-1/2 rounded bg-gray-700 px-2 py-1 text-xs text-white shadow group-hover:block">
               {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
             </span>
           </div>
 
-          <button onClick={onDeleteLine} className="p-2 border rounded bg-red-100 hover:bg-red-200 text-red-700">
+          <button onClick={onDeleteLine} className="rounded border bg-red-100 p-2 text-red-700 hover:bg-red-200">
             <FontAwesomeIcon icon={faTrashCan} />
           </button>
         </div>
       </div>
 
-      {missingLatexVars.length > 0 && <div className="flex flex-row w-full my-[2px] items-center gap-1">
+      {missingLatexVars.length > 0 && <div className="flex w-full flex-row items-center gap-1 my-[2px]">
         <math-field
           read-only
           style={{
