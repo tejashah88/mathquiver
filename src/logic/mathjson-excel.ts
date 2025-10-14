@@ -45,6 +45,11 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
     Sqrt: { type: 'function', name: 'SQRT' },
     Root: { type: 'function', custom: (args: string[]) => `(${args[0]}^(1/${args[1]}))` },
 
+    // Special functions
+    Factorial: { type: 'function', name: 'FACT' },
+    Factorial2: { type: 'function', name: 'FACTDOUBLE' },
+    Gamma: { type: 'function', name: 'GAMMA' },
+
     // Trigonometry
     Sin: { type: 'function', name: 'SIN' },
     Cos: { type: 'function', name: 'COS' },
@@ -93,7 +98,7 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
     // Extra Functions
     Rational: { type: 'function', custom: (args: string[]) => `(${args[0]}/${args[1]})` },
     Mod: { type: 'function', custom: (args: string[]) => `MOD(${args[0]}, ${args[1]})` },
-    // Currently broken, see https://github.com/arnog/mathlive/issues/2858
+    // BUG: Currently broken, see https://github.com/arnog/mathlive/issues/2858
     // GCD: { type: 'function', name: 'GCD' },
     LCM: { type: 'function', name: 'LCM' },
 
@@ -102,6 +107,7 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
     Real: { type: 'function', name: 'IMREAL' },
     Imaginary: { type: 'function', name: 'IMAGINARY' },
     Conjugate: { type: 'function', name: 'IMCONJUGATE' },
+    Arg: { type: 'function', name: 'IMARGUMENT' },
     Magnitude: { type: 'function', name: 'IMABS' },
     Norm: { type: 'function', name: 'IMABS' },
     Argument: { type: 'function', name: 'IMARGUMENT' },
@@ -112,9 +118,12 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
     Min: { type: 'function', name: 'MIN' },
     Max: { type: 'function', name: 'MAX' },
     Mode: { type: 'function', name: 'MODE.SNGL' },
-    PopulationStandardDeviation: { type: 'function', name: 'STDEV.P' },
     StandarDeviation: { type: 'function', name: 'STDEV.S' },
-    Variance: { type: 'function', name: 'VAR.P' },
+    PopulationStandardDeviation: { type: 'function', name: 'STDEV.P' },
+    Variance: { type: 'function', name: 'VAR.S' },
+    PopulationVariance: { type: 'function', name: 'VAR.P' },
+    Skewness: { type: 'function', name: 'SKEW' },
+    Kurtosis: { type: 'function', name: 'KURT' },
 };
 
 

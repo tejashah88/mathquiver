@@ -129,7 +129,7 @@ describe('Extract Variables from Latex Expression', () => {
     ['x', 'y', 'a'],
     ['x', 'y'],
     ['j', 'x', 'y'],
-    ['x', 'y', 'n', 'm'],
+    ['m', 'n', 'x', 'y'],
     ['R_{x}^{x}', 'x'],
     ['x', 'y', 'z'],
     ['a_{m}^{n}', 'x'],
@@ -181,7 +181,7 @@ describe('Extract Variables from Latex Expression', () => {
     // Complex subscripts and superscripts
     ['x_{i+1}', 'x_{i-1}'],
     ['a_{ij}', 'b_{jk}'],
-    ['i', 'n', 'x_{i}'],
+    ['n', 'x_{i}'],
     ['a', 'b', 'f', 'x', 'd'],
 
     // Mixed operations

@@ -234,6 +234,12 @@ describe('mathjsonToExcel - Rounding functions', () => {
 
 describe('mathjsonToExcel - Special functions', () => {
   const specialTestCases: [string, Expression, string][] = [
+    ['factorial: 5!', ['Factorial', 5], '=FACT(5)'],
+    ['factorial: n!', ['Factorial', 'n'], '=FACT(n)'],
+    ['double factorial: 5!!', ['Factorial2', 5], '=FACTDOUBLE(5)'],
+    ['double factorial: n!!', ['Factorial2', 'n'], '=FACTDOUBLE(n)'],
+    ['gamma: Gamma(x)', ['Gamma', 'x'], '=GAMMA(x)'],
+    ['gamma: Gamma(5)', ['Gamma', 5], '=GAMMA(5)'],
     ['rational: a/b', ['Rational', 'a', 'b'], '=(a/b)'],
     ['mod(x, y)', ['Mod', 'x', 'y'], '=MOD(x, y)'],
     ['mod(17, 5)', ['Mod', 17, 5], '=MOD(17, 5)'],
@@ -252,6 +258,7 @@ describe('mathjsonToExcel - Complex numbers', () => {
     ['real part: Re(z)', ['Real', 'z'], '=IMREAL(z)'],
     ['imaginary part: Im(z)', ['Imaginary', 'z'], '=IMAGINARY(z)'],
     ['conjugate: conj(z)', ['Conjugate', 'z'], '=IMCONJUGATE(z)'],
+    ['arg: arg(z)', ['Arg', 'z'], '=IMARGUMENT(z)'],
     ['magnitude: |z|', ['Magnitude', 'z'], '=IMABS(z)'],
     ['norm: ||z||', ['Norm', 'z'], '=IMABS(z)'],
     ['argument: arg(z)', ['Argument', 'z'], '=IMARGUMENT(z)'],
@@ -270,9 +277,12 @@ describe('mathjsonToExcel - Statistics functions', () => {
     ['min', ['Min', 1, 2, 3], '=MIN(1,2,3)'],
     ['max', ['Max', 1, 2, 3], '=MAX(1,2,3)'],
     ['mode', ['Mode', 'a', 'b', 'c'], '=MODE.SNGL(a,b,c)'],
-    ['population standard deviation', ['PopulationStandardDeviation', 'x', 'y', 'z'], '=STDEV.P(x,y,z)'],
     ['sample standard deviation', ['StandarDeviation', 'x', 'y', 'z'], '=STDEV.S(x,y,z)'],
-    ['variance', ['Variance', 'a', 'b', 'c'], '=VAR.P(a,b,c)'],
+    ['population standard deviation', ['PopulationStandardDeviation', 'x', 'y', 'z'], '=STDEV.P(x,y,z)'],
+    ['sample variance', ['Variance', 'a', 'b', 'c'], '=VAR.S(a,b,c)'],
+    ['population variance', ['PopulationVariance', 'a', 'b', 'c'], '=VAR.P(a,b,c)'],
+    ['skewness', ['Skewness', 'x', 'y', 'z'], '=SKEW(x,y,z)'],
+    ['kurtosis', ['Kurtosis', 'x', 'y', 'z'], '=KURT(x,y,z)'],
   ];
 
   test.each(statsTestCases)('should handle %s', (_desc, input, expected) => {

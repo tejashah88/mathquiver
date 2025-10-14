@@ -33,7 +33,7 @@ const VARIABLE_MACROS = new Set([
     ...GREEK_VARIANTS,
 ]);
 
-const KNOWN_CONSTANTS = ['e', '\\pi'];
+const KNOWN_CONSTANTS = ['e', 'i', '\\pi'];
 
 // Check if nodes contain any variables (letters or Greek symbols)
 function nodeContainsVariable(nodes: (Ast.Node | Ast.Argument)[]): boolean {
