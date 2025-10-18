@@ -288,11 +288,11 @@ export default function Home() {
         </div>
 
         <div className="w-full overflow-y-scroll p-4">
-          <div className="grid grid-cols-[1.7rem_2fr_2fr_2.7rem] gap-0 bg-gray-200 font-bold">
-            <div className="border-x border-t border-gray-700 p-2 text-left text-sm"></div>
-            <div className="min-w-[125px] border-r border-t border-gray-700 p-2 text-left text-sm">Variable [Units]</div>
-            <div className="min-w-[80px] border-r border-t border-gray-700 p-2 text-left text-sm">Excel Ref</div>
-            <div className="border-r border-t border-gray-700 p-2 text-left text-sm"></div>
+          <div className={`grid grid-cols-[1.7rem_2fr_2fr_2.7rem] border-t gap-0 bg-gray-200 font-bold ${variables.length === 0 ? 'border-b' : ''}`}>
+            <div className="border-x border-gray-700 p-2 text-left text-sm"></div>
+            <div className="min-w-[125px] border-r border-gray-700 p-2 text-left text-sm">Variable [Units]</div>
+            <div className="min-w-[80px] border-r border-gray-700 p-2 text-left text-sm">Excel Ref</div>
+            <div className="border-r border-gray-700 p-2 text-left text-sm"></div>
           </div>
 
           <DndContext
