@@ -3,6 +3,9 @@
 // React imports
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
+// Custom hooks
+import { useIntersectionObserver } from '@uidotdev/usehooks';
+
 // Drag-and-drop kit integration
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -18,6 +21,7 @@ import { faGripVertical, faFileExcel, faTrashCan } from '@fortawesome/free-solid
 import { mathjsonToExcel } from '@/logic/mathjson-excel';
 import { extractLatexVariables } from '@/logic/latex-var-extract';
 import { VariableItem, VarMapping } from '@/types';
+import mergeRefs from '@/utils/mergeRefs';
 
 
 // Equation validation states for border rendering
@@ -77,6 +81,17 @@ export default function EquationLine({
 
   // Drag-and-drop integration
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+  // Lazy-loading to save
+  // const [intersectRef, isInView] = useIntersectionObserver();
+  const [intersectRef, entry] = useIntersectionObserver({
+    threshold: 0,
+    root: null,
+    rootMargin: '0px',
+  });
+
+  // Check if the component is in view
+  const isInView = entry?.isIntersecting ?? true; // Default to true on initial render
 
   ///////////////////////////////////
   // Stage 2: Setup logic on mount //
@@ -188,7 +203,7 @@ export default function EquationLine({
 
   return (
     <div
-      ref={setNodeRef}
+      ref={mergeRefs(setNodeRef, intersectRef)}
       style={{
         transform: CSS.Translate.toString(transform),
         transition,
@@ -211,23 +226,37 @@ export default function EquationLine({
           />
         </button>
 
-        <math-field
-          id={`mathfield-${id}`}
-          ref={latexMathfieldRef}
-          className="min-w-0 flex-1"
-          style={{
-            fontSize: '1.5rem',
-            border: MF_BORDER_STYLES[inputEquationState],
-            borderRadius: '0.25rem',
-          }}
+        {isInView ? (
+          <math-field
+            id={`mathfield-${id}`}
+            ref={latexMathfieldRef}
+            className="min-w-0 flex-1"
+            style={{
+              fontSize: '1.5rem',
+              border: MF_BORDER_STYLES[inputEquationState],
+              borderRadius: '0.25rem',
+              animation: 'fadeIn 0.3s ease-in',
+            }}
 
-          onInput={(event: FormEvent<MathfieldElement>) => {
-            const mf = event.target as MathfieldElement;
-            onEquInput(mf.value);
-          }}
-        >
-          {equation}
-        </math-field>
+            onInput={(event: FormEvent<MathfieldElement>) => {
+              const mf = event.target as MathfieldElement;
+              onEquInput(mf.value);
+            }}
+          >
+            {equation}
+          </math-field>
+        ) : (
+          <div
+            className="min-w-0 flex-1"
+            style={{
+              fontSize: '1.5rem',
+              border: '1px solid #ccc',
+              borderRadius: '0.25rem',
+              minHeight: '3rem',
+              backgroundColor: '#f3f4f6',
+            }}
+          />
+        )}
 
         <div className="flex flex-shrink-0 gap-2 px-2">
           <div className="group relative">
