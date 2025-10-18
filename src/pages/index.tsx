@@ -32,6 +32,7 @@ import VariableLine from '@/components/VariableLine';
 import { splitVarUnits } from '@/logic/split-var-units';
 import { setupExtendedAlgebraMode } from '@/logic/prep-compute-engine';
 import { EquationItem, VariableItem } from '@/types';
+import useBeforeUnload from '@/hooks/useBeforeUnload';
 
 
 export default function Home() {
@@ -166,6 +167,15 @@ export default function Home() {
       }).catch(err => alert(`Unable to load Mathlive! Please reload the website.\n\n${err}`));
     }
   }, []);
+
+
+  // Don't import unless the user wants to overwrite their work
+  const hasNonEmptyEquations = equations.filter(equ => !!equ.latex).length > 0;
+  const hasNonEmptyVariables = variables.filter(_var => !!_var.latexVar || !!_var.units || !!_var.excelVar).length > 0;
+  const hasDirtyWork = hasNonEmptyEquations || hasNonEmptyVariables;
+
+  // Setup a listener to ask user to save their work before exiting
+  useBeforeUnload(hasDirtyWork);
 
   //////////////////////////////////////////
   // Stage 3: Conditional logic on render //
@@ -369,10 +379,7 @@ export default function Home() {
             <div className="flex items-center justify-between border-t p-4">
               <button
                 onClick={() => {
-                  // Don't import unless the user wants to overwrite their work
-                  const hasNonEmptyEquations = equations.filter(equ => !!equ.latex).length > 0;
-                  const hasNonEmptyVariables = variables.filter(_var => !!_var.latexVar || !!_var.units || !!_var.excelVar).length > 0;
-                  if (hasNonEmptyEquations || hasNonEmptyVariables) {
+                  if (hasDirtyWork) {
                     const wantToOverride = confirm('Do you want to overwrite your existing work?');
                     if (!wantToOverride) return;
                   }
