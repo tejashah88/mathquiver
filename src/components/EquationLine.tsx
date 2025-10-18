@@ -112,9 +112,12 @@ export default function EquationLine({
             try {
               const res = await fetch(url);
               const blob = await res.blob();
+              // NOTE: This can throw an error if the document if unfocused
               await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
             } catch (err) {
-              alert('Failed to copy LaTeX render:\n' + err);
+              // eslint-disable-next-line no-console
+              console.error(err);
+              alert('Failed to copy LaTeX image render, please try again!');
             }
         },
       },
@@ -252,9 +255,12 @@ export default function EquationLine({
                 const excelFormula = mathjsonToExcel(boxedExpression.json, variableMap);
 
                 try {
+                  // NOTE: This can throw an error if the document if unfocused
                   await navigator.clipboard.writeText(excelFormula);
                 } catch (err) {
-                  alert('Failed to copy Excel formula:\n' + err);
+                  // eslint-disable-next-line no-console
+                  console.error(err);
+                  alert('Failed to copy Excel formula, please try again!');
                   return;
                 }
 
