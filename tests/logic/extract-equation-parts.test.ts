@@ -41,6 +41,14 @@ describe('Extract Equation Parts', () => {
     String.raw`\int_0^1 x^2 dx,x\in[0,1]`,
     String.raw`y=e^{-x^2},x\in\mathbb{R}`,
 
+    // Commas in subscripts/superscripts (should be ignored)
+    String.raw`\theta_{y,3}^{wr} = \frac{W_r^g}{4EI}\left(2l_i x - x^2 - \frac{3}{4}l_i^2\right), x \in \left[\frac{l_i}{2}, l_i\right]`,
+    String.raw`\theta_{y,1}^{wr} = \theta_{y,2}^{wr}(0), x \in [-l_o, 0]`,
+    String.raw`\theta_{y,3}^{nr} = \frac{F_n}{6EI}(6(l_i + l_o)x - 3x^2 - 3l_i^2 - 4l_o l_i), x \in (l_i, (l_o + l_i))`,
+    String.raw`a_{1,2} = b_{3,4}, x > 0`,
+    String.raw`y = x^2, x \in [0, 10]`,
+    String.raw`f(x,y) = x + y, x > 0`,
+
     // Edge cases - all handled gracefully (no errors)
     String.raw``,
     String.raw`=`,
@@ -88,6 +96,14 @@ describe('Extract Equation Parts', () => {
     ['f\'(x)', '2x+1', ''],
     ['', '\\int_0^1 x^2 dx', 'x\\in[0,1]'],
     ['y', 'e^{-x^2}', 'x\\in\\mathbb{R}'],
+
+    // Commas in subscripts/superscripts (should be ignored)
+    [String.raw`\theta_{y,3}^{wr} `, String.raw` \frac{W_r^g}{4EI}\left(2l_i x - x^2 - \frac{3}{4}l_i^2\right)`, String.raw` x \in \left[\frac{l_i}{2}, l_i\right]`],
+    [String.raw`\theta_{y,1}^{wr} `, String.raw` \theta_{y,2}^{wr}(0)`, String.raw` x \in [-l_o, 0]`],
+    [String.raw`\theta_{y,3}^{nr} `, String.raw` \frac{F_n}{6EI}(6(l_i + l_o)x - 3x^2 - 3l_i^2 - 4l_o l_i)`, String.raw` x \in (l_i, (l_o + l_i))`],
+    [String.raw`a_{1,2} `, String.raw` b_{3,4}`, String.raw` x > 0`],
+    [String.raw`y `, String.raw` x^2`, String.raw` x \in [0, 10]`],
+    [String.raw`f(x,y) `, String.raw` x + y`, String.raw` x > 0`],
 
     // Edge cases - all handled gracefully (no errors)
     ['', '', ''],

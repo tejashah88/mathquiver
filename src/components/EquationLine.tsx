@@ -19,6 +19,11 @@ import { mathjsonToExcel } from '@/logic/mathjson-excel';
 import { extractLatexVariables } from '@/logic/latex-var-extract';
 import { VariableItem, VarMapping } from '@/types';
 import extractEquationParts from '@/logic/extract-equation-parts';
+import {
+  parseMathfieldDOM,
+  applyStyleToRange,
+  clearStyles,
+} from '@/logic/parse-mathfield-dom';
 
 
 // Equation validation states for border rendering
@@ -195,6 +200,71 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
     // Assume that the equation is fine and render a default border
     setInputEquationState(EQUATION_STATES.VALID);
   }, [equation, variableList]);
+
+  // Apply visual styling to equation parts using shadow DOM manipulation
+  // This colors the LHS (before equals) and limits (after comma) gray without mutating LaTeX
+  // Uses MutationObserver to automatically re-apply styles whenever MathLive re-renders its shadow DOM
+  useEffect(() => {
+    if (!latexMathfieldRef.current) return;
+    const mf = latexMathfieldRef.current;
+    if (!mf.shadowRoot) return;
+
+    // Styling function that applies gray color to specific equation parts
+    const applyStylesToMathfield = () => {
+      try {
+        const charIndex = parseMathfieldDOM(mf);
+        clearStyles(charIndex);
+
+        // Find markers at depth 0 (top-level, not in subscripts/superscripts)
+        const equalsSign = charIndex.find(item => item.char === '=' && item.depth === 0);
+        const firstComma = charIndex.find(item => item.char === ',' && item.depth === 0);
+
+        // Color LHS (everything before equals sign) gray
+        if (equalsSign) {
+          applyStyleToRange(charIndex, 0, equalsSign.index, { color: '#6b7280' });
+          equalsSign.element.style.color = '#6b7280';
+        }
+
+        // Color limits (everything after first comma) gray
+        if (firstComma) {
+          firstComma.element.style.color = '#6b7280';
+          applyStyleToRange(charIndex, firstComma.index + 1, charIndex.length, { color: '#6b7280' });
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.warn('Failed to apply equation styling:', err);
+        }
+      }
+    };
+
+    // Track pending animation frame to debounce rapid DOM mutations
+    let pendingRaf: number | undefined;
+    const scheduleStyleApplication = () => {
+      // Cancel any pending style application
+      if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
+      // Schedule new style application for next frame
+      pendingRaf = requestAnimationFrame(applyStylesToMathfield);
+    };
+
+    // Set up MutationObserver to watch for shadow DOM changes
+    // Handles: typing, blur, focus, DevTools, window resize, file imports, etc.
+    const observer = new MutationObserver(scheduleStyleApplication);
+    observer.observe(mf.shadowRoot, {
+      childList: true,    // Watch for nodes being added/removed
+      subtree: true,      // Watch entire shadow DOM tree
+      attributes: false,  // Ignore attribute changes to prevent infinite loops
+    });
+
+    // Apply initial styles after shadow DOM is ready
+    scheduleStyleApplication();
+
+    // Cleanup function
+    return () => {
+      if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
+      observer.disconnect();
+    };
+  }, [equation]);
 
   //////////////////////////////////////////
   // Stage 3: Conditional logic on render //
