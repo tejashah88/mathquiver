@@ -1,5 +1,6 @@
 import React from 'react';
 import { ErrorBoundary as ReactErrorBoundary, FallbackProps } from 'react-error-boundary';
+import { FLAGS } from '@/utils/feature-flags';
 
 /**
  * Error fallback component displayed when an error is caught by the ErrorBoundary.
@@ -30,7 +31,7 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
           We apologize for the inconvenience. An unexpected error occurred with MathQuiver.
         </p>
 
-        {process.env.NODE_ENV === 'development' && error && (
+        {FLAGS.showDetailedErrors && error && (
           <details className="mb-4 rounded bg-gray-50 p-3">
             <summary className="cursor-pointer font-medium text-gray-900">
               Error details (dev mode only)
@@ -76,7 +77,7 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
  * In production, this is where you would send errors to an error reporting service.
  */
 function logError(error: Error, info: React.ErrorInfo) {
-  if (process.env.NODE_ENV === 'development') {
+  if (FLAGS.enableDebugLogging) {
     // eslint-disable-next-line no-console
     console.error('Error caught by boundary:', error);
     // eslint-disable-next-line no-console

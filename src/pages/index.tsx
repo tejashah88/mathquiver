@@ -35,6 +35,7 @@ import { EquationItem, VariableItem } from '@/types';
 import useBeforeUnload from '@/hooks/useBeforeUnload';
 import sanitize from 'sanitize-filename';
 import slugify from 'slugify';
+import { FLAGS } from '@/utils/feature-flags';
 
 
 export default function Home() {
@@ -211,7 +212,7 @@ export default function Home() {
       })
       .then((text) => setHelpContent(text))
       .catch((err) => {
-        if (process.env.NODE_ENV === 'development') {
+        if (FLAGS.enableDebugLogging) {
           // eslint-disable-next-line no-console
           console.error('Failed to load help.md:', err);
         }
@@ -234,7 +235,7 @@ export default function Home() {
 
         setMathliveLoaded(true);
 
-        if (process.env.NODE_ENV === 'development') {
+        if (FLAGS.enableDebugLogging) {
           try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const computeEngineVersion = (window as any)[Symbol.for('io.cortexjs.compute-engine')].version;
@@ -253,7 +254,7 @@ export default function Home() {
       }).catch(err => {
         const errorMsg = err instanceof Error ? err.message : String(err);
         setMathliveError(errorMsg);
-        if (process.env.NODE_ENV === 'development') {
+        if (FLAGS.enableDebugLogging) {
           // eslint-disable-next-line no-console
           console.error('Failed to load MathLive:', err);
         }
@@ -268,7 +269,8 @@ export default function Home() {
   const hasDirtyWork = hasNonEmptyEquations || hasNonEmptyVariables;
 
   // Setup a listener to ask user to save their work before exiting
-  useBeforeUnload(hasDirtyWork);
+  // Disable the 'unsaved work' prompt during development
+  useBeforeUnload(FLAGS.enableBeforeUnloadWarning && hasDirtyWork);
 
   //////////////////////////////////////////
   // Stage 3: Conditional logic on render //

@@ -8,11 +8,12 @@ config.autoAddCss = false;
 
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { enableConsoleExports } from '@/tools/export-mathfield/run';
+import { FLAGS } from '@/utils/feature-flags';
 
 export default function App({ Component, pageProps }: AppProps) {
   // Enable mathfield export utilities in development mode
   useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
+    if (FLAGS.enableDebugLogging) {
       enableConsoleExports();
     }
   }, []);

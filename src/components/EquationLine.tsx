@@ -24,6 +24,7 @@ import {
   applyStyleToRange,
   clearStyles,
 } from '@/logic/mathfield-dom-stylizer';
+import { FLAGS } from '@/utils/feature-flags';
 
 
 // Equation validation states for border rendering
@@ -130,7 +131,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
               // NOTE: This can throw an error if the document if unfocused
               await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
             } catch (err) {
-              if (process.env.NODE_ENV === 'development') {
+              if (FLAGS.enableDebugLogging) {
                 // eslint-disable-next-line no-console
                 console.error('Failed to copy LaTeX image:', err);
               }
@@ -251,7 +252,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
           applyStyleToRange(charIndex, firstComma.index + 1, charIndex.length, { color: '#6b7280' });
         }
       } catch (err) {
-        if (process.env.NODE_ENV === 'development') {
+        if (FLAGS.enableDebugLogging) {
           // eslint-disable-next-line no-console
           console.warn('Failed to apply equation styling:', err);
         }
@@ -366,7 +367,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
                   // NOTE: This can throw an error if the document if unfocused
                   await navigator.clipboard.writeText(excelFormula);
                 } catch (err) {
-                  if (process.env.NODE_ENV === 'development') {
+                  if (FLAGS.enableDebugLogging) {
                     // eslint-disable-next-line no-console
                     console.error('Failed to copy Excel formula:', err);
                   }
