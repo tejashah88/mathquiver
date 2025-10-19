@@ -90,13 +90,10 @@ export function exportMathfieldById(id: string): string | null {
 /**
  * Exports all mathfield elements on the current page.
  *
- * @returns Array of HTML strings, one for each mathfield
+ * Excludes read-only mathfield elements (those without contenteditable="true")
+ * and empty mathfields (those with no latex content).
  *
- * @example
- * const allMathfields = exportAllMathfields();
- * allMathfields.forEach((html, index) => {
- *   console.log(`Mathfield ${index + 1}:`, html);
- * });
+ * @returns Array of HTML strings, one for each editable, non-empty mathfield
  */
 export function exportAllMathfields(): string[] {
   const mathfields = document.querySelectorAll('math-field');
@@ -104,6 +101,17 @@ export function exportAllMathfields(): string[] {
 
   mathfields.forEach(mathfield => {
     if (mathfield instanceof MathfieldElement) {
+      // Skip read-only mathfields (those without contenteditable="true")
+      if (mathfield.contentEditable !== 'true') {
+        return;
+      }
+
+      // Skip empty mathfields (those with no latex content)
+      const latex = mathfield.getValue('latex-unstyled');
+      if (!latex || latex.trim() === '') {
+        return;
+      }
+
       results.push(exportMathfieldHTML(mathfield));
     }
   });
@@ -121,7 +129,7 @@ export function exportAllMathfields(): string[] {
  * const mathfield = document.querySelector('math-field');
  * downloadMathfieldHTML(mathfield, 'test-case-2.html');
  */
-export function downloadMathfieldHTML(mathfield: MathfieldElement, filename = 'mathfield-export.html'): void {
+export function downloadMathfieldHTML(mathfield: MathfieldElement, filename = 'mf-fixture.html'): void {
   const html = exportMathfieldHTML(mathfield);
   const blob = new Blob([html], { type: 'text/html' });
   const url = URL.createObjectURL(blob);
@@ -135,15 +143,14 @@ export function downloadMathfieldHTML(mathfield: MathfieldElement, filename = 'm
 }
 
 /**
- * Downloads all mathfields on the page as separate files.
+ * Downloads all editable mathfields on the page as separate files.
  *
- * @param filenamePrefix - Prefix for the filenames (default: 'mathfield-export')
+ * Excludes read-only mathfield elements (those without contenteditable="true")
+ * and empty mathfields (those with no latex content).
  *
- * @example
- * // Downloads: mathfield-export-1.html, mathfield-export-2.html, etc.
- * downloadAllMathfields('test-case');
+ * @param filenamePrefix - Prefix for the filenames (default: 'mf-fixture')
  */
-export function downloadAllMathfields(filenamePrefix = 'mathfield-export'): void {
+export function downloadAllMathfields(filenamePrefix = 'mf-fixture'): void {
   const htmls = exportAllMathfields();
 
   htmls.forEach((html, index) => {
@@ -182,25 +189,30 @@ export function enableConsoleExports(): void {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (window as any).__mathfieldExports = {
     /**
-     * Export the first mathfield on the page
+     * Export the first editable, non-empty mathfield on the page
      */
     exportMathfield: () => {
-      const mathfield = document.querySelector('math-field');
-      if (mathfield instanceof MathfieldElement) {
-        const html = exportMathfieldHTML(mathfield);
-        console.log(html);
-        return html;
+      const mathfields = document.querySelectorAll('math-field');
+      for (const mathfield of mathfields) {
+        if (mathfield instanceof MathfieldElement && mathfield.contentEditable === 'true') {
+          const latex = mathfield.getValue('latex-unstyled');
+          if (latex && latex.trim() !== '') {
+            const html = exportMathfieldHTML(mathfield);
+            console.log(html);
+            return html;
+          }
+        }
       }
-      console.error('No mathfield found on page');
+      console.error('No editable, non-empty mathfield found on page');
       return null;
     },
 
     /**
-     * Export all mathfields on the page
+     * Export all editable, non-empty mathfields on the page
      */
     exportAllMathfields: () => {
       const htmls = exportAllMathfields();
-      console.log(`Found ${htmls.length} mathfield(s)`);
+      console.log(`Found ${htmls.length} editable, non-empty mathfield(s)`);
       htmls.forEach((html, i) => {
         console.log(`\n=== Mathfield ${i + 1} ===`);
         console.log(html);
@@ -209,25 +221,30 @@ export function enableConsoleExports(): void {
     },
 
     /**
-     * Download first mathfield as file
+     * Download first editable, non-empty mathfield as file
      */
     downloadMathfield: (filename?: string) => {
-      const mathfield = document.querySelector('math-field');
-      if (mathfield instanceof MathfieldElement) {
-        downloadMathfieldHTML(mathfield, filename);
-        console.log('Mathfield HTML download started!');
-        return true;
+      const mathfields = document.querySelectorAll('math-field');
+      for (const mathfield of mathfields) {
+        if (mathfield instanceof MathfieldElement && mathfield.contentEditable === 'true') {
+          const latex = mathfield.getValue('latex-unstyled');
+          if (latex && latex.trim() !== '') {
+            downloadMathfieldHTML(mathfield, filename);
+            console.log('Mathfield HTML download started!');
+            return true;
+          }
+        }
       }
-      console.error('No mathfield found on page');
+      console.error('No editable, non-empty mathfield found on page');
       return false;
     },
 
     /**
-     * Download all mathfields as separate files
+     * Download all editable, non-empty mathfields as separate files
      */
     downloadAll: (prefix?: string) => {
       downloadAllMathfields(prefix);
-      console.log('All mathfields download started!');
+      console.log('All editable, non-empty mathfields download started!');
     },
   };
 
@@ -235,9 +252,9 @@ export function enableConsoleExports(): void {
     '%cMathfield Export Utilities Loaded!',
     'color: #00aa00; font-weight: bold; font-size: 14px;'
   );
-  console.log('Available commands:');
-  console.log('  __mathfieldExports.exportMathfield()     - Export first mathfield');
-  console.log('  __mathfieldExports.exportAllMathfields() - Export all mathfields');
-  console.log('  __mathfieldExports.downloadMathfield()   - Download first mathfield');
-  console.log('  __mathfieldExports.downloadAll()         - Download all mathfields');
+  console.log('Available commands (excludes read-only and empty mathfields):');
+  console.log('  __mathfieldExports.exportMathfield()     - Export first editable, non-empty mathfield');
+  console.log('  __mathfieldExports.exportAllMathfields() - Export all editable, non-empty mathfields');
+  console.log('  __mathfieldExports.downloadMathfield()   - Download first editable, non-empty mathfield');
+  console.log('  __mathfieldExports.downloadAll()         - Download all editable, non-empty mathfields');
 }

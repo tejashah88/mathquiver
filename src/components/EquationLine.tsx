@@ -23,7 +23,7 @@ import {
   parseMathfieldDOM,
   applyStyleToRange,
   clearStyles,
-} from '@/logic/parse-mathfield-dom';
+} from '@/logic/mathfield-dom-stylizer';
 
 
 // Equation validation states for border rendering

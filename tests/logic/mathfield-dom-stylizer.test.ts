@@ -11,7 +11,7 @@ import { join } from 'path';
 import {
   CharacterIndexItem,
   traverseNode,
-} from '@/logic/parse-mathfield-dom';
+} from '@/logic/mathfield-dom-stylizer';
 
 /**
  * Test helper: Parse ML__base element from any DOM

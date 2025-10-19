@@ -7,7 +7,7 @@ import '@fortawesome/fontawesome-svg-core/styles.css';
 config.autoAddCss = false;
 
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { enableConsoleExports } from '@/utils/export-mathfield-html';
+import { enableConsoleExports } from '@/tools/export-mathfield/run';
 
 export default function App({ Component, pageProps }: AppProps) {
   // Enable mathfield export utilities in development mode
