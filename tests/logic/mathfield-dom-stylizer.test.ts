@@ -43,9 +43,6 @@ describe('Parse Mathfield DOM', () => {
       return numA - numB;
     });
 
-  // eslint-disable-next-line no-console
-  console.log(`Found ${fixtureFiles.length} fixture files to test`);
-
   // Parse all fixtures once before tests
   const fixtures = fixtureFiles.map(filename => {
     const htmlPath = join(fixturesDir, filename);
@@ -264,19 +261,19 @@ describe('Parse Mathfield DOM', () => {
         });
       });
 
-      // Should have encountered all character types
+      // Should have encountered all core character types
       expect(allTypes.has('variable')).toBe(true);
       expect(allTypes.has('number')).toBe(true);
+      expect(allTypes.has('operator')).toBe(true);
+      expect(allTypes.has('punctuation')).toBe(true);
+      expect(allTypes.has('symbol')).toBe(true);
 
-      // Should have encountered various contexts
+      // Should have encountered all major contexts
       expect(allContexts.has('base')).toBe(true);
-
-      // eslint-disable-next-line no-console
-      console.log(`\nCoverage Summary:`);
-      // eslint-disable-next-line no-console
-      console.log(`  Character types found: ${Array.from(allTypes).join(', ')}`);
-      // eslint-disable-next-line no-console
-      console.log(`  Contexts found: ${Array.from(allContexts).join(', ')}`);
+      expect(allContexts.has('subscript')).toBe(true);
+      expect(allContexts.has('superscript')).toBe(true);
+      expect(allContexts.has('numerator')).toBe(true);
+      expect(allContexts.has('denominator')).toBe(true);
     });
 
     test('should handle equations with equals signs', () => {
@@ -286,9 +283,9 @@ describe('Parse Mathfield DOM', () => {
         return result.some(item => item.char === '=' && item.depth === 0);
       });
 
-      // eslint-disable-next-line no-console
-      console.log(`  Fixtures with top-level equals signs: ${fixturesWithEquals.length}`);
       expect(fixturesWithEquals.length).toBeGreaterThan(0);
+      // Verify we have substantial coverage of equations
+      expect(fixturesWithEquals.length).toBeGreaterThanOrEqual(10);
     });
 
     test('should handle equations with commas', () => {
@@ -298,9 +295,9 @@ describe('Parse Mathfield DOM', () => {
         return result.some(item => item.char === ',');
       });
 
-      // eslint-disable-next-line no-console
-      console.log(`  Fixtures with commas: ${fixturesWithCommas.length}`);
       expect(fixturesWithCommas.length).toBeGreaterThan(0);
+      // Verify we have substantial coverage of comma-separated expressions
+      expect(fixturesWithCommas.length).toBeGreaterThanOrEqual(10);
     });
 
     test('should handle nested structures (subscripts, superscripts, fractions)', () => {
@@ -310,9 +307,9 @@ describe('Parse Mathfield DOM', () => {
         return result.some(item => item.depth > 0);
       });
 
-      // eslint-disable-next-line no-console
-      console.log(`  Fixtures with nested structures: ${fixturesWithNesting.length}`);
       expect(fixturesWithNesting.length).toBeGreaterThan(0);
+      // Verify we have substantial coverage of nested structures
+      expect(fixturesWithNesting.length).toBeGreaterThanOrEqual(30);
     });
   });
 });

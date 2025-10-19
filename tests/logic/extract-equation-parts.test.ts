@@ -49,6 +49,21 @@ describe('Extract Equation Parts', () => {
     String.raw`y = x^2, x \in [0, 10]`,
     String.raw`f(x,y) = x + y, x > 0`,
 
+    // Multiple top-level commas (should split at FIRST)
+    String.raw`M_{z,3}^{nl}=0,x,3`,
+    String.raw`x=1,y,z`,
+    String.raw`y=x^2,a,b,c`,
+
+    // \left...\right with commas inside (commas should be ignored inside)
+    String.raw`M_{z}=F_{y}L_{o},x\in\left\lbrack x,5\right\rbrack`,
+    String.raw`y=f(x),x\in\left[0,10\right]`,
+    String.raw`z=g(t),t\in\left(a,b\right)`,
+    String.raw`\theta=h(\alpha),\alpha\in\left\lbrace 1,2,3\right\rbrace`,
+
+    // Complex engineering equations from latex-var-extract tests
+    String.raw`\theta_1=\frac{F_{N}}{EI}\left(\frac{x^2}{2}+l_{o}x-\frac{l_{o}l_{i}}{3}\right),x\in[0,l_i]`,
+    String.raw`y_{AB}=\frac{W_{r}^{g}}{48EI}\left(4x^3-3l_{i}^2x\right),x\in[0,\frac{l_i}{2}]`,
+
     // Edge cases - all handled gracefully (no errors)
     String.raw``,
     String.raw`=`,
@@ -104,6 +119,21 @@ describe('Extract Equation Parts', () => {
     [String.raw`a_{1,2} `, String.raw` b_{3,4}`, String.raw` x > 0`],
     [String.raw`y `, String.raw` x^2`, String.raw` x \in [0, 10]`],
     [String.raw`f(x,y) `, String.raw` x + y`, String.raw` x > 0`],
+
+    // Multiple top-level commas (should split at FIRST)
+    [String.raw`M_{z,3}^{nl}`, String.raw`0`, String.raw`x,3`],
+    [String.raw`x`, String.raw`1`, String.raw`y,z`],
+    [String.raw`y`, String.raw`x^2`, String.raw`a,b,c`],
+
+    // \left...\right with commas inside (commas should be ignored inside)
+    [String.raw`M_{z}`, String.raw`F_{y}L_{o}`, String.raw`x\in\left\lbrack x,5\right\rbrack`],
+    [String.raw`y`, String.raw`f(x)`, String.raw`x\in\left[0,10\right]`],
+    [String.raw`z`, String.raw`g(t)`, String.raw`t\in\left(a,b\right)`],
+    [String.raw`\theta`, String.raw`h(\alpha)`, String.raw`\alpha\in\left\lbrace 1,2,3\right\rbrace`],
+
+    // Complex engineering equations from latex-var-extract tests
+    [String.raw`\theta_1`, String.raw`\frac{F_{N}}{EI}\left(\frac{x^2}{2}+l_{o}x-\frac{l_{o}l_{i}}{3}\right)`, String.raw`x\in[0,l_i]`],
+    [String.raw`y_{AB}`, String.raw`\frac{W_{r}^{g}}{48EI}\left(4x^3-3l_{i}^2x\right)`, String.raw`x\in[0,\frac{l_i}{2}]`],
 
     // Edge cases - all handled gracefully (no errors)
     ['', '', ''],

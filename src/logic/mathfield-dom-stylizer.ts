@@ -175,8 +175,8 @@ export function getContext(element: HTMLElement): string {
                 if (child.nodeType !== 1) return false;
                 const htmlChild = child as HTMLElement;
                 return (
-                  htmlChild.style &&
-                  htmlChild.style.top &&
+                  !!htmlChild.style &&
+                  !!htmlChild.style.top &&
                   htmlChild.style.top !== '' &&
                   !htmlChild.classList.contains('ML__vlist-s') // Skip the zero-width space marker
                 );
@@ -215,8 +215,8 @@ export function getContext(element: HTMLElement): string {
                 const htmlChild = child as HTMLElement;
                 return (
                   htmlChild.classList.contains('ML__center') &&
-                  htmlChild.style &&
-                  htmlChild.style.top &&
+                  !!htmlChild.style &&
+                  !!htmlChild.style.top &&
                   htmlChild.style.top !== ''
                 );
               }
