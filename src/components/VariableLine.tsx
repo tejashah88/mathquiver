@@ -1,7 +1,7 @@
 'use client';
 
 // React imports
-import { ChangeEvent, FormEvent, KeyboardEvent, memo, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from 'react';
 
 // Drag-and-drop kit integration
 import { useSortable } from '@dnd-kit/sortable';
@@ -47,6 +47,7 @@ interface VariableLineProps {
   id: string;
   latexInput: string;
   excelInput: string;
+  inFocusMode: boolean;
   onLatexInput: (val: string) => void;
   onExcelInput: (val: string) => void;
   onNewLineRequested: () => void;
@@ -58,6 +59,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
   id,
   latexInput,
   excelInput,
+  inFocusMode,
 
   // Listeners
   onLatexInput,
@@ -136,6 +138,11 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
   // Stage 3: Render component //
   ///////////////////////////////
 
+  // Memoize border style to avoid recalculating on every render
+  const cellRefBorderStyle = useMemo(() => {
+    return inFocusMode ? CELL_REF_BORDER_STYLES[CELL_REF_STATES.VALID] : CELL_REF_BORDER_STYLES[inputCellState];
+  }, [inFocusMode, inputCellState]);
+
   return (
     <div
       ref={setNodeRef}
@@ -180,7 +187,8 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
         value={excelInput}
         className="w-full min-w-[80px] place-self-center rounded border px-1 py-2"
         style={{
-          border: CELL_REF_BORDER_STYLES[inputCellState],
+          // In focus mode, render only black borders for minimal distraction
+          border: cellRefBorderStyle,
           borderRadius: '0.25rem',
         }}
         onChange={(evt: ChangeEvent<HTMLInputElement>) => {
@@ -218,7 +226,8 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
   if (
     prevProps.id !== nextProps.id ||
     prevProps.latexInput !== nextProps.latexInput ||
-    prevProps.excelInput !== nextProps.excelInput
+    prevProps.excelInput !== nextProps.excelInput ||
+    prevProps.inFocusMode !== nextProps.inFocusMode
   ) {
     return false; // Core data changed, must re-render
   }

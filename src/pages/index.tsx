@@ -4,7 +4,7 @@
 import 'mathlive/fonts.css';
 
 // React imports
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, startTransition } from 'react';
 
 // Mathlive integration
 import '@cortex-js/compute-engine';
@@ -78,6 +78,10 @@ export default function Home() {
 
   // Sensors for drag-and-drop integration
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+
+  //////////////////////////////////////
+  // Stage 2: Setup Memoized Handlers //
+  //////////////////////////////////////
 
   // Memoized handlers for equations
   const handleEquationInput = useCallback((id: string, latex: string) => {
@@ -164,7 +168,7 @@ export default function Home() {
   };
 
   ///////////////////////////////////
-  // Stage 2: Setup logic on mount //
+  // Stage 3: Setup logic on mount //
   ///////////////////////////////////
 
   // Setup a resize handler to switch between full desktop mode and half-screen mode (convenient for side-by-side with Excel)
@@ -262,19 +266,25 @@ export default function Home() {
     }
   }, []);
 
+  //////////////////////////////////////////
+  // Stage 4: Conditional logic on render //
+  //////////////////////////////////////////
 
   // Don't import unless the user wants to overwrite their work
-  const hasNonEmptyEquations = equations.filter(equ => !!equ.latex).length > 0;
-  const hasNonEmptyVariables = variables.filter(_var => !!_var.latexVar || !!_var.units || !!_var.excelVar).length > 0;
-  const hasDirtyWork = hasNonEmptyEquations || hasNonEmptyVariables;
+  const hasDirtyWork = useMemo(() => {
+    const hasNonEmptyEquations = equations.some(equ => !!equ.latex);
+    const hasNonEmptyVariables = variables.some(v => !!v.latexVar || !!v.units || !!v.excelVar);
+
+    return hasNonEmptyEquations || hasNonEmptyVariables;
+  }, [equations, variables]);
 
   // Setup a listener to ask user to save their work before exiting
-  // Disable the 'unsaved work' prompt during development
+  // NOTE: Do not enable the 'unsaved work' prompt during development
   useBeforeUnload(FLAGS.enableBeforeUnloadWarning && hasDirtyWork);
 
-  //////////////////////////////////////////
-  // Stage 3: Conditional logic on render //
-  //////////////////////////////////////////
+  /////////////////////////////
+  // Stage 5: Render website //
+  /////////////////////////////
 
   // Show a temporary loading screen until Mathlive is loaded
   if (!isMathliveLoaded) {
@@ -302,6 +312,7 @@ export default function Home() {
     );
   }
 
+  // Don't render the website on mobile
   if (isMobile) {
     return (
       <div className="flex items-center justify-center h-screen overflow-hidden bg-gray-100 text-center">
@@ -312,10 +323,6 @@ export default function Home() {
       </div>
     );
   }
-
-  /////////////////////////////
-  // Stage 3: Render website //
-  /////////////////////////////
 
   return (
     <div className={`flex h-dvh overflow-y-hidden bg-gray-100 ${enableCompactView ? 'flex-col' : 'md:flex-row'}`}>
@@ -344,7 +351,13 @@ export default function Home() {
                 type="button"
                 role="switch"
                 aria-checked={focusMode}
-                onClick={() => setFocusMode(!focusMode)}
+                onClick={() => {
+                  // Use startTransition to mark this state update as non-urgent
+                  // This keeps the toggle button responsive while heavy re-renders happen
+                  startTransition(() => {
+                    setFocusMode(!focusMode);
+                  });
+                }}
                 className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                   focusMode ? 'bg-blue-600' : 'bg-gray-300'
                 }`}
@@ -401,6 +414,7 @@ export default function Home() {
                   id={equ.id}
                   equation={equ.latex}
                   variableList={variables}
+                  inFocusMode={focusMode}
                   onEquInput={(latex) => handleEquationInput(equ.id, latex)}
                   onNewLineRequested={() => handleEquationNewLine(equ.id)}
                   onDeleteLine={() => handleEquationDelete(equ.id)}
@@ -472,6 +486,7 @@ export default function Home() {
                   id={_var.id}
                   latexInput={_var._latexRender}
                   excelInput={_var.excelVar}
+                  inFocusMode={focusMode}
                   onLatexInput={(val) => handleVariableLatexInput(_var.id, val)}
                   onExcelInput={(val) => handleVariableExcelInput(_var.id, val)}
                   onNewLineRequested={() => handleVariableNewLine(_var.id)}

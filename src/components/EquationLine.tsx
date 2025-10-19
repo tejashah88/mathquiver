@@ -1,7 +1,7 @@
 'use client';
 
 // React imports
-import { FormEvent, memo, useEffect, useRef, useState } from 'react';
+import { FormEvent, memo, useEffect, useMemo, useRef, useState } from 'react';
 
 // Drag-and-drop kit integration
 import { useSortable } from '@dnd-kit/sortable';
@@ -52,6 +52,7 @@ interface EquationLineProps {
   id: string;
   equation: string;
   variableList: VariableItem[];
+  inFocusMode: boolean;
   onEquInput: (val: string) => void;
   onNewLineRequested: () => void;
   onDeleteLine: () => void;
@@ -62,6 +63,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   id,
   equation,
   variableList,
+  inFocusMode,
 
   // Listeners
   onEquInput,
@@ -295,6 +297,11 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   // Stage 4: Render component //
   ///////////////////////////////
 
+  // Memoize border style to avoid recalculating on every render
+  const mathfieldBorderStyle = useMemo(() => {
+    return inFocusMode ? MF_BORDER_STYLES[EQUATION_STATES.VALID] : MF_BORDER_STYLES[inputEquationState];
+  }, [inFocusMode, inputEquationState]);
+
   return (
     <div
       ref={setNodeRef}
@@ -327,7 +334,8 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
           className="min-w-0 flex-1"
           style={{
             fontSize: '1.5rem',
-            border: MF_BORDER_STYLES[inputEquationState],
+            // In focus mode, render only black borders for minimal distraction
+            border: mathfieldBorderStyle,
             borderRadius: '0.25rem',
           }}
           onInput={(event: FormEvent<MathfieldElement>) => {
@@ -400,7 +408,11 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
         </div>
       </div>
 
-      {missingLatexVars.length > 0 && <div className="flex w-full flex-row items-center gap-1 my-[2px]">
+      {/* In focus mode, hide the missing variables for minimal distraction */}
+      <div
+        className="flex w-full flex-row items-center gap-1 my-[2px]"
+        style={{ display: inFocusMode || missingLatexVars.length === 0 ? 'none' : 'flex' }}
+      >
         <math-field
           read-only
           style={{
@@ -425,7 +437,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
             {_var}
           </math-field>
         ))}
-      </div>}
+      </div>
     </div>
   );
 }, (prevProps, nextProps) => {
@@ -436,7 +448,8 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   // Check if core data changed
   if (
     prevProps.id !== nextProps.id ||
-    prevProps.equation !== nextProps.equation
+    prevProps.equation !== nextProps.equation ||
+    prevProps.inFocusMode !== nextProps.inFocusMode
   ) {
     return false; // Core data changed, must re-render
   }
