@@ -18,6 +18,7 @@ import { faGripVertical, faFileExcel, faTrashCan } from '@fortawesome/free-solid
 import { mathjsonToExcel } from '@/logic/mathjson-excel';
 import { extractLatexVariables } from '@/logic/latex-var-extract';
 import { VariableItem, VarMapping } from '@/types';
+import extractEquationParts from '@/logic/extract-equation-parts';
 
 
 // Equation validation states for border rendering
@@ -48,6 +49,7 @@ interface EquationLineProps {
   onEquInput: (val: string) => void;
   onNewLineRequested: () => void;
   onDeleteLine: () => void;
+  onFocus: () => void;
 }
 
 const EquationLine = memo<EquationLineProps>(function EquationLine({
@@ -59,6 +61,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   onEquInput,
   onNewLineRequested,
   onDeleteLine,
+  onFocus,
 }) {
   //////////////////////////////
   // Stage 1: Setup variables //
@@ -136,8 +139,14 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
       }
     }
 
+    // Listener to track focus on this mathfield
+    function handleFocus() {
+      onFocus();
+    }
+
     // Add necessary event listeners
     mf.addEventListener('beforeinput', addNewLine);
+    mf.addEventListener('focusin', handleFocus);
 
     // Grab focus to the element in case the user has created a new equation via Enter/Return
     mf.focus();
@@ -145,8 +154,9 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
     // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
     return () => {
       mf.removeEventListener('beforeinput', addNewLine);
+      mf.removeEventListener('focusin', handleFocus);
     };
-    // NOTE: We don't expect onNewLineRequested to change
+    // NOTE: We don't expect onNewLineRequested or onFocus to change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latexMathfieldRef]);
 
@@ -156,6 +166,15 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
     if (!latexMathfieldRef.current) return;
     const mf = latexMathfieldRef.current;
 
+    // Extract the main body of the equation to allow the user to type f(x) = ... and limits
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [eqFuncDefinition, eqMainBody, eqLimits] = extractEquationParts(mf.getValue('latex-unstyled'));
+
+    // Extract missing variables from main body of equation
+    const extractedLatexVars = extractLatexVariables(eqMainBody);
+    const definedLatexVars = variableList.map(_var => _var.latexVar);
+    setMissingLatexVars(extractedLatexVars.filter(_foundVar => !definedLatexVars.includes(_foundVar)));
+
     // Check if the internal MathJSON expression is valid, otherwise prevent further processing
     const isExprValid = mf.expression.isValid;
     if (!isExprValid) {
@@ -163,19 +182,10 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
       return;
     }
 
-    // Extract the RHS of the equation to allow the user to type f(x) = ...
-    const splitLatexEquation = mf.getValue('latex-unstyled').split('=');
-    const rhsLatexEquation = splitLatexEquation[splitLatexEquation.length - 1];
-    const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation, { canonical: true });
-
-    // Extract missing variables from RHS equation
-    const extractedLatexVars = extractLatexVariables(rhsLatexEquation);
-    const definedLatexVars = variableList.map(_var => _var.latexVar);
-    setMissingLatexVars(extractedLatexVars.filter(_foundVar => !definedLatexVars.includes(_foundVar)));
-
     // Check if the MathJSON expression can be properly converted to an Excel formula, otherwise prevent further processing
     //   Case 1: There's an invalid expression that's intentionally not implemented
     //   Case 2: There's an invalid expression that needs to be implemented
+    const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
     const canProcessEqu = checkMathjsonToExcel(boxedExpression.json);
     if (!canProcessEqu) {
       setInputEquationState(EQUATION_STATES.ERROR);
@@ -247,10 +257,10 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
                 if (!latexMathfieldRef.current) return;
                 const mf = latexMathfieldRef.current;
 
-                // Extract the RHS of the equation to allow the user to type f(x) = ...
-                const splitLatexEquation = mf.getValue('latex-unstyled').split('=');
-                const rhsLatexEquation = splitLatexEquation[splitLatexEquation.length - 1];
-                const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation, { canonical: true });
+                // Extract the main body of the equation to allow the user to type f(x) = ... and limits
+                // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                const [eqFuncDefinition, eqMainBody, eqLimits] = extractEquationParts(mf.getValue('latex-unstyled'));
+                const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
 
                 // Create the variable map to convert MathJSON variables to Excel cell references
                 const variableMap = variableList.reduce((acc, entry) => {

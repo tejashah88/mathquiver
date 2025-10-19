@@ -61,6 +61,10 @@ export default function Home() {
     { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
   ]);
 
+  // Track focused equation/variable for context-aware insertion
+  const [focusedEquationId, setFocusedEquationId] = useState<string | null>(null);
+  const [focusedVariableId, setFocusedVariableId] = useState<string | null>(null);
+
   // Help panel content and controls
   const [helpOpen, setHelpOpen] = useState<boolean>(false);
   const [helpContent, setHelpContent] = useState<string>('');
@@ -314,9 +318,24 @@ export default function Home() {
           <button
             className="rounded border p-2 font-bold hover:bg-gray-200"
             onClick={() => {
-              setEquations((prev: EquationItem[]) => [
-                ...prev, { id: nanoid(), latex: '' }
-              ]);
+              const newId = nanoid();
+              setEquations((prev: EquationItem[]) => {
+                // If there's a focused equation, insert below it
+                if (focusedEquationId) {
+                  const index = prev.findIndex(equ => equ.id === focusedEquationId);
+                  if (index !== -1) {
+                    return [
+                      ...prev.slice(0, index + 1),
+                      { id: newId, latex: '' },
+                      ...prev.slice(index + 1),
+                    ];
+                  }
+                }
+                // Otherwise, add to the end
+                return [...prev, { id: newId, latex: '' }];
+              });
+              // Update focus to the newly created equation
+              setFocusedEquationId(newId);
             }}
           >
             <FontAwesomeIcon icon={faPlus} />
@@ -343,6 +362,7 @@ export default function Home() {
                   onEquInput={(latex) => handleEquationInput(equ.id, latex)}
                   onNewLineRequested={() => handleEquationNewLine(equ.id)}
                   onDeleteLine={() => handleEquationDelete(equ.id)}
+                  onFocus={() => setFocusedEquationId(equ.id)}
                 />
               ))}
             </SortableContext>
@@ -358,10 +378,27 @@ export default function Home() {
           <h2 className="text-2xl font-semibold">Variables</h2>
           <button
             onClick={() => {
-              setVariables((prev: VariableItem[]) => [
-                ...prev,
-                { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
-              ]);
+              const newId = nanoid();
+              setVariables((prev: VariableItem[]) => {
+                // If there's a focused variable, insert below it
+                if (focusedVariableId) {
+                  const index = prev.findIndex(_var => _var.id === focusedVariableId);
+                  if (index !== -1) {
+                    return [
+                      ...prev.slice(0, index + 1),
+                      { id: newId, latexVar: '', units: '', excelVar: '', _latexRender: '' },
+                      ...prev.slice(index + 1),
+                    ];
+                  }
+                }
+                // Otherwise, add to the end
+                return [
+                  ...prev,
+                  { id: newId, latexVar: '', units: '', excelVar: '', _latexRender: '' },
+                ];
+              });
+              // Update focus to the newly created variable
+              setFocusedVariableId(newId);
             }}
             className="rounded border p-2 font-bold hover:bg-gray-200"
           >
@@ -397,6 +434,7 @@ export default function Home() {
                   onExcelInput={(val) => handleVariableExcelInput(_var.id, val)}
                   onNewLineRequested={() => handleVariableNewLine(_var.id)}
                   onDelete={() => handleVariableDelete(_var.id)}
+                  onFocus={() => setFocusedVariableId(_var.id)}
                 />
               ))}
             </SortableContext>

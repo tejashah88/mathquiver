@@ -27,8 +27,7 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         </div>
 
         <p className="mb-4 text-gray-700">
-          We apologize for the inconvenience. An unexpected error occurred while processing your
-          equations.
+          We apologize for the inconvenience. An unexpected error occurred with MathQuiver.
         </p>
 
         {process.env.NODE_ENV === 'development' && error && (
@@ -63,9 +62,9 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
           </button>
         </div>
 
-        <p className="mt-4 text-sm text-gray-500">
-          If this problem persists, try clearing your browser cache or contact support.
-        </p>
+        <div className="mt-4 text-sm text-gray-500">
+          If this problem persists, try clearing your browser cache or contact the developer at <a className="text-blue-600 hover:text-blue-700 underline" href="mailto:tejashah88@gmail.com">tejashah88@gmail.com</a>.
+        </div>
       </div>
     </div>
   );

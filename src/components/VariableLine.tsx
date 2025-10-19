@@ -51,6 +51,7 @@ interface VariableLineProps {
   onExcelInput: (val: string) => void;
   onNewLineRequested: () => void;
   onDelete: () => void;
+  onFocus: () => void;
 }
 
 const VariableLine = memo<VariableLineProps>(function VariableLine({
@@ -63,6 +64,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
   onExcelInput,
   onNewLineRequested,
   onDelete,
+  onFocus,
 }) {
   //////////////////////////////
   // Stage 1: Setup variables //
@@ -100,6 +102,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
     // Listener to enforce alpha and greek virtual keyboards for variable typing
     function changeKeyboardLayout() {
       window.mathVirtualKeyboard.layouts = ['alphabetic', 'greek'];
+      onFocus();
     }
 
     // Add necessary event listeners
@@ -114,7 +117,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
       mf.removeEventListener('focusin', changeKeyboardLayout);
       mf.removeEventListener('beforeinput', addNewLine);
     };
-    // NOTE: We don't expect onNewLineRequested to change
+    // NOTE: We don't expect onNewLineRequested or onFocus to change
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latexMathfieldRef]);
 
