@@ -33,6 +33,7 @@ import { splitVarUnits } from '@/logic/split-var-units';
 import { setupExtendedAlgebraMode } from '@/logic/prep-compute-engine';
 import { EquationItem, VariableItem } from '@/types';
 import useBeforeUnload from '@/hooks/useBeforeUnload';
+import sanitize from 'sanitize-filename';
 
 
 export default function Home() {
@@ -68,6 +69,10 @@ export default function Home() {
   // Help panel content and controls
   const [helpOpen, setHelpOpen] = useState<boolean>(false);
   const [helpContent, setHelpContent] = useState<string>('');
+
+  // Workspace settings
+  const [projectName, setProjectName] = useState<string>('');
+  const [focusMode, setFocusMode] = useState<boolean>(false);
 
   // Sensors for drag-and-drop integration
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
@@ -314,10 +319,44 @@ export default function Home() {
       {/* Equations Panel */}
       <div className={`flex flex-col border-gray-300 ${enableCompactView ? 'h-1/2 border-b' : 'h-auto w-2/3 border-r'}`}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
-          <h2 className="text-2xl font-semibold">Equations</h2>
-          <button
-            className="rounded border p-2 font-bold hover:bg-gray-200"
-            onClick={() => {
+          {/* Left side: Workspace name input */}
+          <div className="flex grow items-center gap-4">
+            {/* <h2 className="text-2xl font-semibold">Equations</h2> */}
+
+            <input
+              id="workspace-name"
+              type="text"
+              value={projectName}
+              onChange={(e) => setProjectName(e.target.value)}
+              placeholder="Untitled Workspace"
+              className="border border-gray-400 rounded px-2 py-1 text-2xl font-medium min-w-120 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Right side: Focus mode + Add button */}
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-xl font-medium">Focus Mode:</label>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={focusMode}
+                onClick={() => setFocusMode(!focusMode)}
+                className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                  focusMode ? 'bg-blue-600' : 'bg-gray-300'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    focusMode ? 'translate-x-7' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </div>
+
+            <button
+              className="rounded border p-2 font-bold hover:bg-gray-200"
+              onClick={() => {
               const newId = nanoid();
               setEquations((prev: EquationItem[]) => {
                 // If there's a focused equation, insert below it
@@ -336,10 +375,10 @@ export default function Home() {
               });
               // Update focus to the newly created equation
               setFocusedEquationId(newId);
-            }}
-          >
-            <FontAwesomeIcon icon={faPlus} />
-          </button>
+            }}>
+              <FontAwesomeIcon icon={faPlus} />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-y-scroll py-4 pl-2 pr-0">
@@ -497,6 +536,7 @@ export default function Home() {
                 className="border px-6 py-2 hover:bg-gray-100"
                 onClick={() => {
                   const data = {
+                    projectName,
                     equations: equations.map(equ => ({
                       ...equ,
                       latex: equ.latex.trim()
@@ -514,10 +554,12 @@ export default function Home() {
                     })
                   };
 
-                  // Save the workspace file to the default downloads folder
+                  // Create or generate a project filename that's compatible with all OSes (mainly Windows)
+                  const projectFilename = projectName ? sanitize(projectName) : `ws-${format(new Date(), 'yyyy_MM_dd_hh_mm_a')}`;
+
+                  // Save the workspace file
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                  const formattedTimestamp = format(new Date(), 'yyyy_MM_dd_hh_mm_a');
-                  saveAs(blob, `mathquiver-ws-${formattedTimestamp}.json`);
+                  saveAs(blob, `${projectFilename}.mq.json`);
 
                   // Close the help panel afterwards
                   setHelpOpen(false);
@@ -555,28 +597,21 @@ export default function Home() {
                         throw new Error('Workspace file is missing the list of variables');
                       }
 
+                      const projectName = parsed.projectName ?? '';
                       const parsedEquations = parsed.equations as EquationItem[];
                       const parsedVariablesRaw = parsed.variables as VariableItem[];
 
                       // Map to new array with _latexRender added (immutable pattern)
                       const parsedVariables = parsedVariablesRaw.map(_var => {
-                        if (_var.units) {
-                          // Wrap the units around square brackets
-                          // NOTE: There MUST be a space after \lbrack, otherwise Mathlive will sometimes think
-                          // it's a separate macro like \lbrackm (i.e. \lbrack + m)
-                          return {
-                            ..._var,
-                            _latexRender: `${_var.latexVar}\\left\\lbrack ${_var.units}\\right\\rbrack`
-                          };
-                        } else {
-                          return {
-                            ..._var,
-                            _latexRender: _var.latexVar
-                          };
-                        }
+                        // Wrap the units around square brackets
+                        // NOTE: There MUST be a space after \lbrack, otherwise Mathlive will sometimes think
+                        // it's a separate macro like \lbrackm (i.e. \lbrack + m)
+                        const _latexRender = _var.units ? `${_var.latexVar}\\left\\lbrack ${_var.units}\\right\\rbrack` : _var.latexVar ;
+                        return { ..._var, _latexRender };
                       });
 
                       // Hydrate the stores with the parsed equations
+                      setProjectName(projectName);
                       setEquations(parsedEquations);
                       setVariables(parsedVariables);
 
