@@ -200,8 +200,6 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   // Stage 3: Conditional logic on render //
   //////////////////////////////////////////
 
-  console.log('equation');
-
   ///////////////////////////////
   // Stage 4: Render component //
   ///////////////////////////////
@@ -354,14 +352,18 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
 
   // Deep comparison of variableList - only compare latexVar and excelVar
   // These are the only fields that affect equation validation
-  if (prevProps.variableList.length !== nextProps.variableList.length) {
+  // Filter out empty variables since they don't affect equation validation
+  const prevNonEmptyVars = prevProps.variableList.filter(v => v.latexVar.trim() !== '');
+  const nextNonEmptyVars = nextProps.variableList.filter(v => v.latexVar.trim() !== '');
+
+  if (prevNonEmptyVars.length !== nextNonEmptyVars.length) {
     return false;
   }
 
-  for (let i = 0; i < prevProps.variableList.length; i++) {
+  for (let i = 0; i < prevNonEmptyVars.length; i++) {
     if (
-      prevProps.variableList[i].latexVar !== nextProps.variableList[i].latexVar ||
-      prevProps.variableList[i].excelVar !== nextProps.variableList[i].excelVar
+      prevNonEmptyVars[i].latexVar !== nextNonEmptyVars[i].latexVar ||
+      prevNonEmptyVars[i].excelVar !== nextNonEmptyVars[i].excelVar
     ) {
       return false; // Variables changed, must re-render
     }
