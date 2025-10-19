@@ -34,6 +34,7 @@ import { setupExtendedAlgebraMode } from '@/logic/prep-compute-engine';
 import { EquationItem, VariableItem } from '@/types';
 import useBeforeUnload from '@/hooks/useBeforeUnload';
 import sanitize from 'sanitize-filename';
+import slugify from 'slugify';
 
 
 export default function Home() {
@@ -555,7 +556,9 @@ export default function Home() {
                   };
 
                   // Create or generate a project filename that's compatible with all OSes (mainly Windows)
-                  const projectFilename = projectName ? sanitize(projectName) : `ws-${format(new Date(), 'yyyy_MM_dd_hh_mm_a')}`;
+                  const projectFilename = projectName ?
+                    sanitize(slugify(projectName)) :
+                    `ws-${format(new Date(), 'yyyy_MM_dd_hh_mm_a')}`;
 
                   // Save the workspace file
                   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });

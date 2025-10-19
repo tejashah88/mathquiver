@@ -31,7 +31,8 @@
     "react-dom": "19.2.0",
     "react-error-boundary": "^6.0.0",
     "react-markdown": "^10.1.0",
-    "sanitize-filename": "^1.6.3"
+    "sanitize-filename": "^1.6.3",
+    "slugify": "^1.6.6"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
