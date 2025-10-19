@@ -98,21 +98,26 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
     if (!latexMathfieldRef.current) return;
     const mf = latexMathfieldRef.current;
 
-    // Keep relevant default items for equation editing
-    const defaultMenuItems = mf.menuItems.filter(item =>
-      !!item && 'id' in item && item.id !== undefined &&
-      ['cut', 'copy', 'paste', 'select-all'].includes(item.id)
-    );
-
-    // Compile final menu for equation editor
-    const insertCopyImageIndex = defaultMenuItems.findIndex(item =>
-      !!item && 'id' in item && item.id !== undefined && item.id === 'paste'
-    );
-
-    // Add new menu item to allow copying of LaTeX rendered image
+    // Setup custom menu for equation editing
     mf.menuItems = [
-      ...defaultMenuItems.slice(0, insertCopyImageIndex),
       {
+        type: 'command',
+        id: 'cut',
+        label: 'Cut',
+        keyboardShortcut: 'meta+X',
+        visible: () => !mf.readOnly && mf.isSelectionEditable,
+        onMenuSelect: () => mf.executeCommand('cutToClipboard'),
+      },
+      {
+        type: 'command',
+        id: 'copy-latex',
+        label: 'Copy LaTeX',
+        keyboardShortcut: 'meta+C',
+        onMenuSelect: () => mf.executeCommand('copyToClipboard'),
+      },
+      // Add new menu item to allow copying of LaTeX rendered image (thanks to latex.codecogs.com)
+      {
+        type: 'command',
         id: 'copy-image',
         label: 'Copy Image',
         onMenuSelect: async () => {
@@ -133,7 +138,22 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
             }
         },
       },
-      ...defaultMenuItems.slice(insertCopyImageIndex),
+      {
+        type: 'command',
+        id: 'paste-latex',
+        label: 'Paste LaTeX',
+        keyboardShortcut: 'meta+V',
+        visible: () => mf.hasEditableContent,
+        onMenuSelect: () => mf.executeCommand('pasteFromClipboard'),
+      },
+      {
+        type: 'command',
+        id: 'select-all',
+        label: 'Select All',
+        keyboardShortcut: 'meta+A',
+        visible: () => !mf.readOnly && mf.isSelectionEditable,
+        onMenuSelect: () => mf.executeCommand('selectAll'),
+      },
     ];
 
     // Listener to add a new line when pressing Enter/Return
