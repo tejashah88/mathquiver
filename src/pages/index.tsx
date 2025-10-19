@@ -76,6 +76,10 @@ export default function Home() {
   const [projectName, setProjectName] = useState<string>('');
   const [focusMode, setFocusMode] = useState<boolean>(false);
 
+  // Refs for scrollable containers to enable scroll-to-top after import
+  const equationsScrollRef = useRef<HTMLDivElement>(null);
+  const variablesScrollRef = useRef<HTMLDivElement>(null);
+
   // Sensors for drag-and-drop integration
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
@@ -91,16 +95,19 @@ export default function Home() {
   }, []);
 
   const handleEquationNewLine = useCallback((id: string) => {
+    const newId = nanoid();
     setEquations((prev: EquationItem[]) => {
       const index = prev.findIndex(line => line.id === id);
       if (index === -1) return prev;
 
       return [
         ...prev.slice(0, index + 1),
-        { id: nanoid(), latex: '' },
+        { id: newId, latex: '' },
         ...prev.slice(index + 1),
       ];
     });
+    // Set focus to the newly created equation
+    setFocusedEquationId(newId);
   }, []);
 
   const handleEquationDelete = useCallback((id: string) => {
@@ -123,16 +130,19 @@ export default function Home() {
   }, []);
 
   const handleVariableNewLine = useCallback((id: string) => {
+    const newId = nanoid();
     setVariables((prev: VariableItem[]) => {
       const index = prev.findIndex(line => line.id === id);
       if (index === -1) return prev;
 
       return [
         ...prev.slice(0, index + 1),
-        { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
+        { id: newId, latexVar: '', units: '', excelVar: '', _latexRender: '' },
         ...prev.slice(index + 1),
       ];
     });
+    // Set focus to the newly created variable
+    setFocusedVariableId(newId);
   }, []);
 
   const handleVariableDelete = useCallback((id: string) => {
@@ -397,7 +407,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="overflow-y-scroll py-4 pl-2 pr-0">
+        <div ref={equationsScrollRef} className="overflow-y-scroll py-4 pl-2 pr-0">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -415,6 +425,7 @@ export default function Home() {
                   equation={equ.latex}
                   variableList={variables}
                   inFocusMode={focusMode}
+                  focusedEquationId={focusedEquationId}
                   onEquInput={(latex) => handleEquationInput(equ.id, latex)}
                   onNewLineRequested={() => handleEquationNewLine(equ.id)}
                   onDeleteLine={() => handleEquationDelete(equ.id)}
@@ -462,7 +473,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="w-full overflow-y-scroll p-4">
+        <div ref={variablesScrollRef} className="w-full overflow-y-scroll p-4">
           <div className={`grid grid-cols-[1.7rem_2fr_2fr_2.7rem] border-t gap-0 bg-gray-200 font-bold ${variables.length === 0 ? 'border-b' : ''}`}>
             <div className="border-x border-gray-700 p-2 text-left text-sm"></div>
             <div className="min-w-[125px] border-r border-gray-700 p-2 text-left text-sm">Variable [Units]</div>
@@ -487,6 +498,7 @@ export default function Home() {
                   latexInput={_var._latexRender}
                   excelInput={_var.excelVar}
                   inFocusMode={focusMode}
+                  focusedVariableId={focusedVariableId}
                   onLatexInput={(val) => handleVariableLatexInput(_var.id, val)}
                   onExcelInput={(val) => handleVariableExcelInput(_var.id, val)}
                   onNewLineRequested={() => handleVariableNewLine(_var.id)}
@@ -630,10 +642,18 @@ export default function Home() {
                         return { ..._var, _latexRender };
                       });
 
+                      // Clear focused IDs to prevent auto-focusing during bulk import
+                      setFocusedEquationId(null);
+                      setFocusedVariableId(null);
+
                       // Hydrate the stores with the parsed equations
                       setProjectName(projectName);
                       setEquations(parsedEquations);
                       setVariables(parsedVariables);
+
+                      // Scroll both panels to the top after import
+                      equationsScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+                      variablesScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
 
                       // Close the help panel afterwards
                       setHelpOpen(false);

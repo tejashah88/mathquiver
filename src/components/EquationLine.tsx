@@ -53,6 +53,7 @@ interface EquationLineProps {
   equation: string;
   variableList: VariableItem[];
   inFocusMode: boolean;
+  focusedEquationId: string | null;
   onEquInput: (val: string) => void;
   onNewLineRequested: () => void;
   onDeleteLine: () => void;
@@ -64,6 +65,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   equation,
   variableList,
   inFocusMode,
+  focusedEquationId,
 
   // Listeners
   onEquInput,
@@ -176,8 +178,11 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
     mf.addEventListener('beforeinput', addNewLine);
     mf.addEventListener('focusin', handleFocus);
 
-    // Grab focus to the element in case the user has created a new equation via Enter/Return
-    mf.focus();
+    // Only grab focus if this equation is the focused one (e.g., user created via Enter/Return or clicked Add button)
+    // This prevents all equations from auto-focusing during bulk imports
+    if (focusedEquationId === id) {
+      mf.focus();
+    }
 
     // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
     return () => {
@@ -186,7 +191,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
     };
     // NOTE: We don't expect onNewLineRequested or onFocus to change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latexMathfieldRef]);
+  }, [latexMathfieldRef, focusedEquationId, id]);
 
   // Task 1: Re-render the equation input border based on content validity
   // Task 2: Update the list of missing variables (in case the variables list changes)
@@ -449,7 +454,8 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   if (
     prevProps.id !== nextProps.id ||
     prevProps.equation !== nextProps.equation ||
-    prevProps.inFocusMode !== nextProps.inFocusMode
+    prevProps.inFocusMode !== nextProps.inFocusMode ||
+    prevProps.focusedEquationId !== nextProps.focusedEquationId
   ) {
     return false; // Core data changed, must re-render
   }

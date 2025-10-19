@@ -48,6 +48,7 @@ interface VariableLineProps {
   latexInput: string;
   excelInput: string;
   inFocusMode: boolean;
+  focusedVariableId: string | null;
   onLatexInput: (val: string) => void;
   onExcelInput: (val: string) => void;
   onNewLineRequested: () => void;
@@ -60,6 +61,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
   latexInput,
   excelInput,
   inFocusMode,
+  focusedVariableId,
 
   // Listeners
   onLatexInput,
@@ -111,8 +113,11 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
     mf.addEventListener('focusin', changeKeyboardLayout);
     mf.addEventListener('beforeinput', addNewLine);
 
-    // Grab focus to the element in case the user has created a new variable via Enter/Return
-    mf.focus();
+    // Only grab focus if this variable is the focused one (e.g., user created via Enter/Return or clicked Add button)
+    // This prevents all variables from auto-focusing during bulk imports
+    if (focusedVariableId === id) {
+      mf.focus();
+    }
 
     // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
     return () => {
@@ -121,7 +126,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
     };
     // NOTE: We don't expect onNewLineRequested or onFocus to change
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latexMathfieldRef]);
+  }, [latexMathfieldRef, focusedVariableId, id]);
 
   // Re-render the cell reference border based on content validity
   useEffect(() => {
@@ -227,7 +232,8 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
     prevProps.id !== nextProps.id ||
     prevProps.latexInput !== nextProps.latexInput ||
     prevProps.excelInput !== nextProps.excelInput ||
-    prevProps.inFocusMode !== nextProps.inFocusMode
+    prevProps.inFocusMode !== nextProps.inFocusMode ||
+    prevProps.focusedVariableId !== nextProps.focusedVariableId
   ) {
     return false; // Core data changed, must re-render
   }
