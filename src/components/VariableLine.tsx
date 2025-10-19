@@ -163,7 +163,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
         {...attributes}
         {...listeners}
         tabIndex={-1}
-        className="ml-1 cursor-grab place-self-center py-2 hover:bg-gray-200 active:cursor-grabbing"
+        className="ml-1 py-2 place-self-center cursor-grab hover:bg-gray-200 active:cursor-grabbing"
       >
         <FontAwesomeIcon icon={faGripVertical} style={{ color: 'gray' }} />
       </button>
@@ -173,7 +173,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
         ref={latexMathfieldRef}
         // script-depth={5}
         default-mode="inline-math"
-        className="hide-menu w-full min-w-[120px] place-content-center my-2"
+        className="w-full min-w-[120px] my-2 place-content-center hide-menu"
         style={{
           fontSize: '1.25rem',
           border: '1px solid #ccc',
@@ -190,7 +190,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
       <input
         type="text"
         value={excelInput}
-        className="w-full min-w-[80px] place-self-center rounded border px-1 py-2"
+        className="w-full min-w-[80px] px-1 py-2 place-self-center rounded border"
         style={{
           // In focus mode, render only black borders for minimal distraction
           border: cellRefBorderStyle,
@@ -215,7 +215,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
       <div className="mr-1 place-self-center">
         <button
           onClick={onDelete}
-          className="rounded border bg-red-100 p-2 text-red-700 hover:bg-red-200"
+          className="p-2 rounded border bg-red-100 text-red-700 hover:bg-red-200"
         >
           <FontAwesomeIcon icon={faTrashCan} />
         </button>

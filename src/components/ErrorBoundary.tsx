@@ -8,11 +8,11 @@ import { FLAGS } from '@/utils/feature-flags';
  */
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4">
-      <div className="max-w-md rounded-lg border border-red-300 bg-white p-6 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center px-4 bg-gray-100">
+      <div className="max-w-md p-6 rounded-lg border border-red-300 bg-white shadow-lg">
         <div className="mb-4 flex items-center">
           <svg
-            className="mr-2 h-6 w-6 text-red-600"
+            className="h-6 w-6 mr-2 text-red-600"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -32,7 +32,7 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         </p>
 
         {FLAGS.showDetailedErrors && error && (
-          <details className="mb-4 rounded bg-gray-50 p-3">
+          <details className="mb-4 p-3 rounded bg-gray-50">
             <summary className="cursor-pointer font-medium text-gray-900">
               Error details (dev mode only)
             </summary>
@@ -51,20 +51,20 @@ function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
         <div className="flex gap-3">
           <button
             onClick={resetErrorBoundary}
-            className="rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700"
+            className="px-4 py-2 rounded bg-blue-600 font-medium text-white hover:bg-blue-700"
           >
             Try again
           </button>
           <button
             onClick={() => window.location.reload()}
-            className="rounded border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-50"
+            className="px-4 py-2 rounded border border-gray-300 font-medium text-gray-700 hover:bg-gray-50"
           >
             Reload page
           </button>
         </div>
 
         <div className="mt-4 text-sm text-gray-500">
-          If this problem persists, try clearing your browser cache or contact the developer at <a className="text-blue-600 hover:text-blue-700 underline" href="mailto:tejashah88@gmail.com">tejashah88@gmail.com</a>.
+          If this problem persists, try clearing your browser cache or contact the developer at <a className="text-blue-600 underline hover:text-blue-700" href="mailto:tejashah88@gmail.com">tejashah88@gmail.com</a>.
         </div>
       </div>
     </div>

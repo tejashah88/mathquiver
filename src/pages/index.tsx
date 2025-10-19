@@ -300,14 +300,14 @@ export default function Home() {
   if (!isMathliveLoaded) {
     if (mathliveError) {
       return (
-        <div className="flex flex-col items-center justify-center h-screen overflow-hidden bg-gray-100 p-4">
-          <h1 className="text-3xl mb-4 text-red-600">Failed to Load</h1>
-          <p className="text-lg text-center mb-4">
+        <div className="flex flex-col h-screen items-center justify-center overflow-hidden p-4 bg-gray-100">
+          <h1 className="mb-4 text-3xl text-red-600">Failed to Load</h1>
+          <p className="mb-4 text-lg text-center">
             Unable to load MathLive library. Please reload the page.
           </p>
           <button
             onClick={() => window.location.reload()}
-            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
           >
             Reload Page
           </button>
@@ -316,7 +316,7 @@ export default function Home() {
     }
 
     return (
-      <div className="flex items-center justify-center h-screen overflow-hidden bg-gray-100">
+      <div className="flex h-screen items-center justify-center overflow-hidden bg-gray-100">
         <h1 className="text-3xl">Loading...</h1>
       </div>
     );
@@ -325,7 +325,7 @@ export default function Home() {
   // Don't render the website on mobile
   if (isMobile) {
     return (
-      <div className="flex items-center justify-center h-screen overflow-hidden bg-gray-100 text-center">
+      <div className="flex h-screen items-center justify-center overflow-hidden bg-gray-100 text-center">
         <h1 className="text-xl">
           Change to &quot;Desktop site&quot; mode<br/>
           for the best viewing experience.
@@ -349,7 +349,7 @@ export default function Home() {
               value={projectName}
               onChange={(e) => setProjectName(e.target.value)}
               placeholder="Untitled Workspace"
-              className="border border-gray-400 rounded px-2 py-1 text-2xl font-medium min-w-120 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="min-w-120 px-2 py-1 rounded border border-gray-400 text-2xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
@@ -381,7 +381,7 @@ export default function Home() {
             </div>
 
             <button
-              className="rounded border p-2 font-bold hover:bg-gray-200"
+              className="p-2 rounded border font-bold hover:bg-gray-200"
               onClick={() => {
               const newId = nanoid();
               setEquations((prev: EquationItem[]) => {
@@ -407,7 +407,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div ref={equationsScrollRef} className="overflow-y-scroll py-4 pl-2 pr-0">
+        <div ref={equationsScrollRef} className="py-4 pl-2 pr-0 overflow-y-scroll">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -467,18 +467,18 @@ export default function Home() {
               // Update focus to the newly created variable
               setFocusedVariableId(newId);
             }}
-            className="rounded border p-2 font-bold hover:bg-gray-200"
+            className="p-2 rounded border font-bold hover:bg-gray-200"
           >
             <FontAwesomeIcon icon={faPlus} />
           </button>
         </div>
 
-        <div ref={variablesScrollRef} className="w-full overflow-y-scroll p-4">
+        <div ref={variablesScrollRef} className="w-full p-4 overflow-y-scroll">
           <div className={`grid grid-cols-[1.7rem_2fr_2fr_2.7rem] border-t gap-0 bg-gray-200 font-bold ${variables.length === 0 ? 'border-b' : ''}`}>
-            <div className="border-x border-gray-700 p-2 text-left text-sm"></div>
-            <div className="min-w-[125px] border-r border-gray-700 p-2 text-left text-sm">Variable [Units]</div>
-            <div className="min-w-[80px] border-r border-gray-700 p-2 text-left text-sm">Excel Ref</div>
-            <div className="border-r border-gray-700 p-2 text-left text-sm"></div>
+            <div className="p-2 border-x border-gray-700 text-left text-sm"></div>
+            <div className="min-w-[125px] p-2 border-r border-gray-700 text-left text-sm">Variable [Units]</div>
+            <div className="min-w-[80px] p-2 border-r border-gray-700 text-left text-sm">Excel Ref</div>
+            <div className="p-2 border-r border-gray-700 text-left text-sm"></div>
           </div>
 
           <DndContext
@@ -514,34 +514,34 @@ export default function Home() {
       {/* Floating Help Button */}
       <button
         onClick={() => setHelpOpen(true)}
-        className="fixed bottom-4 right-4 rounded bg-blue-600 p-2 text-white shadow-lg hover:bg-blue-700"
+        className="fixed bottom-4 right-4 p-2 rounded bg-blue-600 text-white shadow-lg hover:bg-blue-700"
       >
         <FontAwesomeIcon icon={faBars} size="sm" />
       </button>
 
       {helpOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-50/75">
-          <div className="flex max-h-[90vh] w-full max-w-3xl flex-col rounded-md border bg-white shadow-lg">
+          <div className="flex flex-col w-full max-w-3xl max-h-[90vh] rounded-md border bg-white shadow-lg">
             {/* Header */}
-            <div className="flex items-center justify-between border-b p-4">
+            <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-2xl font-semibold">Main Menu</h2>
               <button
                 onClick={() => setHelpOpen(false)}
-                className="border p-2 text-red-700 hover:bg-gray-100"
+                className="p-2 border text-red-700 hover:bg-gray-100"
               >
                 <FontAwesomeIcon icon={faX} />
               </button>
             </div>
 
             {/* Scrollable content */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <div className="prose markdown-content max-w-none border p-6 text-black">
+            <div className="flex-1 p-6 overflow-y-auto">
+              <div className="max-w-none p-6 border prose markdown-content text-black">
                 <Markdown>{helpContent}</Markdown>
               </div>
             </div>
 
             {/* Import/Export buttons */}
-            <div className="flex items-center justify-between border-t p-4">
+            <div className="flex items-center justify-between p-4 border-t">
               <button
                 onClick={() => {
                   if (hasDirtyWork) {
@@ -551,7 +551,7 @@ export default function Home() {
 
                   fileInputRef.current?.click();
                 }}
-                className="border px-6 py-2 hover:bg-gray-100"
+                className="px-6 py-2 border hover:bg-gray-100"
               >
                 Import...
               </button>
@@ -563,7 +563,7 @@ export default function Home() {
               </div>
 
               <button
-                className="border px-6 py-2 hover:bg-gray-100"
+                className="px-6 py-2 border hover:bg-gray-100"
                 onClick={() => {
                   const data = {
                     projectName,

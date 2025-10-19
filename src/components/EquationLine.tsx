@@ -318,12 +318,12 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
       }}
       className="flex flex-col"
     >
-      <div className="flex w-full flex-row items-center my-[2px]">
+      <div className="flex flex-row w-full items-center my-[2px]">
         <button
           {...attributes}
           {...listeners}
           tabIndex={-1}
-          className="mr-2 cursor-grab rounded border border-gray-400 py-2 hover:bg-gray-200 active:cursor-grabbing"
+          className="mr-2 py-2 rounded border border-gray-400 cursor-grab hover:bg-gray-200 active:cursor-grabbing"
         >
           <FontAwesomeIcon
             icon={faGripVertical}
@@ -392,13 +392,13 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
                 setCopiedFormulaTooltip(true);
                 setTimeout(() => setCopiedFormulaTooltip(false), 1000);
               }}
-              className="rounded border p-2 hover:bg-gray-200"
+              className="p-2 rounded border hover:bg-gray-200"
             >
               <FontAwesomeIcon icon={faFileExcel} />
             </button>
 
             <span
-              className="absolute right-full top-1/2 mr-2 hidden -translate-y-1/2 rounded bg-gray-700 px-2 py-1 text-xs text-white shadow group-hover:block"
+              className="absolute right-full top-1/2 hidden mr-2 px-2 py-1 rounded bg-gray-700 text-xs text-white shadow -translate-y-1/2 group-hover:block"
             >
               {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
             </span>
@@ -406,7 +406,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
 
           <button
             onClick={onDeleteLine}
-            className="rounded border bg-red-100 p-2 text-red-700 hover:bg-red-200"
+            className="p-2 rounded border bg-red-100 text-red-700 hover:bg-red-200"
           >
             <FontAwesomeIcon icon={faTrashCan} />
           </button>
@@ -415,7 +415,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
 
       {/* In focus mode, hide the missing variables for minimal distraction */}
       <div
-        className="flex w-full flex-row items-center gap-1 my-[2px]"
+        className="flex flex-row w-full items-center gap-1 my-[2px]"
         style={{ display: inFocusMode || missingLatexVars.length === 0 ? 'none' : 'flex' }}
       >
         <math-field
