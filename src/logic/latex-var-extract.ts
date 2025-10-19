@@ -1,5 +1,4 @@
-// LaTeX Variable Extractor
-// Authored by Claude Sonnet 4.5 as of 10/11/2025
+// Author: Claude Sonnet 4.5 as of 10/11/2025
 
 import { parseMath } from '@unified-latex/unified-latex-util-parse';
 import * as Ast from '@unified-latex/unified-latex-types';
@@ -35,7 +34,14 @@ const VARIABLE_MACROS = new Set([
 
 const KNOWN_CONSTANTS = ['e', 'i', '\\pi'];
 
-// Check if nodes contain any variables (letters or Greek symbols)
+/**
+ * Checks if a collection of AST nodes contains any variables.
+ *
+ * Searches for letters (a-zA-Z) or Greek symbol macros in the node tree.
+ *
+ * @param nodes - Array of AST nodes or arguments to check
+ * @returns True if any variables are found, false otherwise
+ */
 function nodeContainsVariable(nodes: (Ast.Node | Ast.Argument)[]): boolean {
     return nodes.some(node => {
         if (node.type === 'string') return /[a-zA-Z]/.test(node.content);
@@ -46,7 +52,15 @@ function nodeContainsVariable(nodes: (Ast.Node | Ast.Argument)[]): boolean {
     });
 }
 
-// Extract string value from argument, using LaTeX conventions for brace usage
+/**
+ * Extracts the string value from an AST argument node.
+ *
+ * Converts AST argument nodes to their LaTeX string representation, following
+ * LaTeX conventions for brace usage (single digits don't use braces, multi-character content does).
+ *
+ * @param arg - The AST argument to extract from
+ * @returns The extracted string value with appropriate braces
+ */
 function extractArgumentValue(arg: Ast.Argument): string {
     const parts = arg.content.map(node => {
         if (node.type === 'string')
@@ -88,10 +102,26 @@ function extractArgumentValue(arg: Ast.Argument): string {
     }
 }
 
-// Check if string is purely numeric
+/**
+ * Checks if a string is purely numeric (ignoring braces).
+ *
+ * @param str - The string to check
+ * @returns True if the string contains only digits, false otherwise
+ */
 const isNumeric = (str: string): boolean => /^\d+$/.test(str.replace(/[{}]/g, ''));
 
-// Process a variable with potential subscript and superscript
+/**
+ * Processes a variable with potential subscript and superscript modifiers.
+ *
+ * Extracts the complete variable name including any subscripts and superscripts,
+ * handling both standalone variables and those with modifiers.
+ *
+ * @param baseName - The base variable name (e.g., "x" or "\\theta")
+ * @param nodes - Array of AST nodes to process
+ * @param index - Current position in the nodes array
+ * @param variables - Set to add discovered variables to
+ * @returns The next index to process in the nodes array
+ */
 function processVariable(
     baseName: string,
     nodes: Ast.Node[],
@@ -145,7 +175,15 @@ function processVariable(
     return nextIndex;
 }
 
-// Extract variables from AST nodes
+/**
+ * Extracts all variables from an array of AST nodes.
+ *
+ * Recursively traverses the AST to find all variable names, including those with
+ * subscripts and superscripts. Excludes known mathematical constants.
+ *
+ * @param nodes - Array of AST nodes to extract variables from
+ * @returns Sorted array of unique variable names found in the AST
+ */
 function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
     const variables = new Set<string>();
 
@@ -201,7 +239,16 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
     return varList.sort();
 }
 
-// Extract variables from LaTeX string using parseMath
+/**
+ * Extracts all variables from a LaTeX expression string.
+ *
+ * Parses the LaTeX string into an AST and extracts all variable names,
+ * including those with subscripts and superscripts. Greek letters and
+ * multi-character variables are supported. Mathematical constants are excluded.
+ *
+ * @param latexExpr - The LaTeX expression to parse
+ * @returns Sorted array of unique variable names found in the expression
+ */
 function extractLatexVariables(latexExpr: string): string[] {
     const ast = parseMath(latexExpr);
     return extractVariablesFromAST(ast);

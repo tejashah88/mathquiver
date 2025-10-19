@@ -1,3 +1,5 @@
+// Author: Claude Sonnet 4.5 as of 10/18/2025
+
 /**
  * Extracts the parts of an equation split by '=' and ','
  *
@@ -18,41 +20,6 @@
  *
  * @param equation - The equation string to parse
  * @returns Array of [beforeEquals, mainBody, afterComma] - all strings (empty if not present)
- *
- * @example
- * extractEquationParts('Ax^2+Bx+C')
- * // Returns: ['', 'Ax^2+Bx+C', '']
- *
- * @example
- * extractEquationParts('x=Ax^2+Bx+C')
- * // Returns: ['x', 'Ax^2+Bx+C', '']
- *
- * @example
- * extractEquationParts('x^2,x>0')
- * // Returns: ['', 'x^2', 'x>0']
- *
- * @example
- * extractEquationParts('y=x^2,x>0')
- * // Returns: ['y', 'x^2', 'x>0']
- *
- * @example
- * // Handles commas in subscripts correctly:
- * extractEquationParts('\\theta_{y,3}^{wr} = x^2, x > 0')
- * // Returns: ['\\theta_{y,3}^{wr}', 'x^2', ' x > 0']
- *
- * @example
- * // Handles commas in constraints correctly:
- * extractEquationParts('y = x^2, x \\in [0, 10]')
- * // Returns: ['y', 'x^2', ' x \\in [0, 10]']
- *
- * @example
- * // Edge cases - all handled gracefully:
- * extractEquationParts('')      // ['', '', '']
- * extractEquationParts('=')     // ['', '', '']
- * extractEquationParts('x=')    // ['x', '', '']
- * extractEquationParts(',')     // ['', '', '']
- * extractEquationParts('x^2,')  // ['', 'x^2', '']
- * extractEquationParts('x=y=5') // ['x', 'y=5', '']
  */
 export default function extractEquationParts(equation: string): [string, string, string] {
   // Find first '=' that is NOT part of '<=', '>=', '!=', or '\neq'

@@ -128,6 +128,18 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
 
 
 // Originally authored by ChatGPT as of 09/19/2025
+
+/**
+ * Internal recursive function to convert a MathJSON expression to Excel formula syntax.
+ *
+ * Handles numbers, variables, constants, and function/operator expressions by recursively
+ * processing the MathJSON tree structure.
+ *
+ * @param node - The MathJSON expression node to convert
+ * @param varMap - Optional mapping of variable names to Excel cell references
+ * @returns Excel formula string (without the leading '=' sign)
+ * @throws {MjTranslateError} If an unsupported operator or unknown node type is encountered
+ */
 function _mathjsonToExcel(node: Expression, varMap: VarMapping = {}): string {
     if (typeof node === 'number') return node.toString();
 
@@ -154,6 +166,18 @@ function _mathjsonToExcel(node: Expression, varMap: VarMapping = {}): string {
 }
 
 
+/**
+ * Converts a MathJSON expression to an Excel formula.
+ *
+ * Translates MathJSON (MathLive's internal representation) into Excel-compatible
+ * formula syntax, mapping mathematical operators and functions to their Excel equivalents.
+ * Returns a complete formula string with leading '=' sign.
+ *
+ * @param mathJson - The MathJSON expression to convert
+ * @param varMap - Optional mapping of variable names to Excel cell references
+ * @returns Complete Excel formula string starting with '='
+ * @throws {MjTranslateError} If the expression contains unsupported operations
+ */
 function mathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): string {
     const excelFormula = _mathjsonToExcel(mathJson, varMap);
     return '=' + excelFormula;

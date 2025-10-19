@@ -1,3 +1,5 @@
+// Author: Claude Sonnet 4.5 as of 10/18/2025
+
 /**
  * Parses MathLive's shadow DOM structure to build a character-level index
  * without mutating the original LaTeX expression.
@@ -225,20 +227,6 @@ export function traverseNode(
  *
  * @param mathfield - The MathfieldElement to parse
  * @returns Array of CharacterIndexItem objects in visual order
- *
- * @example
- * const mathfield = document.querySelector('math-field');
- * const index = parseMathfieldDOM(mathfield);
- *
- * // Find the equals sign
- * const equalsItem = index.find(item => item.char === '=' && item.depth === 0);
- *
- * // Color everything before the equals sign gray
- * if (equalsItem) {
- *   index
- *     .filter(item => item.index < equalsItem.index)
- *     .forEach(item => item.element.style.color = 'gray');
- * }
  */
 export function parseMathfieldDOM(mathfield: MathfieldElement): CharacterIndexItem[] {
   const shadowRoot = mathfield.shadowRoot;
@@ -268,15 +256,6 @@ export function parseMathfieldDOM(mathfield: MathfieldElement): CharacterIndexIt
  * @param startIndex - Starting character index (inclusive)
  * @param endIndex - Ending character index (exclusive)
  * @param styles - CSS styles to apply
- *
- * @example
- * const index = parseMathfieldDOM(mathfield);
- * const equalsSign = findCharacter(index, '=');
- *
- * if (equalsSign) {
- *   // Color everything before equals sign gray
- *   applyStyleToRange(index, 0, equalsSign.index, { color: 'gray' });
- * }
  */
 export function applyStyleToRange(
   index: CharacterIndexItem[],
@@ -295,10 +274,6 @@ export function applyStyleToRange(
  * Utility function to clear all inline styles from character elements.
  *
  * @param index - The character index array
- *
- * @example
- * const index = parseMathfieldDOM(mathfield);
- * clearStyles(index); // Remove all custom colors/styles
  */
 export function clearStyles(index: CharacterIndexItem[]): void {
   index.forEach(item => {
