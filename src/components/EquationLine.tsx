@@ -180,17 +180,17 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
     const definedLatexVars = variableList.map(_var => _var.latexVar);
     setMissingLatexVars(extractedLatexVars.filter(_foundVar => !definedLatexVars.includes(_foundVar)));
 
-    // Check if the internal MathJSON expression is valid, otherwise prevent further processing
-    const isExprValid = mf.expression.isValid;
+    // Check if the equation main body has a valid MathJSON expression, otherwise prevent further processing
+    const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
+    const isExprValid = boxedExpression.isValid;
     if (!isExprValid) {
       setInputEquationState(EQUATION_STATES.INVALID);
       return;
     }
 
-    // Check if the MathJSON expression can be properly converted to an Excel formula, otherwise prevent further processing
+    // Check if the converted MathJSON expression can be converted to an Excel formula, otherwise prevent further processing
     //   Case 1: There's an invalid expression that's intentionally not implemented
     //   Case 2: There's an invalid expression that needs to be implemented
-    const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
     const canProcessEqu = checkMathjsonToExcel(boxedExpression.json);
     if (!canProcessEqu) {
       setInputEquationState(EQUATION_STATES.ERROR);
