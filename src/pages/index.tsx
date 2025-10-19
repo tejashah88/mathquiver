@@ -4,7 +4,7 @@
 import 'mathlive/fonts.css';
 
 // React imports
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 // Mathlive integration
 import '@cortex-js/compute-engine';
@@ -42,6 +42,7 @@ export default function Home() {
 
   // Control to stop loading full website until Mathlive is loaded
   const [isMathliveLoaded, setMathliveLoaded] = useState<boolean>(false);
+  const [mathliveError, setMathliveError] = useState<string | null>(null);
 
   // Controls for handling responsiveness
   const [enableCompactView, setEnableCompactView] = useState<boolean>(false);
@@ -66,6 +67,62 @@ export default function Home() {
 
   // Sensors for drag-and-drop integration
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
+
+  // Memoized handlers for equations
+  const handleEquationInput = useCallback((id: string, latex: string) => {
+    setEquations((prev: EquationItem[]) =>
+      prev.map(line => (line.id === id ? { ...line, latex } : line))
+    );
+  }, []);
+
+  const handleEquationNewLine = useCallback((id: string) => {
+    setEquations((prev: EquationItem[]) => {
+      const index = prev.findIndex(line => line.id === id);
+      if (index === -1) return prev;
+
+      return [
+        ...prev.slice(0, index + 1),
+        { id: nanoid(), latex: '' },
+        ...prev.slice(index + 1),
+      ];
+    });
+  }, []);
+
+  const handleEquationDelete = useCallback((id: string) => {
+    setEquations((prev: EquationItem[]) => prev.filter(line => line.id !== id));
+  }, []);
+
+  // Memoized handlers for variables
+  const handleVariableLatexInput = useCallback((id: string, val: string) => {
+    const { latexVar, units } = splitVarUnits(val);
+
+    setVariables((prev: VariableItem[]) =>
+      prev.map(line => (line.id === id ? { ...line, latexVar, units } : line))
+    );
+  }, []);
+
+  const handleVariableExcelInput = useCallback((id: string, val: string) => {
+    setVariables((prev: VariableItem[]) =>
+      prev.map(line => (line.id === id ? { ...line, excelVar: val } : line))
+    );
+  }, []);
+
+  const handleVariableNewLine = useCallback((id: string) => {
+    setVariables((prev: VariableItem[]) => {
+      const index = prev.findIndex(line => line.id === id);
+      if (index === -1) return prev;
+
+      return [
+        ...prev.slice(0, index + 1),
+        { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
+        ...prev.slice(index + 1),
+      ];
+    });
+  }, []);
+
+  const handleVariableDelete = useCallback((id: string) => {
+    setVariables((prev: VariableItem[]) => prev.filter(line => line.id !== id));
+  }, []);
 
   // Handler for swapping equations after drag-and-drop event
   const handleEquationDragEnd = (event: DragEndEvent) => {
@@ -136,8 +193,20 @@ export default function Home() {
   // NOTE: Since this will be a static-rendered site, all locally loaded files should reside in 'public/'
   useEffect(() => {
     fetch('./markdown/help.md')
-      .then((res) => res.text())
-      .then((text) => setHelpContent(text));
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`Failed to load help content: ${res.status}`);
+        }
+        return res.text();
+      })
+      .then((text) => setHelpContent(text))
+      .catch((err) => {
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.error('Failed to load help.md:', err);
+        }
+        setHelpContent('# Help\n\nFailed to load help content. Please refresh the page.');
+      });
   }, []);
 
   // Properly load mathlive to prevent hydration issues with Next.js's developer mode
@@ -155,16 +224,30 @@ export default function Home() {
 
         setMathliveLoaded(true);
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const computeEngineVersion = (window as any)[Symbol.for('io.cortexjs.compute-engine')].version;
-        const mathliveVersion = mathlive.version.mathlive;
+        if (process.env.NODE_ENV === 'development') {
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const computeEngineVersion = (window as any)[Symbol.for('io.cortexjs.compute-engine')].version;
+            const mathliveVersion = mathlive.version.mathlive;
 
-        // eslint-disable-next-line no-console
-        console.log([
-          `Compute Engine: v${computeEngineVersion}`,
-          `MathLive: v${mathliveVersion}`,
-        ].join('\n'));
-      }).catch(err => alert(`Unable to load Mathlive! Please reload the website.\n\n${err}`));
+            // eslint-disable-next-line no-console
+            console.log([
+              `Compute Engine: v${computeEngineVersion}`,
+              `MathLive: v${mathliveVersion}`,
+            ].join('\n'));
+          } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('Could not retrieve library versions:', err);
+          }
+        }
+      }).catch(err => {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        setMathliveError(errorMsg);
+        if (process.env.NODE_ENV === 'development') {
+          // eslint-disable-next-line no-console
+          console.error('Failed to load MathLive:', err);
+        }
+      });
     }
   }, []);
 
@@ -183,6 +266,23 @@ export default function Home() {
 
   // Show a temporary loading screen until Mathlive is loaded
   if (!isMathliveLoaded) {
+    if (mathliveError) {
+      return (
+        <div className="flex flex-col items-center justify-center h-screen overflow-hidden bg-gray-100 p-4">
+          <h1 className="text-3xl mb-4 text-red-600">Failed to Load</h1>
+          <p className="text-lg text-center mb-4">
+            Unable to load MathLive library. Please reload the page.
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Reload Page
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="flex items-center justify-center h-screen overflow-hidden bg-gray-100">
         <h1 className="text-3xl">Loading...</h1>
@@ -240,27 +340,9 @@ export default function Home() {
                   id={equ.id}
                   equation={equ.latex}
                   variableList={variables}
-                  onEquInput={(latex: string) => {
-                    setEquations((prev: EquationItem[]) =>
-                      prev.map(line => (line.id === equ.id ? { ...line, latex } : line))
-                    );
-                  }}
-                  onNewLineRequested={() => {
-                    setEquations((prev: EquationItem[]) => {
-                      const index = prev.findIndex(line => line.id === equ.id);
-                      // NOTE: This should NEVER happen since all IDs are defined
-                      if (index === -1) return prev;
-
-                      return [
-                        ...prev.slice(0, index + 1),
-                        { id: nanoid(), latex: '' },
-                        ...prev.slice(index + 1),
-                      ];
-                    });
-                  }}
-                  onDeleteLine={() => {
-                    setEquations((prev: EquationItem[]) => prev.filter(line => line.id !== equ.id));
-                  }}
+                  onEquInput={(latex) => handleEquationInput(equ.id, latex)}
+                  onNewLineRequested={() => handleEquationNewLine(equ.id)}
+                  onDeleteLine={() => handleEquationDelete(equ.id)}
                 />
               ))}
             </SortableContext>
@@ -311,34 +393,10 @@ export default function Home() {
                   id={_var.id}
                   latexInput={_var._latexRender}
                   excelInput={_var.excelVar}
-                  onLatexInput={(val: string) => {
-                    const { latexVar, units } = splitVarUnits(val);
-
-                    setVariables((prev: VariableItem[]) =>
-                      prev.map(line => (line.id === _var.id ? { ...line, latexVar, units } : line))
-                    );
-                  }}
-                  onExcelInput={(val: string) => {
-                    setVariables((prev: VariableItem[]) =>
-                      prev.map(line => (line.id === _var.id ? { ...line, excelVar: val } : line))
-                    );
-                  }}
-                  onNewLineRequested={() => {
-                    setVariables((prev: VariableItem[]) => {
-                      const index = prev.findIndex(line => line.id === _var.id);
-                      // NOTE: This should NEVER happen since all IDs are defined
-                      if (index === -1) return prev;
-
-                      return [
-                        ...prev.slice(0, index + 1),
-                        { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
-                        ...prev.slice(index + 1),
-                      ];
-                    });
-                  }}
-                  onDelete={() => {
-                    setVariables((prev: VariableItem[]) => prev.filter(line => line.id !== _var.id));
-                  }}
+                  onLatexInput={(val) => handleVariableLatexInput(_var.id, val)}
+                  onExcelInput={(val) => handleVariableExcelInput(_var.id, val)}
+                  onNewLineRequested={() => handleVariableNewLine(_var.id)}
+                  onDelete={() => handleVariableDelete(_var.id)}
                 />
               ))}
             </SortableContext>
@@ -401,20 +459,20 @@ export default function Home() {
                 className="border px-6 py-2 hover:bg-gray-100"
                 onClick={() => {
                   const data = {
-                    equations: equations.map(equ => {
-                      equ.latex = equ.latex.trim();
-
-                      return equ;
-                    }),
+                    equations: equations.map(equ => ({
+                      ...equ,
+                      latex: equ.latex.trim()
+                    })),
                     variables: variables.map(_var => {
                       // NOTE: We don't want to keep _latexRender as it's only used for input rendering and will be auto-populated
                       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                      const { _latexRender, ...data } = _var;
-                      _var.latexVar = _var.latexVar.trim();
-                      _var.units = _var.units.trim();
-                      _var.excelVar = _var.excelVar.trim();
-
-                      return data;
+                      const { _latexRender, ...rest } = _var;
+                      return {
+                        ...rest,
+                        latexVar: _var.latexVar.trim(),
+                        units: _var.units.trim(),
+                        excelVar: _var.excelVar.trim()
+                      };
                     })
                   };
 
@@ -441,34 +499,63 @@ export default function Home() {
                   if (!file) return;
 
                   const reader = new FileReader();
+
                   reader.onload = () => {
-                    let parsed;
                     try {
-                      parsed = JSON.parse(reader.result as string);
-                    } catch {
-                      alert('Unable to read workspace file! Check its contents for corruption.');
-                      return;
-                    }
+                      const parsed = JSON.parse(reader.result as string);
 
-                    const parsedEquations = parsed.equations as EquationItem[] || [];
-                    const parsedVariables = parsed.variables as VariableItem[] || [];
-                    parsedVariables.forEach(_var => {
-                      if (_var.units) {
-                        // Wrap the units around square brackets
-                        // NOTE: There MUST be a space after \lbrack, otherwise Mathlive will sometimes think
-                        // it's a separate macro like \lbrackm (i.e. \lbrack + m)
-                        _var._latexRender = `${_var.latexVar}\\left\\lbrack ${_var.units}\\right\\rbrack`;
-                      } else {
-                        _var._latexRender = _var.latexVar;
+                      // Validate the structure of the parsed data
+                      if (!parsed || typeof parsed !== 'object') {
+                        throw new Error('Invalid workspace file format');
                       }
-                    });
 
-                    // Hydrate the stores with the parsed equatiosn
-                    setEquations(parsedEquations);
-                    setVariables(parsedVariables);
+                      if (!Array.isArray(parsed.equations)) {
+                        throw new Error('Workspace file is missing the list of equations');
+                      }
 
-                    // Close the help panel afterwards
-                    setHelpOpen(false);
+                      if (!Array.isArray(parsed.variables)) {
+                        throw new Error('Workspace file is missing the list of variables');
+                      }
+
+                      const parsedEquations = parsed.equations as EquationItem[];
+                      const parsedVariablesRaw = parsed.variables as VariableItem[];
+
+                      // Map to new array with _latexRender added (immutable pattern)
+                      const parsedVariables = parsedVariablesRaw.map(_var => {
+                        if (_var.units) {
+                          // Wrap the units around square brackets
+                          // NOTE: There MUST be a space after \lbrack, otherwise Mathlive will sometimes think
+                          // it's a separate macro like \lbrackm (i.e. \lbrack + m)
+                          return {
+                            ..._var,
+                            _latexRender: `${_var.latexVar}\\left\\lbrack ${_var.units}\\right\\rbrack`
+                          };
+                        } else {
+                          return {
+                            ..._var,
+                            _latexRender: _var.latexVar
+                          };
+                        }
+                      });
+
+                      // Hydrate the stores with the parsed equations
+                      setEquations(parsedEquations);
+                      setVariables(parsedVariables);
+
+                      // Close the help panel afterwards
+                      setHelpOpen(false);
+                    } catch (err) {
+                      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+                      alert(`Unable to read workspace file: ${errorMsg}`);
+                    } finally {
+                      // Reset the input so the same file can be imported again if needed
+                      e.target.value = '';
+                    }
+                  };
+
+                  reader.onerror = () => {
+                    alert('Failed to read file. Please try again.');
+                    e.target.value = '';
                   };
 
                   reader.readAsText(file);

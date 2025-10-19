@@ -1,10 +1,10 @@
 'use client';
 
 // React imports
-import { FormEvent, useEffect, useRef, useState } from 'react';
+import { FormEvent, memo, useEffect, useRef, useState } from 'react';
 
 // Custom hooks
-import { useIntersectionObserver } from '@uidotdev/usehooks';
+import { useLazyLoadMathfield } from '@/hooks/useLazyLoadMathfield';
 
 // Drag-and-drop kit integration
 import { useSortable } from '@dnd-kit/sortable';
@@ -21,7 +21,6 @@ import { faGripVertical, faFileExcel, faTrashCan } from '@fortawesome/free-solid
 import { mathjsonToExcel } from '@/logic/mathjson-excel';
 import { extractLatexVariables } from '@/logic/latex-var-extract';
 import { VariableItem, VarMapping } from '@/types';
-import mergeRefs from '@/utils/mergeRefs';
 
 
 // Equation validation states for border rendering
@@ -45,7 +44,16 @@ function checkMathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): bo
 }
 
 
-export default function EquationLine({
+interface EquationLineProps {
+  id: string;
+  equation: string;
+  variableList: VariableItem[];
+  onEquInput: (val: string) => void;
+  onNewLineRequested: () => void;
+  onDeleteLine: () => void;
+}
+
+const EquationLine = memo<EquationLineProps>(function EquationLine({
   id,
   equation,
   variableList,
@@ -54,15 +62,6 @@ export default function EquationLine({
   onEquInput,
   onNewLineRequested,
   onDeleteLine,
-}: {
-  id: string;
-  equation: string;
-  variableList: VariableItem[];
-
-  // Listeners
-  onEquInput: (val: string) => void;
-  onNewLineRequested: () => void;
-  onDeleteLine: () => void;
 }) {
   //////////////////////////////
   // Stage 1: Setup variables //
@@ -80,18 +79,12 @@ export default function EquationLine({
   const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState<boolean>(false);
 
   // Drag-and-drop integration
+  // NOTE: useSortable causes re-renders during drag due to transform/transition changes
+  // This is expected dnd-kit behavior and necessary for smooth drag visual feedback
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
-  // Lazy-loading to save
-  // const [intersectRef, isInView] = useIntersectionObserver();
-  const [intersectRef, entry] = useIntersectionObserver({
-    threshold: 0,
-    root: null,
-    rootMargin: '0px',
-  });
-
-  // Check if the component is in view
-  const isInView = entry?.isIntersecting ?? true; // Default to true on initial render
+  // Lazy-loading to save performance with intersection observer + ref merging + memoization
+  const { mergedRef, isInView } = useLazyLoadMathfield(setNodeRef);
 
   ///////////////////////////////////
   // Stage 2: Setup logic on mount //
@@ -121,7 +114,7 @@ export default function EquationLine({
         id: 'copy-image',
         label: 'Copy Image',
         onMenuSelect: async () => {
-          const latex = encodeURIComponent(mf.value);
+          const latex = encodeURIComponent(mf.getValue('latex-unstyled'));
             const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
 
             try {
@@ -130,8 +123,10 @@ export default function EquationLine({
               // NOTE: This can throw an error if the document if unfocused
               await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
             } catch (err) {
-              // eslint-disable-next-line no-console
-              console.error(err);
+              if (process.env.NODE_ENV === 'development') {
+                // eslint-disable-next-line no-console
+                console.error('Failed to copy LaTeX image:', err);
+              }
               alert('Failed to copy LaTeX image render, please try again!');
             }
         },
@@ -175,7 +170,7 @@ export default function EquationLine({
     }
 
     // Extract the RHS of the equation to allow the user to type f(x) = ...
-    const splitLatexEquation = mf.value.split('=');
+    const splitLatexEquation = mf.getValue('latex-unstyled').split('=');
     const rhsLatexEquation = splitLatexEquation[splitLatexEquation.length - 1];
     const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation, { canonical: true });
 
@@ -197,13 +192,18 @@ export default function EquationLine({
     setInputEquationState(EQUATION_STATES.VALID);
   }, [equation, variableList]);
 
+  //////////////////////////////////////////
+  // Stage 3: Conditional logic on render //
+  //////////////////////////////////////////
+
+
   ///////////////////////////////
-  // Stage 3: Render component //
+  // Stage 4: Render component //
   ///////////////////////////////
 
   return (
     <div
-      ref={mergeRefs(setNodeRef, intersectRef)}
+      ref={mergedRef}
       style={{
         transform: CSS.Translate.toString(transform),
         transition,
@@ -230,17 +230,17 @@ export default function EquationLine({
           <math-field
             id={`mathfield-${id}`}
             ref={latexMathfieldRef}
+            // script-depth={5}
             className="min-w-0 flex-1"
             style={{
               fontSize: '1.5rem',
               border: MF_BORDER_STYLES[inputEquationState],
               borderRadius: '0.25rem',
-              animation: 'fadeIn 0.3s ease-in',
+              minHeight: '3rem', // Match placeholder height to prevent layout shift
             }}
-
             onInput={(event: FormEvent<MathfieldElement>) => {
               const mf = event.target as MathfieldElement;
-              onEquInput(mf.value);
+              onEquInput(mf.getValue('latex-unstyled'));
             }}
           >
             {equation}
@@ -267,7 +267,7 @@ export default function EquationLine({
                 const mf = latexMathfieldRef.current;
 
                 // Extract the RHS of the equation to allow the user to type f(x) = ...
-                const splitLatexEquation = mf.value.split('=');
+                const splitLatexEquation = mf.getValue('latex-unstyled').split('=');
                 const rhsLatexEquation = splitLatexEquation[splitLatexEquation.length - 1];
                 const boxedExpression = MathfieldElement.computeEngine!.parse(rhsLatexEquation, { canonical: true });
 
@@ -287,8 +287,10 @@ export default function EquationLine({
                   // NOTE: This can throw an error if the document if unfocused
                   await navigator.clipboard.writeText(excelFormula);
                 } catch (err) {
-                  // eslint-disable-next-line no-console
-                  console.error(err);
+                  if (process.env.NODE_ENV === 'development') {
+                    // eslint-disable-next-line no-console
+                    console.error('Failed to copy Excel formula:', err);
+                  }
                   alert('Failed to copy Excel formula, please try again!');
                   return;
                 }
@@ -302,12 +304,17 @@ export default function EquationLine({
               <FontAwesomeIcon icon={faFileExcel} />
             </button>
 
-            <span className="absolute right-full top-1/2 mr-2 hidden -translate-y-1/2 rounded bg-gray-700 px-2 py-1 text-xs text-white shadow group-hover:block">
+            <span
+              className="absolute right-full top-1/2 mr-2 hidden -translate-y-1/2 rounded bg-gray-700 px-2 py-1 text-xs text-white shadow group-hover:block"
+            >
               {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
             </span>
           </div>
 
-          <button onClick={onDeleteLine} className="rounded border bg-red-100 p-2 text-red-700 hover:bg-red-200">
+          <button
+            onClick={onDeleteLine}
+            className="rounded border bg-red-100 p-2 text-red-700 hover:bg-red-200"
+          >
             <FontAwesomeIcon icon={faTrashCan} />
           </button>
         </div>
@@ -341,4 +348,35 @@ export default function EquationLine({
       </div>}
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison to prevent re-renders when only irrelevant fields change
+  // Return true if props are equal (component should NOT re-render)
+  // Note: We intentionally skip comparing callbacks to avoid re-renders from inline functions
+
+  // Check if core data changed
+  if (
+    prevProps.id !== nextProps.id ||
+    prevProps.equation !== nextProps.equation
+  ) {
+    return false; // Core data changed, must re-render
+  }
+
+  // Deep comparison of variableList - only compare latexVar and excelVar
+  // These are the only fields that affect equation validation
+  if (prevProps.variableList.length !== nextProps.variableList.length) {
+    return false;
+  }
+
+  for (let i = 0; i < prevProps.variableList.length; i++) {
+    if (
+      prevProps.variableList[i].latexVar !== nextProps.variableList[i].latexVar ||
+      prevProps.variableList[i].excelVar !== nextProps.variableList[i].excelVar
+    ) {
+      return false; // Variables changed, must re-render
+    }
+  }
+
+  return true; // All relevant props are equal, skip re-render
+});
+
+export default EquationLine;

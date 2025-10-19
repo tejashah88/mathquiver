@@ -13,7 +13,7 @@ export default function useBeforeUnload(
 ) {
   const handler = useCallback(
     (event: BeforeUnloadEvent) => {
-      const finalEnabled = typeof enabled === 'function' ? enabled() : true;
+      const finalEnabled = typeof enabled === 'function' ? enabled() : enabled;
 
       if (!finalEnabled) {
         return;

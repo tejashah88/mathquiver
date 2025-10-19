@@ -1,5 +1,59 @@
 const MAX_ROW = 1_048_576;
-const MAX_COL = 16_384;  // corresponds to “XFD”
+const MAX_COL = 16_384;  // corresponds to "XFD"
+
+/**
+ * Regular expression pattern to parse Excel cell references
+ *
+ * Pattern breakdown:
+ * - `^` - Start of string (ensures we match from the beginning)
+ *
+ * - `\$?` - OPTIONAL dollar sign for absolute column reference
+ *   - `\$` - Literal dollar sign (escaped because $ is a regex special character)
+ *   - `?` - Makes it optional (0 or 1 occurrence)
+ *   - Example: "$A" has absolute column, "A" has relative column
+ *
+ * - `([A-Z]{1,3})` - REQUIRED Capture group 1: Column letters
+ *   - `[A-Z]` - Character class: any uppercase letter from A to Z
+ *   - `{1,3}` - Quantifier: exactly 1 to 3 characters
+ *   - Captures the column letter(s): "A", "Z", "AA", "XFD", etc.
+ *   - Excel columns range from A (1) to XFD (16,384)
+ *
+ * - `\$?` - OPTIONAL dollar sign for absolute row reference
+ *   - Same as column dollar sign, but appears before the row number
+ *   - Example: "A$1" has absolute row, "A1" has relative row
+ *
+ * - `([1-9][0-9]{0,6})` - REQUIRED Capture group 2: Row number
+ *   - `[1-9]` - First digit must be 1-9 (no leading zeros, no zero row)
+ *   - `[0-9]{0,6}` - Followed by 0 to 6 additional digits (0-9)
+ *   - Allows rows from 1 to 9,999,999 (Excel max is 1,048,576)
+ *   - Examples: "1", "42", "1048576"
+ *
+ * - `$` - End of string (ensures we match to the end)
+ *
+ * Valid Excel cell reference formats:
+ * - Relative: "A1", "B2", "XFD1048576"
+ * - Absolute column: "$A1", "$B2"
+ * - Absolute row: "A$1", "B$2"
+ * - Fully absolute: "$A$1", "$B$2"
+ * - Mixed references: "A$5", "$C10"
+ *
+ * Examples of what matches:
+ * - "A1" → column: "A", row: "1" (both relative)
+ * - "$A1" → column: "A" (absolute), row: "1" (relative)
+ * - "A$1" → column: "A" (relative), row: "1" (absolute)
+ * - "$A$1" → column: "A" (absolute), row: "1" (absolute)
+ * - "XFD1048576" → column: "XFD", row: "1048576" (max cell)
+ * - "AA100" → column: "AA", row: "100"
+ *
+ * Examples of what does NOT match:
+ * - "A0" → INVALID (row must start with 1-9, not 0)
+ * - "a1" → INVALID (column must be uppercase)
+ * - "1A" → INVALID (wrong order: column must come before row)
+ * - "AAAA1" → INVALID (column can be at most 3 letters)
+ * - "A" → INVALID (missing row number)
+ * - "1" → INVALID (missing column letter)
+ * - "$1" → INVALID (missing column letter)
+ */
 const CELL_REGEX = /^\$?([A-Z]{1,3})\$?([1-9][0-9]{0,6})$/;
 
 
