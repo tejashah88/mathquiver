@@ -3,9 +3,6 @@
 // React imports
 import { FormEvent, memo, useEffect, useRef, useState } from 'react';
 
-// Custom hooks
-import { useLazyLoadMathfield } from '@/hooks/useLazyLoadMathfield';
-
 // Drag-and-drop kit integration
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -82,9 +79,6 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   // NOTE: useSortable causes re-renders during drag due to transform/transition changes
   // This is expected dnd-kit behavior and necessary for smooth drag visual feedback
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-
-  // Lazy-loading to save performance with intersection observer + ref merging + memoization
-  const { mergedRef, isInView } = useLazyLoadMathfield(setNodeRef);
 
   ///////////////////////////////////
   // Stage 2: Setup logic on mount //
@@ -196,6 +190,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
   // Stage 3: Conditional logic on render //
   //////////////////////////////////////////
 
+  console.log('equation');
 
   ///////////////////////////////
   // Stage 4: Render component //
@@ -203,7 +198,7 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
 
   return (
     <div
-      ref={mergedRef}
+      ref={setNodeRef}
       style={{
         transform: CSS.Translate.toString(transform),
         transition,
@@ -226,37 +221,23 @@ const EquationLine = memo<EquationLineProps>(function EquationLine({
           />
         </button>
 
-        {isInView ? (
-          <math-field
-            id={`mathfield-${id}`}
-            ref={latexMathfieldRef}
-            // script-depth={5}
-            className="min-w-0 flex-1"
-            style={{
-              fontSize: '1.5rem',
-              border: MF_BORDER_STYLES[inputEquationState],
-              borderRadius: '0.25rem',
-              minHeight: '3rem', // Match placeholder height to prevent layout shift
-            }}
-            onInput={(event: FormEvent<MathfieldElement>) => {
-              const mf = event.target as MathfieldElement;
-              onEquInput(mf.getValue('latex-unstyled'));
-            }}
-          >
-            {equation}
-          </math-field>
-        ) : (
-          <div
-            className="min-w-0 flex-1"
-            style={{
-              fontSize: '1.5rem',
-              border: '1px solid #ccc',
-              borderRadius: '0.25rem',
-              minHeight: '3rem',
-              backgroundColor: '#f3f4f6',
-            }}
-          />
-        )}
+        <math-field
+          id={`mathfield-${id}`}
+          ref={latexMathfieldRef}
+          // script-depth={5}
+          className="min-w-0 flex-1"
+          style={{
+            fontSize: '1.5rem',
+            border: MF_BORDER_STYLES[inputEquationState],
+            borderRadius: '0.25rem',
+          }}
+          onInput={(event: FormEvent<MathfieldElement>) => {
+            const mf = event.target as MathfieldElement;
+            onEquInput(mf.getValue('latex-unstyled'));
+          }}
+        >
+          {equation}
+        </math-field>
 
         <div className="flex flex-shrink-0 gap-2 px-2">
           <div className="group relative">

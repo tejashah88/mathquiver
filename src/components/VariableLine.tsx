@@ -3,9 +3,6 @@
 // React imports
 import { ChangeEvent, FormEvent, KeyboardEvent, memo, useEffect, useRef, useState } from 'react';
 
-// Custom hooks
-import { useLazyLoadMathfield } from '@/hooks/useLazyLoadMathfield';
-
 // Drag-and-drop kit integration
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -79,9 +76,6 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
   // Drag-and-drop integration
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
 
-  // Lazy-loading to save performance with intersection observer + ref merging + memoization
-  const { mergedRef, isInView } = useLazyLoadMathfield(setNodeRef);
-
   ///////////////////////////////////
   // Stage 2: Setup logic on mount //
   ///////////////////////////////////
@@ -141,7 +135,7 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
 
   return (
     <div
-      ref={mergedRef}
+      ref={setNodeRef}
       style={{
         transform: CSS.Translate.toString(transform),
         transition,
@@ -159,38 +153,24 @@ const VariableLine = memo<VariableLineProps>(function VariableLine({
         <FontAwesomeIcon icon={faGripVertical} style={{ color: 'gray' }} />
       </button>
 
-      {isInView ? (
-        <math-field
-          id={`mathfield-${id}`}
-          ref={latexMathfieldRef}
-          // script-depth={5}
-          default-mode="inline-math"
-          className="hide-menu w-full min-w-[120px] place-content-center my-2"
-          style={{
-            fontSize: '1.25rem',
-            border: '1px solid #ccc',
-            borderRadius: '0.25rem',
-            minHeight: '2.5rem', // Match placeholder height to prevent layout shift
-          }}
-          onInput={(event: FormEvent<MathfieldElement>) => {
-            const mf = event.target as MathfieldElement;
-            onLatexInput(mf.getValue('latex-unstyled'));
-          }}
-        >
-          {latexInput}
-        </math-field>
-      ) : (
-        <div
-          className="w-full min-w-[120px] place-content-center my-2"
-          style={{
-            fontSize: '1.25rem',
-            border: '1px solid #ccc',
-            borderRadius: '0.25rem',
-            minHeight: '2.5rem',
-            backgroundColor: '#f3f4f6',
-          }}
-        />
-      )}
+      <math-field
+        id={`mathfield-${id}`}
+        ref={latexMathfieldRef}
+        // script-depth={5}
+        default-mode="inline-math"
+        className="hide-menu w-full min-w-[120px] place-content-center my-2"
+        style={{
+          fontSize: '1.25rem',
+          border: '1px solid #ccc',
+          borderRadius: '0.25rem',
+        }}
+        onInput={(event: FormEvent<MathfieldElement>) => {
+          const mf = event.target as MathfieldElement;
+          onLatexInput(mf.getValue('latex-unstyled'));
+        }}
+      >
+        {latexInput}
+      </math-field>
 
       <input
         type="text"
