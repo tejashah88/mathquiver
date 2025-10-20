@@ -89,6 +89,9 @@ describe('Extract Variables from Latex Expression', () => {
     String.raw`a_1a_2a_3`,
     String.raw`x^{2y}z^{3w}`,
     String.raw`e^{e^{x}}`,
+    String.raw`e^{e^{x^y}}`,
+    String.raw`e^{e^{x_a}}`,
+    String.raw`x^{e^{y_a}}`,
 
     // Constants with variables
     String.raw`\pi r^2`,
@@ -144,7 +147,7 @@ describe('Extract Variables from Latex Expression', () => {
     ['j', 'x', 'y'],
     ['m', 'n', 'x', 'y'],
     ['R_{x}^{x}', 'x'],
-    ['x', 'y', 'z'],
+    ['x^{y^{z}}'],
     ['a_{m}^{n}', 'x'],
 
     // Quadratic formula & roots
@@ -153,7 +156,7 @@ describe('Extract Variables from Latex Expression', () => {
     ['x_{1,2}', 'b', '\\Delta', 'a'],
 
     // Polynomials
-    ['p', 'x', 'x^n', 'a_{n}', 'a_{n-1}', 'a_1', 'a_0', 'n'],
+    ['p', 'x', 'x^{n}', 'a_{n}', 'a_{n-1}', 'a_1', 'a_0', 'n'],
     ['x'],
     ['y', 'm', 'x', 'b'],
 
@@ -216,6 +219,9 @@ describe('Extract Variables from Latex Expression', () => {
     ['a_1', 'a_2', 'a_3'],
     ['x', 'y', 'z', 'w'],
     ['x'],
+    ['x^{y}'],
+    ['x_{a}'],
+    ['x', 'y_{a}'],
 
     // Constants with variables (pi should be excluded)
     ['r'],
