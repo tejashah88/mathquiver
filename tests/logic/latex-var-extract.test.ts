@@ -113,6 +113,19 @@ describe('Extract Variables from Latex Expression', () => {
     String.raw`\theta_{AB}=\frac{F_{n}^{r}l_{o}}{6EIl_{i}}\left(-l_{i}^2+3x^2\right)`,
     String.raw`y_{BC}=\frac{F_{n}^{r}}{6EI}\left(-x^3+3\left(l_{i}+l_{o}\right)x^2-\left(4l_{i}^2+3l_{o}l_{i}\right)x+2l_{i}^2\right)`,
     String.raw`\theta_{BC}=\frac{F_{n}^{r}}{6EI}\left(-3x^2+6\left(l_{i}+l_{o}\right)x-\left(4l_{i}^2+3l_{o}l_{i}\right)\right)`,
+
+    // Multi-character superscripts (should be treated as single variables)
+    String.raw`M_{y}=M^{sl}+M^{tg}+M^{sr}`,
+    String.raw`\theta_{y}=\theta^{nl}+\theta^{rg}+\theta^{nr}`,
+    String.raw`\theta_{z}=\theta^{sl}+\theta^{tg}+\theta^{sr}`,
+    String.raw`y_{tot}=y^{nl}+y^{rg}+y^{nr}`,
+    String.raw`z_{tot}=z^{sl}+z^{tg}+z^{sr}`,
+
+    // Additional edge cases for multi-character modifiers
+    String.raw`x^{ab}`,
+    String.raw`A_{test}^{val}`,
+    String.raw`M^{a}+N^{bc}`,
+    String.raw`P_{sub}^{sup}+Q_{xy}^{ab}`,
   ];
 
   const expectedResults = [
@@ -140,7 +153,7 @@ describe('Extract Variables from Latex Expression', () => {
     ['x_{1,2}', 'b', '\\Delta', 'a'],
 
     // Polynomials
-    ['p', 'x', 'a_{n}', 'a_{n-1}', 'a_1', 'a_0', 'n'],
+    ['p', 'x', 'x^n', 'a_{n}', 'a_{n-1}', 'a_1', 'a_0', 'n'],
     ['x'],
     ['y', 'm', 'x', 'b'],
 
@@ -174,9 +187,9 @@ describe('Extract Variables from Latex Expression', () => {
     ['\\sigma', 'n', 'x_{i}', '\\mu'],
 
     // Multiple towering exponents
-    ['a', 'b', 'c', 'd'],
+    ['a^{b^{c^{d}}}'],
     ['x', 'y'],
-    ['x', 'a', 'b', 'y', 'c', 'd'],
+    ['x^{a^{b}}', 'y^{c^{d}}'],
 
     // Complex subscripts and superscripts
     ['x_{i+1}', 'x_{i-1}'],
@@ -227,6 +240,19 @@ describe('Extract Variables from Latex Expression', () => {
     ['\\theta_{AB}', 'F_{n}^{r}', 'E', 'I', 'x', 'l_{i}', 'l_{o}'],
     ['y_{BC}', 'F_{n}^{r}', 'E', 'I', 'x', 'l_{i}', 'l_{o}'],
     ['\\theta_{BC}', 'F_{n}^{r}', 'E', 'I', 'x', 'l_{i}', 'l_{o}'],
+
+    // Multi-character superscripts
+    ['M_{y}', 'M^{sl}', 'M^{tg}', 'M^{sr}'],
+    ['\\theta_{y}', '\\theta^{nl}', '\\theta^{rg}', '\\theta^{nr}'],
+    ['\\theta_{z}', '\\theta^{sl}', '\\theta^{tg}', '\\theta^{sr}'],
+    ['y_{tot}', 'y^{nl}', 'y^{rg}', 'y^{nr}'],
+    ['z_{tot}', 'z^{sl}', 'z^{tg}', 'z^{sr}'],
+
+    // Additional edge cases for multi-character modifiers
+    ['x^{ab}'],
+    ['A_{test}^{val}'],
+    ['M^{a}', 'N^{bc}'],
+    ['P_{sub}^{sup}', 'Q_{xy}^{ab}'],
   ];
 
   const testScenarios: [string, string[]][] = [];

@@ -137,7 +137,7 @@ function processVariable(
         if (superscript?.type === 'macro' && superscript.content === '^' && superscript.args) {
             const superVal = extractArgumentValue(superscript.args[0]);
 
-            // If superscript contains variables, extract them separately
+            // If superscript contains variables, check if the entire tree is purely alphabetic
             if (nodeContainsVariable(superscript.args[0].content)) {
                 variables.add(baseName);
                 extractVariablesFromAST(superscript.args[0].content).forEach(v => variables.add(v));
@@ -204,7 +204,7 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
                         i = processVariable(char, nodes, i, variables) - 1;
                         break;
                     } else {
-                        // Multi-char string: just add each letter as standalone
+                        // Multi-char string: split into individual letters
                         variables.add(char);
                     }
                 }

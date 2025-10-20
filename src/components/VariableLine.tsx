@@ -19,6 +19,8 @@ import { cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
 
 // Hooks
 import { useDebounceCallback } from 'usehooks-ts';
+import { applyStyleToRange, clearStyles, parseMathfieldDOM } from '@/logic/mathfield-dom-stylizer';
+import { FLAGS } from '@/utils/feature-flags';
 
 // Constants
 export const INPUT_DEBOUNCE_DELAY = 200;
@@ -100,6 +102,10 @@ const VariableLine = memo(
     // Main mathfield element ref
     const latexMathfieldRef = useRef<MathfieldElement | null>(null);
 
+    // Track dragging state in a ref so the observer callback can read latest value
+    // without recreating the observer on every drag state change
+    const isDraggingRef = useRef<boolean>(false);
+
     ///////////
     // STATE //
     ///////////
@@ -161,8 +167,17 @@ const VariableLine = memo(
     }), []); // Empty deps: focus method is stable and only depends on ref
 
     ///////////////////////
-    // EFFECTS: PROP SYNC //
+    // EFFECTS: REF SYNC //
     ///////////////////////
+
+    // Keep the dragging ref in sync with isDragging state
+    useEffect(() => {
+      isDraggingRef.current = isDragging;
+    }, [isDragging]);
+
+    ////////////////////////
+    // EFFECTS: PROP SYNC //
+    ////////////////////////
 
     // Sync prop changes to local state (handles external updates like imports)
     useEffect(() => {
@@ -212,9 +227,72 @@ const VariableLine = memo(
       };
     }, [onNewLineRequested, onFocus]);
 
-    /////////////////////////////
+    // Apply visual styling to units parts using shadow DOM manipulation. This bypasses using LaTeX
+    // to color the elements (like \textcolor) since that mutates the LaTeX equation string.
+    // NOTE: MutationObserver is used to automatically re-apply styles whenever MathLive re-renders its shadow DOM
+    useEffect(() => {
+      const mf = latexMathfieldRef.current;
+      if (!mf?.shadowRoot) return;
+
+      // Track pending animation frame to debounce rapid DOM mutations
+      let pendingRaf: number | undefined;
+
+      // Styling function that applies gray color to specific equation parts
+      // Reads current DOM state, so it automatically reflects equation changes
+      const applyStylesToMathfield = () => {
+        // Skip styling during drag to improve drag performance
+        if (isDraggingRef.current) return;
+
+        try {
+          const charIndex = parseMathfieldDOM(mf);
+          clearStyles(charIndex);
+
+          // Find markers at depth 0 (top-level, not in subscripts/superscripts)
+          const leftBracket = charIndex.find(item => item.char === '[' && item.depth === 0);
+
+          // Color RHS (everything after left bracket) gray
+          if (leftBracket) {
+            applyStyleToRange(charIndex, leftBracket.index + 1, charIndex.length, { color: '#6b7280' });
+            leftBracket.element.style.color = '#6b7280';
+          }
+        } catch (err) {
+          if (FLAGS.enableDebugLogging) {
+            // eslint-disable-next-line no-console
+            console.warn('Failed to apply equation styling:', err);
+          }
+        }
+      };
+
+      const scheduleStyleApplication = () => {
+        // Cancel any pending style application
+        if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
+        // Schedule new style application for next frame
+        pendingRaf = requestAnimationFrame(applyStylesToMathfield);
+      };
+
+      // Set up MutationObserver to watch for shadow DOM changes
+      // Handles: typing, blur, focus, DevTools, window resize, file imports, etc.
+      const observer = new MutationObserver(scheduleStyleApplication);
+      observer.observe(mf.shadowRoot, {
+        childList: true,    // Watch for nodes being added/removed
+        subtree: true,      // Watch entire shadow DOM tree
+        attributes: false,  // Ignore attribute changes to prevent infinite loops
+      });
+
+      // Apply initial styles after shadow DOM is ready
+      scheduleStyleApplication();
+
+      // Cleanup function runs only when component unmounts
+      return () => {
+        if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
+        observer.disconnect();
+      };
+      // NOTE: Setup runs once on mount, while listeners use refs for latest callbacks
+    }, []);
+
+    /////////////////////////
     // EFFECTS: VALIDATION //
-    /////////////////////////////
+    /////////////////////////
 
     // Re-render the cell reference border based on content validity
     useEffect(() => {
