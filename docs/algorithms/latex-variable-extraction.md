@@ -2,11 +2,7 @@
 
 ## Overview
 
-The LaTeX Variable Extraction algorithm analyzes mathematical expressions written in LaTeX and extracts all variable names, including those with subscripts and superscripts. The algorithm intelligently distinguishes between variables that should be kept together (like `M^{sl}`) and those that should be split into components (like `e^{ax+b}`).
-
-**Implementation**: `src/logic/latex-var-extract-v2.ts`
-**Test Coverage**: 86/86 tests (100%)
-**Version**: 2.0
+The LaTeX Variable Extraction algorithm analyzes mathematical expressions written in LaTeX and extracts all variable names, including those with subscripts and superscripts. The algorithm distinguishes between variables that should be kept together (like `M^{sl}`) and those that should be split into components (like `e^{ax+b}`).
 
 ---
 
@@ -37,6 +33,31 @@ e^{ax+b} →  a, x, b    (mixed content, split)
 1. **Classification** → Analyze content type
 2. **Building** → Construct complete variables
 3. **Extraction** → Traverse AST and collect results
+
+---
+
+## Assumptions
+
+The algorithm makes the following assumptions about its input and environment:
+
+### 1. Valid LaTeX Input
+The algorithm assumes all input is valid, well-formed LaTeX. Input validation is handled by MathLive before reaching this layer. Malformed LaTeX may produce unexpected results or cause the parser to fail.
+
+### 2. Standardized LaTeX Format
+The algorithm assumes input follows standardized LaTeX conventions for mathematical notation. Function names like `\sin`, `\cos`, `\log` are properly formatted as LaTeX macros via MathLive, not plain text (e.g., `\sin(x)` not `sin(x)`).
+
+### 3. Parser Handles Format Variations
+The algorithm relies on the underlying `@unified-latex` parser to normalize common LaTeX variations:
+- `x^2` vs `x^{2}` (with/without braces)
+- `x_i` vs `x_{i}` (with/without braces)
+- Whitespace variations
+
+### 4. No Custom Macro Expansion
+The algorithm treats custom LaTeX macros (defined via `\newcommand`) as atomic units. It does not expand or interpret custom macro definitions.
+
+**Example**: If `\velocity` is defined as `v_{t}`, the algorithm will extract `\velocity` as-is, not `v_{t}`.
+
+**Rationale**: Macro expansion requires a full LaTeX interpreter and is out of scope for variable extraction. Standard macros (Greek letters, mathematical symbols) are fully supported.
 
 ---
 
@@ -482,45 +503,6 @@ M^{sl} → This is a single variable named "M-superscript-sl"
 
 ---
 
-## Testing Strategy
-
-### Test Coverage Categories
-
-1. **Basic operations** (6 tests) - Simple expressions
-2. **Exponents and subscripts** (8 tests) - Modifier handling
-3. **Greek letters** (4 tests) - Special symbols
-4. **Nested structures** (3 tests) - Complex nesting
-5. **Engineering equations** (12 tests) - Real-world usage
-6. **Edge cases** (7 tests) - Boundary conditions
-7. **User requirements** (5 tests) - Specific use cases
-
-**Total**: 86 tests, 100% passing
-
-### Key Test Patterns
-
-```typescript
-// Pure alphabetic modifiers
-M^{sl} → ['M^{sl}']
-x^{y^{z}} → ['x^{y^{z}}']
-
-// Mixed content
-e^{ax+b} → ['a', 'x', 'b']
-x^{2y} → ['x', 'y']
-
-// Subscripts
-x_{i+1} → ['x_{i+1}']
-a_{n-1} → ['a_{n-1}']
-
-// Constants
-e^{e^{x}} → ['x']
-\pi r^2 → ['r']
-
-// Nested edge cases
-e^{e^{x^y}} → ['x^{y}']
-```
-
----
-
 ## Implementation Notes
 
 ### AST Structure
@@ -566,24 +548,35 @@ These are automatically excluded from results.
 
 ### Potential Improvements
 
-1. **Caching**: Cache re-parsed strings for performance
-2. **Configurable constants**: Allow users to define custom constants
-3. **Pattern recognition**: Detect common mathematical patterns
-4. **LaTeX normalization**: Handle different LaTeX writing styles
+#### 1. Configurable Constants
 
-### Non-Goals
+**Current state**: Constants are hardcoded: `['e', 'i', '\\pi']`
 
-- **Semantic analysis**: We extract syntax, not meaning
-- **Expression evaluation**: Not a calculator
-- **LaTeX validation**: Assumes valid input
-- **Macro expansion**: Treats macros as atomic units
+**Why it would be useful:**
+- Different domains use different constants
+  - **Physics**: `c` (speed of light), `h` (Planck's constant), `G` (gravitational constant)
+  - **Chemistry**: `R` (gas constant), `N_A` (Avogadro's number)
+  - **Mathematics**: `\phi` (golden ratio), `\gamma` (Euler's constant)
+- Users could customize behavior: `e^{ct}` → extract `['t']` instead of `['c', 't']`
+
+**Possible API:**
+```typescript
+extractLatexVariables(expr: string, options?: {
+  constants?: string[]  // Custom constants to filter
+})
+```
+
+**Implementation considerations:**
+- Backward compatibility (default to current constants)
+- Documentation for common constant sets
+- Clear behavior when constants overlap with Greek letters
 
 ---
 
 ## Usage Example
 
 ```typescript
-import { extractLatexVariables } from '@/logic/latex-var-extract-v2';
+import { extractLatexVariables } from '@/logic/latex-var-extract';
 
 // Simple case
 const vars1 = extractLatexVariables('x^2 + y^2 = z^2');
@@ -608,8 +601,8 @@ const vars4 = extractLatexVariables('\\theta_1 + \\theta_2');
 
 ### Related Files
 
-- **Implementation**: `src/logic/latex-var-extract-v2.ts`
-- **Tests**: `tests/logic/latex-var-extract-v2.test.ts`
+- **Implementation**: `src/logic/latex-var-extract.ts`
+- **Tests**: `tests/logic/latex-var-extract.test.ts`
 - **Documentation**: `docs/algorithms/latex-variable-extraction.md` (this file)
 
 ### External Dependencies
@@ -618,27 +611,3 @@ const vars4 = extractLatexVariables('\\theta_1 + \\theta_2');
 - `@unified-latex/unified-latex-types` - TypeScript types
 
 ---
-
-## Version History
-
-**Version 2.0** (Current)
-- 100% test coverage (86/86 tests)
-- Recursive parsing for deeply nested structures
-- Pure alphabetic superscript handling
-- Subscripts never split
-- Improved edge case handling
-
-**Version 1.0** (Legacy)
-- 96.4% test coverage (80/83 tests)
-- Basic modifier handling
-- Some edge cases not handled
-
----
-
-## Conclusion
-
-The LaTeX Variable Extraction algorithm provides robust, accurate extraction of variable names from mathematical expressions. Its three-phase architecture (Classification → Building → Extraction) combined with intelligent content analysis makes it suitable for a wide range of mathematical notation used in engineering, physics, and mathematics.
-
-The algorithm balances correctness, performance, and maintainability while handling complex edge cases like deeply nested structures and mixed content modifiers.
-
-**Status**: Production-ready, fully tested, actively maintained.
