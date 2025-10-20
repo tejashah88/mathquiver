@@ -38,21 +38,21 @@ const MAX_COL = 16_384;  // corresponds to "XFD"
  * - Mixed references: "A$5", "$C10"
  *
  * Examples of what matches:
- * - "A1" → column: "A", row: "1" (both relative)
- * - "$A1" → column: "A" (absolute), row: "1" (relative)
- * - "A$1" → column: "A" (relative), row: "1" (absolute)
- * - "$A$1" → column: "A" (absolute), row: "1" (absolute)
- * - "XFD1048576" → column: "XFD", row: "1048576" (max cell)
- * - "AA100" → column: "AA", row: "100"
+ * - "A1" -> column: "A", row: "1" (both relative)
+ * - "$A1" -> column: "A" (absolute), row: "1" (relative)
+ * - "A$1" -> column: "A" (relative), row: "1" (absolute)
+ * - "$A$1" -> column: "A" (absolute), row: "1" (absolute)
+ * - "XFD1048576" -> column: "XFD", row: "1048576" (max cell)
+ * - "AA100" -> column: "AA", row: "100"
  *
  * Examples of what does NOT match:
- * - "A0" → INVALID (row must start with 1-9, not 0)
- * - "a1" → INVALID (column must be uppercase)
- * - "1A" → INVALID (wrong order: column must come before row)
- * - "AAAA1" → INVALID (column can be at most 3 letters)
- * - "A" → INVALID (missing row number)
- * - "1" → INVALID (missing column letter)
- * - "$1" → INVALID (missing column letter)
+ * - "A0" -> INVALID (row must start with 1-9, not 0)
+ * - "a1" -> INVALID (column must be uppercase)
+ * - "1A" -> INVALID (wrong order: column must come before row)
+ * - "AAAA1" -> INVALID (column can be at most 3 letters)
+ * - "A" -> INVALID (missing row number)
+ * - "1" -> INVALID (missing column letter)
+ * - "$1" -> INVALID (missing column letter)
  */
 const CELL_REGEX = /^\$?([A-Z]{1,3})\$?([1-9][0-9]{0,6})$/;
 
@@ -97,7 +97,7 @@ function parseCellRef(cellRef: string) {
     const rowNum = parseInt(rowDigits, 10);
 
     if (colNum < 1 || colNum > MAX_COL) {
-        throw new Error(`Column out of bounds: '${colLetters}' → ${colNum}`);
+        throw new Error(`Column out of bounds: '${colLetters}' -> ${colNum}`);
     }
     if (rowNum < 1 || rowNum > MAX_ROW) {
         throw new Error(`Row out of bounds: ${rowNum}`);

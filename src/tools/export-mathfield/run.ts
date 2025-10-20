@@ -34,15 +34,6 @@ function serializeShadowRoot(shadowRoot: ShadowRoot): string {
  *
  * @param mathfield - The MathfieldElement to export
  * @returns Complete HTML string including shadow DOM
- *
- * @example
- * const mathfield = document.querySelector('math-field');
- * const html = exportMathfieldHTML(mathfield);
- * console.log(html);
- * // <math-field id="..." class="...">
- * //   <template shadowrootmode="open">...</template>
- * //   LaTeX content
- * // </math-field>
  */
 export function exportMathfieldHTML(mathfield: MathfieldElement): string {
   // Get the outer HTML attributes
@@ -71,12 +62,6 @@ export function exportMathfieldHTML(mathfield: MathfieldElement): string {
  *
  * @param id - The ID of the mathfield element
  * @returns HTML string of the mathfield, or null if not found
- *
- * @example
- * const html = exportMathfieldById('mathfield-123');
- * if (html) {
- *   console.log(html);
- * }
  */
 export function exportMathfieldById(id: string): string | null {
   const mathfield = document.getElementById(id);
@@ -124,10 +109,6 @@ export function exportAllMathfields(): string[] {
  *
  * @param mathfield - The MathfieldElement to download
  * @param filename - The filename to save as (default: 'mathfield-export.html')
- *
- * @example
- * const mathfield = document.querySelector('math-field');
- * downloadMathfieldHTML(mathfield, 'test-case-2.html');
  */
 export function downloadMathfieldHTML(mathfield: MathfieldElement, filename = 'mf-fixture.html'): void {
   const html = exportMathfieldHTML(mathfield);
@@ -170,14 +151,6 @@ export function downloadAllMathfields(filenamePrefix = 'mf-fixture'): void {
 /**
  * Utility function to add export functionality to the browser console.
  * Call this in the browser console to make export functions globally available.
- *
- * @example
- * // In browser console:
- * enableConsoleExports();
- *
- * // Then you can use:
- * exportMathfield(); // Exports first mathfield
- * exportAllMathfields(); // Exports all mathfields
  */
 export function enableConsoleExports(): void {
   if (typeof window === 'undefined') {

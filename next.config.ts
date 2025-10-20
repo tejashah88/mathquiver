@@ -10,6 +10,13 @@ const config: NextConfig = {
 
   // GitHub Pages Settings
   basePath: '/mathquiver',
+
+  // React Compiler
+  experimental: {
+    reactCompiler: {
+      compilationMode: 'annotation',
+    },
+  },
 };
 
 export default config;

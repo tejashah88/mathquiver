@@ -2,6 +2,7 @@ import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { FlatCompat } from '@eslint/eslintrc';
 import requireExplicitGenerics from 'eslint-plugin-require-explicit-generics';
+import reactCompiler from 'eslint-plugin-react-compiler';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -26,9 +27,11 @@ const eslintConfig = [
   }),
   {
     plugins: {
+      'react-compiler': reactCompiler,
       'require-explicit-generics': requireExplicitGenerics,
     },
     rules: {
+      'react-compiler/react-compiler': 'error',
       'jsx-quotes': ['warn', 'prefer-double'],
       'no-console': 'warn',
       'no-unused-vars': 'off',

@@ -1,34 +1,43 @@
 'use client';
 
 // React imports
-import { FormEvent, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { FormEvent, forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
-// Drag-and-drop kit integration
+// Drag-and-drop integration
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// Mathlive integration
+// MathLive integration
 import { Expression, MathfieldElement } from 'mathlive';
 
-// Font Awesome Icons
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faGripVertical, faFileExcel, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+// Font Awesome icons
+import { faFileExcel, faGripVertical, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 
-// Local imports
-import { mathjsonToExcel } from '@/logic/mathjson-excel';
-import { extractLatexVariables } from '@/logic/latex-var-extract';
-import { VariableItem, VarMapping } from '@/types';
+// Utilities
+import { deepEqual } from 'fast-equals';
+
+// Local components
+import MemoizedIcon from '@/components/MemoizedIcon';
+
+// Local logic & utilities
 import extractEquationParts from '@/logic/extract-equation-parts';
-import {
-  parseMathfieldDOM,
-  applyStyleToRange,
-  clearStyles,
-} from '@/logic/mathfield-dom-stylizer';
+import { extractLatexVariables } from '@/logic/latex-var-extract';
+import { mathjsonToExcel } from '@/logic/mathjson-excel';
+import { applyStyleToRange, clearStyles, parseMathfieldDOM } from '@/logic/mathfield-dom-stylizer';
 import { FLAGS } from '@/utils/feature-flags';
+
+// Types
+import { CondensedVariableItem, VarMapping } from '@/types';
+
+// Hooks
+import { useDebounceCallback } from 'usehooks-ts';
+
+// Constants
+export const INPUT_DEBOUNCE_DELAY = 200;
 
 
 // Equation validation states for border rendering
-enum EQUATION_STATES { VALID, INVALID, ERROR };
+const enum EQUATION_STATES { VALID, INVALID, ERROR };
 
 const MF_BORDER_STYLES = {
   [EQUATION_STATES.VALID]: '1px solid #000',
@@ -37,6 +46,18 @@ const MF_BORDER_STYLES = {
   undefined: '1px solid #ccc',
   null: '1px solid #ccc',
 };
+
+// Static style objects (extracted to avoid recreation on every render)
+const GRIP_ICON_STYLE = { color: 'gray' } as const;
+const MISSING_VAR_LABEL_STYLE = {
+  display: 'inline-block',
+  fontSize: '1.2rem',
+  background: 'none',
+} as const;
+const MISSING_VAR_ITEM_STYLE = {
+  display: 'inline-block',
+  fontSize: '1.2rem',
+} as const;
 
 function checkMathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): boolean {
   try {
@@ -47,439 +68,508 @@ function checkMathjsonToExcel(mathJson: Expression, varMap: VarMapping = {}): bo
   }
 }
 
-
 interface EquationLineProps {
   id: string;
   equation: string;
-  variableList: VariableItem[];
+  variableList: CondensedVariableItem[];
   inFocusMode: boolean;
-  focusedEquationId: string | null;
-  onEquInput: (val: string) => void;
-  onNewLineRequested: () => void;
-  onDeleteLine: () => void;
-  onFocus: () => void;
+  onEquationInput: (id: string, latex: string) => void;
+  onEquationNewLine: (id: string) => void;
+  onEquationDelete: (id: string) => void;
+  onEquationFocus: (id: string) => void;
 }
 
-const EquationLine = memo<EquationLineProps>(function EquationLine({
-  id,
-  equation,
-  variableList,
-  inFocusMode,
-  focusedEquationId,
+export interface EquationLineHandle {
+  focus: () => void;
+}
 
-  // Listeners
-  onEquInput,
-  onNewLineRequested,
-  onDeleteLine,
-  onFocus,
-}) {
-  //////////////////////////////
-  // Stage 1: Setup variables //
-  //////////////////////////////
 
-  const latexMathfieldRef = useRef<MathfieldElement | null>(null);
+// eslint-disable-next-line require-explicit-generics/require-explicit-generics
+const EquationLine = memo(
+  forwardRef<EquationLineHandle, EquationLineProps>(
+    function EquationLine({
+      id,
+      equation,
+      variableList,
+      inFocusMode,
 
-  // Equation verification
-  const [inputEquationState, setInputEquationState] = useState<EQUATION_STATES>(EQUATION_STATES.VALID);
+      // Global handlers
+      onEquationInput,
+      onEquationNewLine,
+      onEquationDelete,
+      onEquationFocus,
+    },
+    ref
+  ) {
+    //////////
+    // REFS //
+    //////////
 
-  // Missing variables tracking
-  const [missingLatexVars, setMissingLatexVars] = useState<string[]>([]);
+    // Main mathfield element ref
+    const latexMathfieldRef = useRef<MathfieldElement | null>(null);
 
-  // 'Copy to Excel' tooltip visibility
-  const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState<boolean>(false);
+    // Track dragging state in a ref so the observer callback can read latest value
+    // without recreating the observer on every drag state change
+    const isDraggingRef = useRef<boolean>(false);
 
-  // Drag-and-drop integration
-  // NOTE: useSortable causes re-renders during drag due to transform/transition changes
-  // This is expected dnd-kit behavior and necessary for smooth drag visual feedback
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    ///////////
+    // STATE //
+    ///////////
 
-  ///////////////////////////////////
-  // Stage 2: Setup logic on mount //
-  ///////////////////////////////////
+    // Local equation state for immediate visual feedback (debounced updates to parent)
+    const [localEquation, setLocalEquation] = useState<string>(equation);
 
-  // Setup the mathfield element on mount
-  // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
-  useEffect(() => {
-    if (!latexMathfieldRef.current) return;
-    const mf = latexMathfieldRef.current;
+    // Equation verification state for border rendering
+    const [inputEquationState, setInputEquationState] = useState<EQUATION_STATES>(EQUATION_STATES.VALID);
 
-    // Setup custom menu for equation editing
-    mf.menuItems = [
-      {
-        type: 'command',
-        id: 'cut',
-        label: 'Cut',
-        keyboardShortcut: 'meta+X',
-        visible: () => !mf.readOnly && mf.isSelectionEditable,
-        onMenuSelect: () => mf.executeCommand('cutToClipboard'),
+    // Missing variables tracking
+    const [missingLatexVars, setMissingLatexVars] = useState<string[]>([]);
+
+    // 'Copy to Excel' tooltip visibility
+    const [showCopiedFormulaTooltip, setCopiedFormulaTooltip] = useState<boolean>(false);
+
+    ///////////////
+    // CALLBACKS //
+    ///////////////
+
+    // Create stable callbacks that close over the ID
+    const onEquInput = useCallback(
+      (latex: string) => {
+        onEquationInput(id, latex);
       },
-      {
-        type: 'command',
-        id: 'copy-latex',
-        label: 'Copy LaTeX',
-        keyboardShortcut: 'meta+C',
-        onMenuSelect: () => mf.executeCommand('copyToClipboard'),
-      },
-      // Add new menu item to allow copying of LaTeX rendered image (thanks to latex.codecogs.com)
-      {
-        type: 'command',
-        id: 'copy-image',
-        label: 'Copy Image',
-        onMenuSelect: async () => {
-          const latex = encodeURIComponent(mf.getValue('latex-unstyled'));
-            const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
+      [id, onEquationInput]
+    );
 
-            try {
-              const res = await fetch(url);
-              const blob = await res.blob();
-              // NOTE: This can throw an error if the document if unfocused
-              await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-            } catch (err) {
-              if (FLAGS.enableDebugLogging) {
-                // eslint-disable-next-line no-console
-                console.error('Failed to copy LaTeX image:', err);
-              }
-              alert('Failed to copy LaTeX image render, please try again!');
-            }
+    // Create debounced version of the equation input callback
+    const debouncedOnEquInput = useDebounceCallback(onEquInput, INPUT_DEBOUNCE_DELAY);
+
+    const onNewLineRequested = useCallback(() => {
+      onEquationNewLine(id);
+    }, [id, onEquationNewLine]);
+
+    const onDeleteLine = useCallback(() => {
+      onEquationDelete(id);
+    }, [id, onEquationDelete]);
+
+    const onFocus = useCallback(() => {
+      onEquationFocus(id);
+    }, [id, onEquationFocus]);
+
+    ///////////
+    // HOOKS //
+    ///////////
+
+    // Drag-and-drop integration
+    // NOTE: useSortable causes re-renders during drag due to transform/transition changes
+    // This is expected dnd-kit behavior and necessary for smooth drag visual feedback
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    // Expose focus method to parent via ref
+    useImperativeHandle<EquationLineHandle, EquationLineHandle>(ref, () => ({
+      focus: () => {
+        latexMathfieldRef.current?.focus();
+      },
+    }), []); // Empty deps: focus method is stable and only depends on ref
+
+    ///////////////////////
+    // EFFECTS: REF SYNC //
+    ///////////////////////
+
+    // Keep the dragging ref in sync with isDragging state
+    useEffect(() => {
+      isDraggingRef.current = isDragging;
+    }, [isDragging]);
+
+    // Sync prop changes to local state (handles external updates like imports)
+    useEffect(() => {
+      setLocalEquation(equation);
+    }, [equation]);
+
+    /////////////////////////////////
+    // EFFECTS: SETUP (MOUNT ONLY) //
+    /////////////////////////////////
+
+    // Setup the mathfield element on mount
+    // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
+    // OPTIMIZED: Callbacks are stable (via useCallback), so event listeners can use them directly
+    useEffect(() => {
+      const mf = latexMathfieldRef.current;
+      if (!mf) return;
+
+      // Setup custom menu for equation editing
+      mf.menuItems = [
+        {
+          type: 'command',
+          id: 'cut',
+          label: 'Cut',
+          keyboardShortcut: 'meta+X',
+          visible: () => !mf.readOnly && mf.isSelectionEditable,
+          onMenuSelect: () => mf.executeCommand('cutToClipboard'),
         },
-      },
-      {
-        type: 'command',
-        id: 'paste-latex',
-        label: 'Paste LaTeX',
-        keyboardShortcut: 'meta+V',
-        visible: () => mf.hasEditableContent,
-        onMenuSelect: () => mf.executeCommand('pasteFromClipboard'),
-      },
-      {
-        type: 'command',
-        id: 'select-all',
-        label: 'Select All',
-        keyboardShortcut: 'meta+A',
-        visible: () => !mf.readOnly && mf.isSelectionEditable,
-        onMenuSelect: () => mf.executeCommand('selectAll'),
-      },
-    ];
+        {
+          type: 'command',
+          id: 'copy-latex',
+          label: 'Copy LaTeX',
+          keyboardShortcut: 'meta+C',
+          onMenuSelect: () => mf.executeCommand('copyToClipboard'),
+        },
+        // Add new menu item to allow copying of LaTeX rendered image (thanks to latex.codecogs.com)
+        {
+          type: 'command',
+          id: 'copy-image',
+          label: 'Copy Image',
+          onMenuSelect: async () => {
+            const latex = encodeURIComponent(mf.getValue('latex-unstyled'));
+              const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
 
-    // Listener to add a new line when pressing Enter/Return
-    function addNewLine(evt: InputEvent) {
-      if (evt.data === 'insertLineBreak') {
-        evt.preventDefault();
-        onNewLineRequested();
+              try {
+                const res = await fetch(url);
+                const blob = await res.blob();
+                // NOTE: This can throw an error if the document if unfocused
+                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+              } catch (err) {
+                if (FLAGS.enableDebugLogging) {
+                  // eslint-disable-next-line no-console
+                  console.error('Failed to copy LaTeX image:', err);
+                }
+                alert('Failed to copy LaTeX image render, please try again!');
+              }
+          },
+        },
+        {
+          type: 'command',
+          id: 'paste-latex',
+          label: 'Paste LaTeX',
+          keyboardShortcut: 'meta+V',
+          visible: () => mf.hasEditableContent,
+          onMenuSelect: () => mf.executeCommand('pasteFromClipboard'),
+        },
+        {
+          type: 'command',
+          id: 'select-all',
+          label: 'Select All',
+          keyboardShortcut: 'meta+A',
+          visible: () => !mf.readOnly && mf.isSelectionEditable,
+          onMenuSelect: () => mf.executeCommand('selectAll'),
+        },
+      ];
+
+      // Listener to add a new line when pressing Enter/Return
+      const addNewLine = (evt: InputEvent) => {
+        if (evt.data === 'insertLineBreak') {
+          evt.preventDefault();
+          onNewLineRequested();
+        }
+      };
+
+      // Listener to track focus on this mathfield
+      const handleFocus = () => {
+        onFocus();
+      };
+
+      // Add necessary event listeners
+      mf.addEventListener('beforeinput', addNewLine);
+      mf.addEventListener('focusin', handleFocus);
+
+      // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
+      return () => {
+        mf.removeEventListener('beforeinput', addNewLine);
+        mf.removeEventListener('focusin', handleFocus);
+      };
+    }, [onNewLineRequested, onFocus]);
+
+    // Apply visual styling to equation parts using shadow DOM manipulation. This bypasses using LaTeX
+    // to color the elements (like \textcolor) since that mutates the LaTeX equation string.
+    // NOTE: MutationObserver is used to automatically re-apply styles whenever MathLive re-renders its shadow DOM
+    useEffect(() => {
+      const mf = latexMathfieldRef.current;
+      if (!mf?.shadowRoot) return;
+
+      // Track pending animation frame to debounce rapid DOM mutations
+      let pendingRaf: number | undefined;
+
+      // Styling function that applies gray color to specific equation parts
+      // Reads current DOM state, so it automatically reflects equation changes
+      const applyStylesToMathfield = () => {
+        // Skip styling during drag to improve drag performance
+        if (isDraggingRef.current) return;
+
+        try {
+          const charIndex = parseMathfieldDOM(mf);
+          clearStyles(charIndex);
+
+          // Find markers at depth 0 (top-level, not in subscripts/superscripts)
+          const equalsSign = charIndex.find(item => item.char === '=' && item.depth === 0);
+          const firstComma = charIndex.find(item => item.char === ',' && item.depth === 0);
+
+          // Color LHS (everything before equals sign) gray
+          if (equalsSign) {
+            applyStyleToRange(charIndex, 0, equalsSign.index, { color: '#6b7280' });
+            equalsSign.element.style.color = '#6b7280';
+          }
+
+          // Color limits (everything after first comma) gray
+          if (firstComma) {
+            firstComma.element.style.color = '#6b7280';
+            applyStyleToRange(charIndex, firstComma.index + 1, charIndex.length, { color: '#6b7280' });
+          }
+        } catch (err) {
+          if (FLAGS.enableDebugLogging) {
+            // eslint-disable-next-line no-console
+            console.warn('Failed to apply equation styling:', err);
+          }
+        }
+      };
+
+      const scheduleStyleApplication = () => {
+        // Cancel any pending style application
+        if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
+        // Schedule new style application for next frame
+        pendingRaf = requestAnimationFrame(applyStylesToMathfield);
+      };
+
+      // Set up MutationObserver to watch for shadow DOM changes
+      // Handles: typing, blur, focus, DevTools, window resize, file imports, etc.
+      const observer = new MutationObserver(scheduleStyleApplication);
+      observer.observe(mf.shadowRoot, {
+        childList: true,    // Watch for nodes being added/removed
+        subtree: true,      // Watch entire shadow DOM tree
+        attributes: false,  // Ignore attribute changes to prevent infinite loops
+      });
+
+      // Apply initial styles after shadow DOM is ready
+      scheduleStyleApplication();
+
+      // Cleanup function runs only when component unmounts
+      return () => {
+        if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
+        observer.disconnect();
+      };
+      // NOTE: Setup runs once on mount, while listeners use refs for latest callbacks
+    }, []);
+
+    //////////////////////
+    // MEMOIZED VALUES //
+    /////////////////////
+
+    // Memoize mathfield inline style object with calculated border style
+    const mathfieldStyle = useMemo(() => ({
+      fontSize: '1.5rem',
+      border: inFocusMode ? MF_BORDER_STYLES[EQUATION_STATES.VALID] : MF_BORDER_STYLES[inputEquationState],
+      borderRadius: '0.25rem',
+    }), [inFocusMode, inputEquationState]);
+
+    ////////////////////////////////////
+    // EFFECTS: VALIDATION & TRACKING //
+    ////////////////////////////////////
+
+    // Validate equation and update border styling (runs when localEquation changes)
+    useEffect(() => {
+      const mf = latexMathfieldRef.current;
+      if (!mf) return;
+
+      // Extract the main body of equation to allow typing f(x) = ... and limits (note: keep other variables for readability)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const [eqFuncDefine, eqMainBody, eqLimits] = extractEquationParts(localEquation);
+
+      // Check if the equation main body has a valid MathJSON expression
+      const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
+      if (!boxedExpression.isValid) {
+        setInputEquationState(EQUATION_STATES.INVALID);
+        return;
       }
-    }
 
-    // Listener to track focus on this mathfield
-    function handleFocus() {
-      onFocus();
-    }
+      // Check if the converted MathJSON expression can be converted to an Excel formula
+      //   Case 1: There's an invalid expression that's intentionally not implemented
+      //   Case 2: There's an invalid expression that needs to be implemented
+      const canProcessEqu = checkMathjsonToExcel(boxedExpression.json);
+      if (!canProcessEqu) {
+        setInputEquationState(EQUATION_STATES.ERROR);
+        return;
+      }
 
-    // Add necessary event listeners
-    mf.addEventListener('beforeinput', addNewLine);
-    mf.addEventListener('focusin', handleFocus);
+      // Equation is valid
+      setInputEquationState(EQUATION_STATES.VALID);
+    }, [localEquation]);
 
-    // Only grab focus if this equation is the focused one (e.g., user created via Enter/Return or clicked Add button)
-    // This prevents all equations from auto-focusing during bulk imports
-    if (focusedEquationId === id) {
-      mf.focus();
-    }
+    // Update missing variables (runs when localEquation or variableList changes)
+    useEffect(() => {
+      // Extract the main body of equation to allow typing f(x) = ... and limits (note: keep other variables for readability)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const [eqFuncDefine, eqMainBody, eqLimits] = extractEquationParts(localEquation);
 
-    // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
-    return () => {
-      mf.removeEventListener('beforeinput', addNewLine);
-      mf.removeEventListener('focusin', handleFocus);
-    };
-    // NOTE: We don't expect onNewLineRequested or onFocus to change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latexMathfieldRef, focusedEquationId, id]);
+      // Extract missing variables from main body of equation
+      const extractedLatexVars = extractLatexVariables(eqMainBody);
+      const definedLatexVars = variableList.filter(v => v.latexVar.trim() !== '').map(v => v.latexVar);
+      const missing = extractedLatexVars.filter(_foundVar => !definedLatexVars.includes(_foundVar));
 
-  // Task 1: Re-render the equation input border based on content validity
-  // Task 2: Update the list of missing variables (in case the variables list changes)
-  useEffect(() => {
-    if (!latexMathfieldRef.current) return;
-    const mf = latexMathfieldRef.current;
+      // Only update state if the missing variables actually changed (avoid unnecessary renders)
+      setMissingLatexVars(prev => {
+        if (prev.length !== missing.length || !prev.every((v, i) => v === missing[i]))
+          return missing;
+        return prev;
+      });
+    }, [localEquation, variableList]);
 
-    // Extract the main body of the equation to allow the user to type f(x) = ... and limits
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const [eqFuncDefinition, eqMainBody, eqLimits] = extractEquationParts(mf.getValue('latex-unstyled'));
+    ///////////////
+    // CALLBACKS //
+    ///////////////
 
-    // Extract missing variables from main body of equation
-    const extractedLatexVars = extractLatexVariables(eqMainBody);
-    const definedLatexVars = variableList.map(_var => _var.latexVar);
-    setMissingLatexVars(extractedLatexVars.filter(_foundVar => !definedLatexVars.includes(_foundVar)));
+    // Memoize mathfield input handler with immediate local update and debounced parent update
+    const handleEquationInput = useCallback((event: FormEvent<MathfieldElement>) => {
+      const mf = event.target as MathfieldElement;
+      const latex = mf.getValue('latex-unstyled');
 
-    // Check if the equation main body has a valid MathJSON expression, otherwise prevent further processing
-    const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
-    const isExprValid = boxedExpression.isValid;
-    if (!isExprValid) {
-      setInputEquationState(EQUATION_STATES.INVALID);
-      return;
-    }
+      // Update local state immediately for instant visual feedback
+      setLocalEquation(latex);
 
-    // Check if the converted MathJSON expression can be converted to an Excel formula, otherwise prevent further processing
-    //   Case 1: There's an invalid expression that's intentionally not implemented
-    //   Case 2: There's an invalid expression that needs to be implemented
-    const canProcessEqu = checkMathjsonToExcel(boxedExpression.json);
-    if (!canProcessEqu) {
-      setInputEquationState(EQUATION_STATES.ERROR);
-      return;
-    }
+      // Debounced update to parent to reduce expensive re-renders
+      debouncedOnEquInput(latex);
+    }, [debouncedOnEquInput]);
 
-    // Assume that the equation is fine and render a default border
-    setInputEquationState(EQUATION_STATES.VALID);
-  }, [equation, variableList]);
+    // Memoize Excel export handler (expensive: equation parsing + variable mapping + clipboard)
+    const handleExcelExport = useCallback(async () => {
+      // Extract the main body of equation to allow typing f(x) = ... and limits (note: keep other variables for readability)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const [eqFuncDefine, eqMainBody, eqLimits] = extractEquationParts(localEquation);
+      const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
 
-  // Apply visual styling to equation parts using shadow DOM manipulation
-  // This colors the LHS (before equals) and limits (after comma) gray without mutating LaTeX
-  // Uses MutationObserver to automatically re-apply styles whenever MathLive re-renders its shadow DOM
-  useEffect(() => {
-    if (!latexMathfieldRef.current) return;
-    const mf = latexMathfieldRef.current;
-    if (!mf.shadowRoot) return;
+      // Create variable to Excel cell reference map
+      const variableExcelMap = variableList.reduce((acc, entry) => {
+        if (entry.latexVar) {
+          const mjsonVar = MathfieldElement.computeEngine!.parse(entry.latexVar.trim());
+          acc[mjsonVar.json.toString()] = entry.excelVar.trim();
+        }
+        return acc;
+      }, {} as VarMapping);
 
-    // Styling function that applies gray color to specific equation parts
-    const applyStylesToMathfield = () => {
+      // Generate the Excel Formula and copy it to the clipboard
+      const excelFormula = mathjsonToExcel(boxedExpression.json, variableExcelMap);
+
       try {
-        const charIndex = parseMathfieldDOM(mf);
-        clearStyles(charIndex);
-
-        // Find markers at depth 0 (top-level, not in subscripts/superscripts)
-        const equalsSign = charIndex.find(item => item.char === '=' && item.depth === 0);
-        const firstComma = charIndex.find(item => item.char === ',' && item.depth === 0);
-
-        // Color LHS (everything before equals sign) gray
-        if (equalsSign) {
-          applyStyleToRange(charIndex, 0, equalsSign.index, { color: '#6b7280' });
-          equalsSign.element.style.color = '#6b7280';
-        }
-
-        // Color limits (everything after first comma) gray
-        if (firstComma) {
-          firstComma.element.style.color = '#6b7280';
-          applyStyleToRange(charIndex, firstComma.index + 1, charIndex.length, { color: '#6b7280' });
-        }
+        // NOTE: This can throw an error if the document if unfocused
+        await navigator.clipboard.writeText(excelFormula);
       } catch (err) {
         if (FLAGS.enableDebugLogging) {
           // eslint-disable-next-line no-console
-          console.warn('Failed to apply equation styling:', err);
+          console.error('Failed to copy Excel formula:', err);
         }
+        alert('Failed to copy Excel formula, please try again!');
+        return;
       }
-    };
 
-    // Track pending animation frame to debounce rapid DOM mutations
-    let pendingRaf: number | undefined;
-    const scheduleStyleApplication = () => {
-      // Cancel any pending style application
-      if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
-      // Schedule new style application for next frame
-      pendingRaf = requestAnimationFrame(applyStylesToMathfield);
-    };
+      // Show a tooltip saying that the copy action was successful
+      setCopiedFormulaTooltip(true);
+      setTimeout(() => setCopiedFormulaTooltip(false), 1000);
+    }, [localEquation, variableList]);
 
-    // Set up MutationObserver to watch for shadow DOM changes
-    // Handles: typing, blur, focus, DevTools, window resize, file imports, etc.
-    const observer = new MutationObserver(scheduleStyleApplication);
-    observer.observe(mf.shadowRoot, {
-      childList: true,    // Watch for nodes being added/removed
-      subtree: true,      // Watch entire shadow DOM tree
-      attributes: false,  // Ignore attribute changes to prevent infinite loops
-    });
+    ////////////
+    // RENDER //
+    ////////////
 
-    // Apply initial styles after shadow DOM is ready
-    scheduleStyleApplication();
-
-    // Cleanup function
-    return () => {
-      if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
-      observer.disconnect();
-    };
-  }, [equation]);
-
-  //////////////////////////////////////////
-  // Stage 3: Conditional logic on render //
-  //////////////////////////////////////////
-
-  ///////////////////////////////
-  // Stage 4: Render component //
-  ///////////////////////////////
-
-  // Memoize border style to avoid recalculating on every render
-  const mathfieldBorderStyle = useMemo(() => {
-    return inFocusMode ? MF_BORDER_STYLES[EQUATION_STATES.VALID] : MF_BORDER_STYLES[inputEquationState];
-  }, [inFocusMode, inputEquationState]);
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Translate.toString(transform),
-        transition,
-        zIndex: isDragging ? 999 : undefined,
-        position: 'relative',
-      }}
-      className="flex flex-col"
-    >
-      <div className="flex flex-row w-full items-center my-[2px]">
-        <button
-          {...attributes}
-          {...listeners}
-          tabIndex={-1}
-          className="mr-2 py-2 rounded border border-gray-400 cursor-grab hover:bg-gray-200 active:cursor-grabbing"
-        >
-          <FontAwesomeIcon
-            icon={faGripVertical}
-            size="lg"
-            style={{ color: 'gray' }}
-          />
-        </button>
-
-        <math-field
-          id={`mathfield-${id}`}
-          ref={latexMathfieldRef}
-          // script-depth={5}
-          className="min-w-0 flex-1"
-          style={{
-            fontSize: '1.5rem',
-            // In focus mode, render only black borders for minimal distraction
-            border: mathfieldBorderStyle,
-            borderRadius: '0.25rem',
-          }}
-          onInput={(event: FormEvent<MathfieldElement>) => {
-            const mf = event.target as MathfieldElement;
-            onEquInput(mf.getValue('latex-unstyled'));
-          }}
-        >
-          {equation}
-        </math-field>
-
-        <div className="flex flex-shrink-0 gap-2 px-2">
-          <div className="group relative">
-            <button
-              disabled={!MathfieldElement.computeEngine || equation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
-              onClick={async () => {
-                if (!latexMathfieldRef.current) return;
-                const mf = latexMathfieldRef.current;
-
-                // Extract the main body of the equation to allow the user to type f(x) = ... and limits
-                // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                const [eqFuncDefinition, eqMainBody, eqLimits] = extractEquationParts(mf.getValue('latex-unstyled'));
-                const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
-
-                // Create the variable map to convert MathJSON variables to Excel cell references
-                const variableMap = variableList.reduce((acc, entry) => {
-                  if (entry.latexVar) {
-                    const mjsonVar = MathfieldElement.computeEngine!.parse(entry.latexVar.trim());
-                    acc[mjsonVar.json.toString()] = entry.excelVar.trim();
-                  }
-                  return acc;
-                }, {} as VarMapping);
-
-                // Generate the Excel Formula and copy it to the clipboard
-                const excelFormula = mathjsonToExcel(boxedExpression.json, variableMap);
-
-                try {
-                  // NOTE: This can throw an error if the document if unfocused
-                  await navigator.clipboard.writeText(excelFormula);
-                } catch (err) {
-                  if (FLAGS.enableDebugLogging) {
-                    // eslint-disable-next-line no-console
-                    console.error('Failed to copy Excel formula:', err);
-                  }
-                  alert('Failed to copy Excel formula, please try again!');
-                  return;
-                }
-
-                // Show a tooltip saying that the copy action was successful
-                setCopiedFormulaTooltip(true);
-                setTimeout(() => setCopiedFormulaTooltip(false), 1000);
-              }}
-              className="p-2 rounded border hover:bg-gray-200"
-            >
-              <FontAwesomeIcon icon={faFileExcel} />
-            </button>
-
-            <span
-              className="absolute right-full top-1/2 hidden mr-2 px-2 py-1 rounded bg-gray-700 text-xs text-white shadow -translate-y-1/2 group-hover:block"
-            >
-              {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
-            </span>
-          </div>
-
+    return (
+      <div
+        ref={setNodeRef}
+        style={{
+          transform: CSS.Translate.toString(transform),
+          transition,
+          zIndex: isDragging ? 999 : undefined,
+          position: 'relative',
+          // Hint to browser to use GPU acceleration for transforms during drag
+          willChange: transform ? 'transform' : undefined,
+        }}
+        className="flex flex-col"
+      >
+        <div className="flex flex-row w-full items-center my-[2px]">
           <button
-            onClick={onDeleteLine}
-            className="p-2 rounded border bg-red-100 text-red-700 hover:bg-red-200"
+            {...attributes}
+            {...listeners}
+            tabIndex={-1}
+            className="mr-2 py-2 rounded border border-gray-400 cursor-grab hover:bg-gray-200 active:cursor-grabbing"
           >
-            <FontAwesomeIcon icon={faTrashCan} />
+            <MemoizedIcon
+              icon={faGripVertical}
+              size="lg"
+              style={GRIP_ICON_STYLE}
+            />
           </button>
+
+          <math-field
+            id={`mathfield-${id}`}
+            ref={latexMathfieldRef}
+            // script-depth={5}
+            className="min-w-0 flex-1"
+            style={mathfieldStyle}
+            onInput={handleEquationInput}
+          >
+            {localEquation}
+          </math-field>
+
+          <div className="flex flex-shrink-0 gap-2 px-2">
+            <div className="group relative">
+              <button
+                disabled={!MathfieldElement.computeEngine || localEquation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
+                onClick={handleExcelExport}
+                className="p-2 rounded border hover:bg-gray-200"
+              >
+                <MemoizedIcon icon={faFileExcel} />
+              </button>
+
+              <span
+                className="absolute right-full top-1/2 hidden mr-2 px-2 py-1 rounded bg-gray-700 text-xs text-white shadow -translate-y-1/2 group-hover:block"
+              >
+                {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
+              </span>
+            </div>
+
+            <button
+              onClick={onDeleteLine}
+              className="p-2 rounded border bg-red-100 text-red-700 hover:bg-red-200"
+            >
+              <MemoizedIcon icon={faTrashCan} />
+            </button>
+          </div>
+        </div>
+
+        {/* In focus mode, hide the missing variables for minimal distraction */}
+        <div
+          className="flex flex-row w-full items-center gap-1 my-[2px]"
+          style={{ display: inFocusMode || missingLatexVars.length === 0 ? 'none' : 'flex' }}
+        >
+          <math-field
+            read-only
+            tabIndex={-1}
+            style={MISSING_VAR_LABEL_STYLE}
+          >
+            {'\\text{Missing:}'}
+          </math-field>
+
+          {missingLatexVars.map(_var => (
+            <math-field
+              key={_var}
+              tabIndex={-1}
+              read-only
+              className="border"
+              style={MISSING_VAR_ITEM_STYLE}
+            >
+              {_var}
+            </math-field>
+          ))}
         </div>
       </div>
+    );
+  }),
+  (prevProps: EquationLineProps, nextProps: EquationLineProps) => {
+    // Custom comparison to prevent re-renders when only irrelevant fields change
+    // Return true if props are equal (component should NOT re-render)
 
-      {/* In focus mode, hide the missing variables for minimal distraction */}
-      <div
-        className="flex flex-row w-full items-center gap-1 my-[2px]"
-        style={{ display: inFocusMode || missingLatexVars.length === 0 ? 'none' : 'flex' }}
-      >
-        <math-field
-          read-only
-          style={{
-            display: 'inline-block',
-            fontSize: '1.2rem',
-            background: 'none',
-          }}
-        >
-          {'\\text{Missing:}'}
-        </math-field>
-
-        {missingLatexVars.map((_var, idx) => (
-          <math-field
-            key={idx}
-            read-only
-            className="border"
-            style={{
-              display: 'inline-block',
-              fontSize: '1.2rem',
-            }}
-          >
-            {_var}
-          </math-field>
-        ))}
-      </div>
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison to prevent re-renders when only irrelevant fields change
-  // Return true if props are equal (component should NOT re-render)
-  // Note: We intentionally skip comparing callbacks to avoid re-renders from inline functions
-
-  // Check if core data changed
-  if (
-    prevProps.id !== nextProps.id ||
-    prevProps.equation !== nextProps.equation ||
-    prevProps.inFocusMode !== nextProps.inFocusMode ||
-    prevProps.focusedEquationId !== nextProps.focusedEquationId
-  ) {
-    return false; // Core data changed, must re-render
+    return (
+      prevProps.id === nextProps.id &&
+      prevProps.equation === nextProps.equation &&
+      prevProps.inFocusMode === nextProps.inFocusMode &&
+      deepEqual(prevProps.variableList, nextProps.variableList)
+    );
   }
-
-  // Deep comparison of variableList - only compare latexVar and excelVar
-  // These are the only fields that affect equation validation
-  // Filter out empty variables since they don't affect equation validation
-  const prevNonEmptyVars = prevProps.variableList.filter(v => v.latexVar.trim() !== '');
-  const nextNonEmptyVars = nextProps.variableList.filter(v => v.latexVar.trim() !== '');
-
-  if (prevNonEmptyVars.length !== nextNonEmptyVars.length) {
-    return false;
-  }
-
-  for (let i = 0; i < prevNonEmptyVars.length; i++) {
-    if (
-      prevNonEmptyVars[i].latexVar !== nextNonEmptyVars[i].latexVar ||
-      prevNonEmptyVars[i].excelVar !== nextNonEmptyVars[i].excelVar
-    ) {
-      return false; // Variables changed, must re-render
-    }
-  }
-
-  return true; // All relevant props are equal, skip re-render
-});
+);
 
 export default EquationLine;

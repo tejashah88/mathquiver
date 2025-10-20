@@ -18,8 +18,8 @@ import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifi
 import Markdown from 'react-markdown';
 
 // Font Awesome Icons
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faBars, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import MemoizedIcon from '@/components/MemoizedIcon';
 
 // Utility methods for QoL
 import { nanoid } from 'nanoid';
@@ -27,21 +27,41 @@ import { saveAs } from 'file-saver';
 import { format } from 'date-fns';
 
 // Local imports
-import EquationLine from '@/components/EquationLine';
-import VariableLine from '@/components/VariableLine';
+import EquationLine, { EquationLineHandle } from '@/components/EquationLine';
+import VariableLine, { VariableLineHandle } from '@/components/VariableLine';
 import { splitVarUnits } from '@/logic/split-var-units';
 import { setupExtendedAlgebraMode } from '@/logic/prep-compute-engine';
 import { EquationItem, VariableItem } from '@/types';
-import useBeforeUnload from '@/hooks/useBeforeUnload';
 import sanitize from 'sanitize-filename';
 import slugify from 'slugify';
 import { FLAGS } from '@/utils/feature-flags';
 
 
 export default function Home() {
-  //////////////////////////////
-  // Stage 1: Setup variables //
-  //////////////////////////////
+  'use memo';
+
+  //////////
+  // REFS //
+  //////////
+
+  // Input element for asking user to import previously-saved workspace
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Refs to access imperative handles for programmatic focus control
+  const equationRefs = useRef<Map<string, EquationLineHandle>>(new Map());
+  const variableRefs = useRef<Map<string, VariableLineHandle>>(new Map());
+
+  // Refs for scrollable containers to enable scroll-to-top after import
+  const equationsScrollRef = useRef<HTMLDivElement>(null);
+  const variablesScrollRef = useRef<HTMLDivElement>(null);
+
+  // Track focused equation/variable for context-aware insertion using refs to avoid re-renders
+  const focusedEquationIdRef = useRef<string | null>(null);
+  const focusedVariableIdRef = useRef<string | null>(null);
+
+  ///////////
+  // STATE //
+  ///////////
 
   // Control to stop loading full website until Mathlive is loaded
   const [isMathliveLoaded, setMathliveLoaded] = useState<boolean>(false);
@@ -50,9 +70,6 @@ export default function Home() {
   // Controls for handling responsiveness
   const [enableCompactView, setEnableCompactView] = useState<boolean>(false);
   const [isMobile, setIsMobile] = useState<boolean>(false);
-
-  // Input element for asking user to import previously-saved workspace
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Equations store
   const [equations, setEquations] = useState<EquationItem[]>([
@@ -64,10 +81,6 @@ export default function Home() {
     { id: nanoid(), latexVar: '', units: '', excelVar: '', _latexRender: '' },
   ]);
 
-  // Track focused equation/variable for context-aware insertion
-  const [focusedEquationId, setFocusedEquationId] = useState<string | null>(null);
-  const [focusedVariableId, setFocusedVariableId] = useState<string | null>(null);
-
   // Help panel content and controls
   const [helpOpen, setHelpOpen] = useState<boolean>(false);
   const [helpContent, setHelpContent] = useState<string>('');
@@ -76,16 +89,35 @@ export default function Home() {
   const [projectName, setProjectName] = useState<string>('');
   const [focusMode, setFocusMode] = useState<boolean>(false);
 
-  // Refs for scrollable containers to enable scroll-to-top after import
-  const equationsScrollRef = useRef<HTMLDivElement>(null);
-  const variablesScrollRef = useRef<HTMLDivElement>(null);
+  ///////////
+  // HOOKS //
+  ///////////
 
   // Sensors for drag-and-drop integration
   const sensors = useSensors(useSensor(PointerSensor), useSensor(KeyboardSensor));
 
-  //////////////////////////////////////
-  // Stage 2: Setup Memoized Handlers //
-  //////////////////////////////////////
+  //////////////////////
+  // MEMOIZED VALUES ///
+  //////////////////////
+
+  // Don't import unless the user wants to overwrite their work [~O(n)]
+  const hasDirtyWork = useMemo(() => {
+    const hasNonEmptyEquations = equations.some(equ => !!equ.latex);
+    const hasNonEmptyVariables = variables.some(v => !!v.latexVar || !!v.units || !!v.excelVar);
+
+    return hasNonEmptyEquations || hasNonEmptyVariables;
+  }, [equations, variables]);
+
+  ///////////////////////
+  // COMPUTED  VALUES ///
+  ///////////////////////
+
+  // Calculate condensed variable list for equation components [O(n)]
+  const condensedVariables = variables.map(({ latexVar, excelVar }) => ({ latexVar, excelVar }));
+
+  ///////////////
+  // CALLBACKS //
+  ///////////////
 
   // Memoized handlers for equations
   const handleEquationInput = useCallback((id: string, latex: string) => {
@@ -106,8 +138,12 @@ export default function Home() {
         ...prev.slice(index + 1),
       ];
     });
-    // Set focus to the newly created equation
-    setFocusedEquationId(newId);
+    // Track the focused equation for context-aware insertion
+    focusedEquationIdRef.current = newId;
+    // Use requestAnimationFrame to ensure DOM is ready before focusing
+    requestAnimationFrame(() => {
+      equationRefs.current.get(newId)?.focus();
+    });
   }, []);
 
   const handleEquationDelete = useCallback((id: string) => {
@@ -141,8 +177,12 @@ export default function Home() {
         ...prev.slice(index + 1),
       ];
     });
-    // Set focus to the newly created variable
-    setFocusedVariableId(newId);
+    // Track the focused variable for context-aware insertion
+    focusedVariableIdRef.current = newId;
+    // Use requestAnimationFrame to ensure DOM is ready before focusing
+    requestAnimationFrame(() => {
+      variableRefs.current.get(newId)?.focus();
+    });
   }, []);
 
   const handleVariableDelete = useCallback((id: string) => {
@@ -150,36 +190,43 @@ export default function Home() {
   }, []);
 
   // Handler for swapping equations after drag-and-drop event
-  const handleEquationDragEnd = (event: DragEndEvent) => {
+  const handleEquationDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     // Reorder equations if both active and over belong to equations
-    const eqIds = equations.map((e) => e.id);
-    if (eqIds.includes(active.id as string) && eqIds.includes(over.id as string)) {
-      const oldIndex = eqIds.indexOf(active.id as string);
-      const newIndex = eqIds.indexOf(over.id as string);
-      setEquations((prev) => arrayMove(prev, oldIndex, newIndex));
-    }
-  };
+    setEquations((prev) => {
+      const eqIds = prev.map((e) => e.id);
+      if (eqIds.includes(active.id as string) && eqIds.includes(over.id as string)) {
+        const oldIndex = eqIds.indexOf(active.id as string);
+        const newIndex = eqIds.indexOf(over.id as string);
+        return arrayMove(prev, oldIndex, newIndex);
+      }
+      return prev;
+    });
+  }, []);
 
   // Handler for swapping variables after drag-and-drop event
-  const handleVariableDragEnd = (event: DragEndEvent) => {
+  const handleVariableDragEnd = useCallback((event: DragEndEvent) => {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
     // Reorder variables if both active and over belong to variables
-    const varIds = variables.map((v) => v.id);
-    if (varIds.includes(active.id as string) && varIds.includes(over.id as string)) {
-      const oldIndex = varIds.indexOf(active.id as string);
-      const newIndex = varIds.indexOf(over.id as string);
-      setVariables((prev) => arrayMove(prev, oldIndex, newIndex));
-    }
-  };
+    setVariables((prev) => {
+      const varIds = prev.map((v) => v.id);
+      if (varIds.includes(active.id as string) && varIds.includes(over.id as string)) {
+        const oldIndex = varIds.indexOf(active.id as string);
+        const newIndex = varIds.indexOf(over.id as string);
+        return arrayMove(prev, oldIndex, newIndex);
+      }
+      return prev;
+    });
+  }, []);
 
-  ///////////////////////////////////
-  // Stage 3: Setup logic on mount //
-  ///////////////////////////////////
+  /////////////////////////
+  // EFFECTS: SETUP      //
+  // (MOUNT ONLY)        //
+  /////////////////////////
 
   // Setup a resize handler to switch between full desktop mode and half-screen mode (convenient for side-by-side with Excel)
   useEffect(() => {
@@ -276,25 +323,236 @@ export default function Home() {
     }
   }, []);
 
-  //////////////////////////////////////////
-  // Stage 4: Conditional logic on render //
-  //////////////////////////////////////////
-
-  // Don't import unless the user wants to overwrite their work
-  const hasDirtyWork = useMemo(() => {
-    const hasNonEmptyEquations = equations.some(equ => !!equ.latex);
-    const hasNonEmptyVariables = variables.some(v => !!v.latexVar || !!v.units || !!v.excelVar);
-
-    return hasNonEmptyEquations || hasNonEmptyVariables;
-  }, [equations, variables]);
-
   // Setup a listener to ask user to save their work before exiting
   // NOTE: Do not enable the 'unsaved work' prompt during development
-  useBeforeUnload(FLAGS.enableBeforeUnloadWarning && hasDirtyWork);
+  useEffect(() => {
+    // Only add listener if feature flag is enabled AND there's dirty work
+    const shouldWarn = FLAGS.enableBeforeUnloadWarning && hasDirtyWork;
 
-  /////////////////////////////
-  // Stage 5: Render website //
-  /////////////////////////////
+    if (!shouldWarn) {
+      return;
+    }
+
+    // Preventing the event causes the 'Do you want to exit?' prompt
+    const handler = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+    };
+
+    window.addEventListener('beforeunload', handler);
+
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [hasDirtyWork]);
+
+  ///////////////
+  // CALLBACKS //
+  ///////////////
+
+  // Handler for workspace name change
+  const handleProjectNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setProjectName(e.target.value);
+  }, []);
+
+  // Handler for focus mode toggle
+  const handleFocusModeToggle = useCallback(() => {
+    // Use startTransition to mark this state update as non-urgent
+    // This keeps the toggle button responsive while heavy re-renders happen
+    startTransition(() => {
+      setFocusMode(prev => !prev);
+    });
+  }, []);
+
+  // Handler for adding a new equation
+  const handleAddEquation = useCallback(() => {
+    const newId = nanoid();
+    setEquations((prev: EquationItem[]) => {
+      // If there's a focused equation, insert below it
+      const focusedId = focusedEquationIdRef.current;
+      if (focusedId) {
+        const index = prev.findIndex(equ => equ.id === focusedId);
+        if (index !== -1) {
+          return [
+            ...prev.slice(0, index + 1),
+            { id: newId, latex: '' },
+            ...prev.slice(index + 1),
+          ];
+        }
+      }
+      // Otherwise, add to the end
+      return [...prev, { id: newId, latex: '' }];
+    });
+    // Track the focused equation for context-aware insertion
+    focusedEquationIdRef.current = newId;
+    // Use requestAnimationFrame to ensure DOM is ready before focusing
+    requestAnimationFrame(() => {
+      equationRefs.current.get(newId)?.focus();
+    });
+  }, []);
+
+  // Handler for adding a new variable
+  const handleAddVariable = useCallback(() => {
+    const newId = nanoid();
+    setVariables((prev: VariableItem[]) => {
+      // If there's a focused variable, insert below it
+      const focusedId = focusedVariableIdRef.current;
+      if (focusedId) {
+        const index = prev.findIndex(_var => _var.id === focusedId);
+        if (index !== -1) {
+          return [
+            ...prev.slice(0, index + 1),
+            { id: newId, latexVar: '', units: '', excelVar: '', _latexRender: '' },
+            ...prev.slice(index + 1),
+          ];
+        }
+      }
+      // Otherwise, add to the end
+      return [
+        ...prev,
+        { id: newId, latexVar: '', units: '', excelVar: '', _latexRender: '' },
+      ];
+    });
+    // Track the focused variable for context-aware insertion
+    focusedVariableIdRef.current = newId;
+    // Use requestAnimationFrame to ensure DOM is ready before focusing
+    requestAnimationFrame(() => {
+      variableRefs.current.get(newId)?.focus();
+    });
+  }, []);
+
+  // Handler for equation focus (memoized to prevent re-renders)
+  const handleEquationFocus = useCallback((id: string) => {
+    focusedEquationIdRef.current = id;
+  }, []);
+
+  // Handler for variable focus (memoized to prevent re-renders)
+  const handleVariableFocus = useCallback((id: string) => {
+    focusedVariableIdRef.current = id;
+  }, []);
+
+  // Handler for opening help modal
+  const handleHelpOpen = useCallback(() => {
+    setHelpOpen(true);
+  }, []);
+
+  // Handler for closing help modal
+  const handleHelpClose = useCallback(() => {
+    setHelpOpen(false);
+  }, []);
+
+  // Handler for import button click
+  const handleImportClick = useCallback(() => {
+    if (hasDirtyWork) {
+      const wantToOverride = confirm('Do you want to overwrite your existing work?');
+      if (!wantToOverride) return;
+    }
+    fileInputRef.current?.click();
+  }, [hasDirtyWork]);
+
+  // Handler for export button click
+  const handleExportClick = useCallback(() => {
+    const data = {
+      projectName,
+      equations: equations.map(equ => ({
+        ...equ,
+        latex: equ.latex.trim()
+      })),
+      variables: variables.map(_var => {
+        // NOTE: We don't want to keep _latexRender as it's only used for input rendering and will be auto-populated
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { _latexRender, ...rest } = _var;
+        return {
+          ...rest,
+          latexVar: _var.latexVar.trim(),
+          units: _var.units.trim(),
+          excelVar: _var.excelVar.trim()
+        };
+      })
+    };
+
+    // Create or generate a project filename that's compatible with all OSes (mainly Windows)
+    const projectFilename = projectName ?
+      sanitize(slugify(projectName)) :
+      `ws-${format(new Date(), 'yyyy_MM_dd_hh_mm_a')}`;
+
+    // Save the workspace file
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    saveAs(blob, `${projectFilename}.mq.json`);
+
+    // Close the help panel afterwards
+    setHelpOpen(false);
+  }, [projectName, equations, variables]);
+
+  // Handler for file input change (import workspace)
+  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(reader.result as string);
+
+        // Validate the structure of the parsed data
+        if (!parsed || typeof parsed !== 'object') {
+          throw new Error('Invalid workspace file format');
+        }
+
+        if (!Array.isArray(parsed.equations)) {
+          throw new Error('Workspace file is missing the list of equations');
+        }
+
+        if (!Array.isArray(parsed.variables)) {
+          throw new Error('Workspace file is missing the list of variables');
+        }
+
+        const projectName = parsed.projectName ?? '';
+        const parsedEquations = parsed.equations as EquationItem[];
+        const parsedVariablesRaw = parsed.variables as VariableItem[];
+
+        // Map to new array with _latexRender added (immutable pattern)
+        const parsedVariables = parsedVariablesRaw.map(_var => {
+          // Wrap the units around square brackets
+          // NOTE: There MUST be a space after \lbrack, otherwise Mathlive will sometimes think
+          // it's a separate macro like \lbrackm (i.e. \lbrack + m)
+          const _latexRender = _var.units ? `${_var.latexVar}\\left\\lbrack ${_var.units}\\right\\rbrack` : _var.latexVar ;
+          return { ..._var, _latexRender };
+        });
+
+        // Clear focused IDs to prevent auto-focusing during bulk import
+        focusedEquationIdRef.current = null;
+        focusedVariableIdRef.current = null;
+
+        // Hydrate the stores with the parsed equations
+        setProjectName(projectName);
+        setEquations(parsedEquations);
+        setVariables(parsedVariables);
+
+        // Scroll both panels to the top after import
+        equationsScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+        variablesScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+
+        // Close the help panel afterwards
+        setHelpOpen(false);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error';
+        alert(`Unable to read workspace file: ${errorMsg}`);
+      } finally {
+        // Reset the input so the same file can be imported again if needed
+        e.target.value = '';
+      }
+    };
+
+    reader.onerror = () => {
+      alert('Failed to read file. Please try again.');
+      e.target.value = '';
+    };
+
+    reader.readAsText(file);
+  }, []);
+
+  ////////////
+  // RENDER //
+  ////////////
 
   // Show a temporary loading screen until Mathlive is loaded
   if (!isMathliveLoaded) {
@@ -347,7 +605,7 @@ export default function Home() {
               id="workspace-name"
               type="text"
               value={projectName}
-              onChange={(e) => setProjectName(e.target.value)}
+              onChange={handleProjectNameChange}
               placeholder="Untitled Workspace"
               className="min-w-120 px-2 py-1 rounded border border-gray-400 text-2xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -361,13 +619,7 @@ export default function Home() {
                 type="button"
                 role="switch"
                 aria-checked={focusMode}
-                onClick={() => {
-                  // Use startTransition to mark this state update as non-urgent
-                  // This keeps the toggle button responsive while heavy re-renders happen
-                  startTransition(() => {
-                    setFocusMode(!focusMode);
-                  });
-                }}
+                onClick={handleFocusModeToggle}
                 className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
                   focusMode ? 'bg-blue-600' : 'bg-gray-300'
                 }`}
@@ -382,27 +634,9 @@ export default function Home() {
 
             <button
               className="p-2 rounded border font-bold hover:bg-gray-200"
-              onClick={() => {
-              const newId = nanoid();
-              setEquations((prev: EquationItem[]) => {
-                // If there's a focused equation, insert below it
-                if (focusedEquationId) {
-                  const index = prev.findIndex(equ => equ.id === focusedEquationId);
-                  if (index !== -1) {
-                    return [
-                      ...prev.slice(0, index + 1),
-                      { id: newId, latex: '' },
-                      ...prev.slice(index + 1),
-                    ];
-                  }
-                }
-                // Otherwise, add to the end
-                return [...prev, { id: newId, latex: '' }];
-              });
-              // Update focus to the newly created equation
-              setFocusedEquationId(newId);
-            }}>
-              <FontAwesomeIcon icon={faPlus} />
+              onClick={handleAddEquation}
+            >
+              <MemoizedIcon icon={faPlus} />
             </button>
           </div>
         </div>
@@ -421,15 +655,21 @@ export default function Home() {
               {equations.map((equ: EquationItem) => (
                 <EquationLine
                   key={equ.id}
+                  ref={(el: EquationLineHandle | null) => {
+                    if (el) {
+                      equationRefs.current.set(equ.id, el);
+                    } else {
+                      equationRefs.current.delete(equ.id);
+                    }
+                  }}
                   id={equ.id}
                   equation={equ.latex}
-                  variableList={variables}
+                  variableList={condensedVariables}
                   inFocusMode={focusMode}
-                  focusedEquationId={focusedEquationId}
-                  onEquInput={(latex) => handleEquationInput(equ.id, latex)}
-                  onNewLineRequested={() => handleEquationNewLine(equ.id)}
-                  onDeleteLine={() => handleEquationDelete(equ.id)}
-                  onFocus={() => setFocusedEquationId(equ.id)}
+                  onEquationInput={handleEquationInput}
+                  onEquationNewLine={handleEquationNewLine}
+                  onEquationDelete={handleEquationDelete}
+                  onEquationFocus={handleEquationFocus}
                 />
               ))}
             </SortableContext>
@@ -444,32 +684,10 @@ export default function Home() {
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
           <h2 className="text-2xl font-semibold">Variables</h2>
           <button
-            onClick={() => {
-              const newId = nanoid();
-              setVariables((prev: VariableItem[]) => {
-                // If there's a focused variable, insert below it
-                if (focusedVariableId) {
-                  const index = prev.findIndex(_var => _var.id === focusedVariableId);
-                  if (index !== -1) {
-                    return [
-                      ...prev.slice(0, index + 1),
-                      { id: newId, latexVar: '', units: '', excelVar: '', _latexRender: '' },
-                      ...prev.slice(index + 1),
-                    ];
-                  }
-                }
-                // Otherwise, add to the end
-                return [
-                  ...prev,
-                  { id: newId, latexVar: '', units: '', excelVar: '', _latexRender: '' },
-                ];
-              });
-              // Update focus to the newly created variable
-              setFocusedVariableId(newId);
-            }}
+            onClick={handleAddVariable}
             className="p-2 rounded border font-bold hover:bg-gray-200"
           >
-            <FontAwesomeIcon icon={faPlus} />
+            <MemoizedIcon icon={faPlus} />
           </button>
         </div>
 
@@ -494,16 +712,22 @@ export default function Home() {
               {variables.map((_var: VariableItem) => (
                 <VariableLine
                   key={_var.id}
+                  ref={(el: VariableLineHandle | null) => {
+                    if (el) {
+                      variableRefs.current.set(_var.id, el);
+                    } else {
+                      variableRefs.current.delete(_var.id);
+                    }
+                  }}
                   id={_var.id}
                   latexInput={_var._latexRender}
                   excelInput={_var.excelVar}
                   inFocusMode={focusMode}
-                  focusedVariableId={focusedVariableId}
-                  onLatexInput={(val) => handleVariableLatexInput(_var.id, val)}
-                  onExcelInput={(val) => handleVariableExcelInput(_var.id, val)}
-                  onNewLineRequested={() => handleVariableNewLine(_var.id)}
-                  onDelete={() => handleVariableDelete(_var.id)}
-                  onFocus={() => setFocusedVariableId(_var.id)}
+                  onVariableLatexInput={handleVariableLatexInput}
+                  onVariableExcelInput={handleVariableExcelInput}
+                  onVariableNewLine={handleVariableNewLine}
+                  onVariableDelete={handleVariableDelete}
+                  onVariableFocus={handleVariableFocus}
                 />
               ))}
             </SortableContext>
@@ -513,10 +737,10 @@ export default function Home() {
 
       {/* Floating Help Button */}
       <button
-        onClick={() => setHelpOpen(true)}
+        onClick={handleHelpOpen}
         className="fixed bottom-4 right-4 p-2 rounded bg-blue-600 text-white shadow-lg hover:bg-blue-700"
       >
-        <FontAwesomeIcon icon={faBars} size="sm" />
+        <MemoizedIcon icon={faBars} size="sm" />
       </button>
 
       {helpOpen && (
@@ -526,10 +750,10 @@ export default function Home() {
             <div className="flex items-center justify-between p-4 border-b">
               <h2 className="text-2xl font-semibold">Main Menu</h2>
               <button
-                onClick={() => setHelpOpen(false)}
+                onClick={handleHelpClose}
                 className="p-2 border text-red-700 hover:bg-gray-100"
               >
-                <FontAwesomeIcon icon={faX} />
+                <MemoizedIcon icon={faX} />
               </button>
             </div>
 
@@ -543,14 +767,7 @@ export default function Home() {
             {/* Import/Export buttons */}
             <div className="flex items-center justify-between p-4 border-t">
               <button
-                onClick={() => {
-                  if (hasDirtyWork) {
-                    const wantToOverride = confirm('Do you want to overwrite your existing work?');
-                    if (!wantToOverride) return;
-                  }
-
-                  fileInputRef.current?.click();
-                }}
+                onClick={handleImportClick}
                 className="px-6 py-2 border hover:bg-gray-100"
               >
                 Import...
@@ -564,38 +781,7 @@ export default function Home() {
 
               <button
                 className="px-6 py-2 border hover:bg-gray-100"
-                onClick={() => {
-                  const data = {
-                    projectName,
-                    equations: equations.map(equ => ({
-                      ...equ,
-                      latex: equ.latex.trim()
-                    })),
-                    variables: variables.map(_var => {
-                      // NOTE: We don't want to keep _latexRender as it's only used for input rendering and will be auto-populated
-                      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-                      const { _latexRender, ...rest } = _var;
-                      return {
-                        ...rest,
-                        latexVar: _var.latexVar.trim(),
-                        units: _var.units.trim(),
-                        excelVar: _var.excelVar.trim()
-                      };
-                    })
-                  };
-
-                  // Create or generate a project filename that's compatible with all OSes (mainly Windows)
-                  const projectFilename = projectName ?
-                    sanitize(slugify(projectName)) :
-                    `ws-${format(new Date(), 'yyyy_MM_dd_hh_mm_a')}`;
-
-                  // Save the workspace file
-                  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-                  saveAs(blob, `${projectFilename}.mq.json`);
-
-                  // Close the help panel afterwards
-                  setHelpOpen(false);
-                }}
+                onClick={handleExportClick}
               >
                 Export...
               </button>
@@ -606,73 +792,7 @@ export default function Home() {
                 ref={fileInputRef}
                 // NOTE: This is hidden since we use a custom button to allow triggering the "File Import" dialog
                 className="hidden"
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-
-                  const reader = new FileReader();
-
-                  reader.onload = () => {
-                    try {
-                      const parsed = JSON.parse(reader.result as string);
-
-                      // Validate the structure of the parsed data
-                      if (!parsed || typeof parsed !== 'object') {
-                        throw new Error('Invalid workspace file format');
-                      }
-
-                      if (!Array.isArray(parsed.equations)) {
-                        throw new Error('Workspace file is missing the list of equations');
-                      }
-
-                      if (!Array.isArray(parsed.variables)) {
-                        throw new Error('Workspace file is missing the list of variables');
-                      }
-
-                      const projectName = parsed.projectName ?? '';
-                      const parsedEquations = parsed.equations as EquationItem[];
-                      const parsedVariablesRaw = parsed.variables as VariableItem[];
-
-                      // Map to new array with _latexRender added (immutable pattern)
-                      const parsedVariables = parsedVariablesRaw.map(_var => {
-                        // Wrap the units around square brackets
-                        // NOTE: There MUST be a space after \lbrack, otherwise Mathlive will sometimes think
-                        // it's a separate macro like \lbrackm (i.e. \lbrack + m)
-                        const _latexRender = _var.units ? `${_var.latexVar}\\left\\lbrack ${_var.units}\\right\\rbrack` : _var.latexVar ;
-                        return { ..._var, _latexRender };
-                      });
-
-                      // Clear focused IDs to prevent auto-focusing during bulk import
-                      setFocusedEquationId(null);
-                      setFocusedVariableId(null);
-
-                      // Hydrate the stores with the parsed equations
-                      setProjectName(projectName);
-                      setEquations(parsedEquations);
-                      setVariables(parsedVariables);
-
-                      // Scroll both panels to the top after import
-                      equationsScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-                      variablesScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
-
-                      // Close the help panel afterwards
-                      setHelpOpen(false);
-                    } catch (err) {
-                      const errorMsg = err instanceof Error ? err.message : 'Unknown error';
-                      alert(`Unable to read workspace file: ${errorMsg}`);
-                    } finally {
-                      // Reset the input so the same file can be imported again if needed
-                      e.target.value = '';
-                    }
-                  };
-
-                  reader.onerror = () => {
-                    alert('Failed to read file. Please try again.');
-                    e.target.value = '';
-                  };
-
-                  reader.readAsText(file);
-                }}
+                onChange={handleFileChange}
               />
             </div>
           </div>

@@ -1,7 +1,7 @@
 'use client';
 
 // React imports
-import { ChangeEvent, FormEvent, KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { ChangeEvent, FormEvent, KeyboardEvent, forwardRef, memo, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 
 // Drag-and-drop kit integration
 import { useSortable } from '@dnd-kit/sortable';
@@ -11,15 +11,21 @@ import { CSS } from '@dnd-kit/utilities';
 import { MathfieldElement } from 'mathlive';
 
 // Font Awesome Icons
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faGripVertical, faTrashCan } from '@fortawesome/free-solid-svg-icons';
+import MemoizedIcon from '@/components/MemoizedIcon';
 
 // Local imports
 import { cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
 
+// Hooks
+import { useDebounceCallback } from 'usehooks-ts';
+
+// Constants
+export const INPUT_DEBOUNCE_DELAY = 200;
+
 
 // Excel cell reference validation states for border rendering
-enum CELL_REF_STATES {
+const enum CELL_REF_STATES {
   VALID,
   MISSING,
   INVALID,
@@ -32,6 +38,14 @@ const CELL_REF_BORDER_STYLES = {
   undefined: '1px solid #ccc',
   null: '1px solid #ccc',
 };
+
+// Static style objects (extracted to avoid recreation on every render)
+const GRIP_ICON_STYLE = { color: 'gray' } as const;
+const MATHFIELD_STYLE = {
+  fontSize: '1.25rem',
+  border: '1px solid #ccc',
+  borderRadius: '0.25rem',
+} as const;
 
 function isValidCellRef(cellRef: string): boolean {
   try {
@@ -48,197 +62,299 @@ interface VariableLineProps {
   latexInput: string;
   excelInput: string;
   inFocusMode: boolean;
-  focusedVariableId: string | null;
-  onLatexInput: (val: string) => void;
-  onExcelInput: (val: string) => void;
-  onNewLineRequested: () => void;
-  onDelete: () => void;
-  onFocus: () => void;
+  onVariableLatexInput: (id: string, val: string) => void;
+  onVariableExcelInput: (id: string, val: string) => void;
+  onVariableNewLine: (id: string) => void;
+  onVariableDelete: (id: string) => void;
+  onVariableFocus: (id: string) => void;
 }
 
-const VariableLine = memo<VariableLineProps>(function VariableLine({
-  id,
-  latexInput,
-  excelInput,
-  inFocusMode,
-  focusedVariableId,
+export interface VariableLineHandle {
+  focus: () => void;
+}
 
-  // Listeners
-  onLatexInput,
-  onExcelInput,
-  onNewLineRequested,
-  onDelete,
-  onFocus,
-}) {
-  //////////////////////////////
-  // Stage 1: Setup variables //
-  //////////////////////////////
+// eslint-disable-next-line require-explicit-generics/require-explicit-generics
+const VariableLine = memo(
+  forwardRef<VariableLineHandle, VariableLineProps>(
+    function VariableLine({
+      id,
+      latexInput,
+      excelInput,
+      inFocusMode,
 
-  const latexMathfieldRef = useRef<MathfieldElement | null>(null);
+      // Global handlers
+      onVariableLatexInput,
+      onVariableExcelInput,
+      onVariableNewLine,
+      onVariableDelete,
+      onVariableFocus,
+    },
+    ref
+  ) {
+    'use memo';
 
-  // Cell verification
-  const [inputCellState, setInputCellState] = useState<CELL_REF_STATES>(CELL_REF_STATES.VALID);
+    //////////
+    // REFS //
+    //////////
 
-  // Drag-and-drop integration
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+    // Main mathfield element ref
+    const latexMathfieldRef = useRef<MathfieldElement | null>(null);
 
-  ///////////////////////////////////
-  // Stage 2: Setup logic on mount //
-  ///////////////////////////////////
+    ///////////
+    // STATE //
+    ///////////
 
-  // Setup the mathfield element on mount
-  // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
-  useEffect(() => {
-    if (!latexMathfieldRef.current) return;
-    const mf = latexMathfieldRef.current;
+    // Local state for immediate visual feedback (debounced updates to parent)
+    const [localLatexInput, setLocalLatexInput] = useState<string>(latexInput);
+    const [localExcelInput, setLocalExcelInput] = useState<string>(excelInput);
 
-    // Remove menu items for the variable editor
-    mf.menuItems = [];
+    // Cell reference verification state for border rendering
+    const [inputCellState, setInputCellState] = useState<CELL_REF_STATES>(CELL_REF_STATES.VALID);
 
-    // Listener to add a new line when pressing Enter/Return
-    function addNewLine(evt: InputEvent) {
-      if (evt.data === 'insertLineBreak') {
+    ///////////////
+    // CALLBACKS //
+    ///////////////
+
+    // Create stable callbacks that close over the ID
+    const onLatexInput = useCallback(
+      (val: string) => {
+        onVariableLatexInput(id, val);
+      },
+      [id, onVariableLatexInput]
+    );
+
+    const onExcelInput = useCallback(
+      (val: string) => {
+        onVariableExcelInput(id, val);
+      },
+      [id, onVariableExcelInput]
+    );
+
+    // Create debounced versions of the callbacks
+    const debouncedOnLatexInput = useDebounceCallback(onLatexInput, INPUT_DEBOUNCE_DELAY);
+    const debouncedOnExcelInput = useDebounceCallback(onExcelInput, INPUT_DEBOUNCE_DELAY);
+
+    const onNewLineRequested = useCallback(() => {
+      onVariableNewLine(id);
+    }, [id, onVariableNewLine]);
+
+    const onDelete = useCallback(() => {
+      onVariableDelete(id);
+    }, [id, onVariableDelete]);
+
+    const onFocus = useCallback(() => {
+      onVariableFocus(id);
+    }, [id, onVariableFocus]);
+
+    ///////////
+    // HOOKS //
+    ///////////
+
+    // Drag-and-drop integration
+    const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+
+    // Expose focus method to parent via ref
+    useImperativeHandle<VariableLineHandle, VariableLineHandle>(ref, () => ({
+      focus: () => {
+        latexMathfieldRef.current?.focus();
+      },
+    }), []); // Empty deps: focus method is stable and only depends on ref
+
+    ///////////////////////
+    // EFFECTS: PROP SYNC //
+    ///////////////////////
+
+    // Sync prop changes to local state (handles external updates like imports)
+    useEffect(() => {
+      setLocalLatexInput(latexInput);
+    }, [latexInput]);
+
+    useEffect(() => {
+      setLocalExcelInput(excelInput);
+    }, [excelInput]);
+
+    /////////////////////////////////
+    // EFFECTS: SETUP (MOUNT ONLY) //
+    /////////////////////////////////
+
+    // Setup the mathfield element on mount
+    // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
+    // OPTIMIZED: Callbacks are stable (via useCallback), so event listeners can use them directly.
+    useEffect(() => {
+      const mf = latexMathfieldRef.current;
+      if (!mf) return;
+
+      // Remove menu items for the variable editor
+      mf.menuItems = [];
+
+      // Listener to add a new line when pressing Enter/Return
+      const addNewLine = (evt: InputEvent) => {
+        if (evt.data === 'insertLineBreak') {
+          evt.preventDefault();
+          onNewLineRequested();
+        }
+      };
+
+      // Listener to enforce alpha and greek virtual keyboards for variable typing
+      const changeKeyboardLayout = () => {
+        window.mathVirtualKeyboard.layouts = ['alphabetic', 'greek'];
+        onFocus();
+      };
+
+      // Add necessary event listeners
+      mf.addEventListener('focusin', changeKeyboardLayout);
+      mf.addEventListener('beforeinput', addNewLine);
+
+      // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
+      return () => {
+        mf.removeEventListener('focusin', changeKeyboardLayout);
+        mf.removeEventListener('beforeinput', addNewLine);
+      };
+    }, [onNewLineRequested, onFocus]);
+
+    /////////////////////////////
+    // EFFECTS: VALIDATION //
+    /////////////////////////////
+
+    // Re-render the cell reference border based on content validity
+    useEffect(() => {
+      if (localExcelInput === '') {
+        setInputCellState(CELL_REF_STATES.MISSING);
+      } else if (!isValidCellRef(localExcelInput)) {
+        setInputCellState(CELL_REF_STATES.INVALID);
+      } else {
+        setInputCellState(CELL_REF_STATES.VALID);
+      }
+    }, [localExcelInput]);
+
+    //////////////////////
+    // MEMOIZED VALUES //
+    /////////////////////
+
+    // Memoize mathfield inline style object with calculated border style
+    const inputStyle = useMemo(() => ({
+      border: inFocusMode ? CELL_REF_BORDER_STYLES[CELL_REF_STATES.VALID] : CELL_REF_BORDER_STYLES[inputCellState],
+      borderRadius: '0.25rem',
+    }), [inFocusMode, inputCellState]);
+
+    ///////////////
+    // CALLBACKS //
+    ///////////////
+
+    // Memoize mathfield input handler with immediate local update and debounced parent update
+    const handleLatexInput = useCallback((event: FormEvent<MathfieldElement>) => {
+      const mf = event.target as MathfieldElement;
+      const latex = mf.getValue('latex-unstyled');
+
+      // Update local state immediately for instant visual feedback
+      setLocalLatexInput(latex);
+
+      // Debounced update to parent to reduce expensive re-renders
+      debouncedOnLatexInput(latex);
+    }, [debouncedOnLatexInput]);
+
+    // Memoize Excel cell input handler with immediate local update and debounced parent update
+    const handleExcelChange = useCallback((evt: ChangeEvent<HTMLInputElement>) => {
+      const value = evt.target.value;
+
+      // Update local state immediately for instant visual feedback
+      setLocalExcelInput(value);
+
+      // Debounced update to parent to reduce expensive re-renders
+      debouncedOnExcelInput(value);
+    }, [debouncedOnExcelInput]);
+
+    // Memoize F4 key handler (cycle cell references)
+    const handleExcelKeyDown = useCallback((evt: KeyboardEvent<HTMLInputElement>) => {
+      if (evt.key === 'F4') {
         evt.preventDefault();
+        const cycledRef = cycleCellRef(localExcelInput);
+
+        // Update local state immediately
+        setLocalExcelInput(cycledRef);
+
+        // Debounced update to parent
+        debouncedOnExcelInput(cycledRef);
+      }
+    }, [localExcelInput, debouncedOnExcelInput]);
+
+    // Memoize Enter key handler
+    const handleExcelKeyUp = useCallback((evt: KeyboardEvent<HTMLInputElement>) => {
+      if (evt.key === 'Enter') {
         onNewLineRequested();
       }
-    }
+    }, [onNewLineRequested]);
 
-    // Listener to enforce alpha and greek virtual keyboards for variable typing
-    function changeKeyboardLayout() {
-      window.mathVirtualKeyboard.layouts = ['alphabetic', 'greek'];
-      onFocus();
-    }
+    ////////////
+    // RENDER //
+    ////////////
 
-    // Add necessary event listeners
-    mf.addEventListener('focusin', changeKeyboardLayout);
-    mf.addEventListener('beforeinput', addNewLine);
-
-    // Only grab focus if this variable is the focused one (e.g., user created via Enter/Return or clicked Add button)
-    // This prevents all variables from auto-focusing during bulk imports
-    if (focusedVariableId === id) {
-      mf.focus();
-    }
-
-    // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
-    return () => {
-      mf.removeEventListener('focusin', changeKeyboardLayout);
-      mf.removeEventListener('beforeinput', addNewLine);
-    };
-    // NOTE: We don't expect onNewLineRequested or onFocus to change
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latexMathfieldRef, focusedVariableId, id]);
-
-  // Re-render the cell reference border based on content validity
-  useEffect(() => {
-    if (excelInput === '') {
-      setInputCellState(CELL_REF_STATES.MISSING);
-    } else if (!isValidCellRef(excelInput)) {
-      setInputCellState(CELL_REF_STATES.INVALID);
-    } else {
-      setInputCellState(CELL_REF_STATES.VALID);
-    }
-  }, [excelInput]);
-
-  ///////////////////////////////
-  // Stage 3: Render component //
-  ///////////////////////////////
-
-  // Memoize border style to avoid recalculating on every render
-  const cellRefBorderStyle = useMemo(() => {
-    return inFocusMode ? CELL_REF_BORDER_STYLES[CELL_REF_STATES.VALID] : CELL_REF_BORDER_STYLES[inputCellState];
-  }, [inFocusMode, inputCellState]);
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{
-        transform: CSS.Translate.toString(transform),
-        transition,
-        zIndex: isDragging ? 999 : undefined,
-        position: 'relative',
-      }}
-      className="grid grid-cols-[1.5rem_2fr_2fr_2.5rem] justify-center gap-1 border border-gray-700 bg-gray-50"
-    >
-      <button
-        {...attributes}
-        {...listeners}
-        tabIndex={-1}
-        className="ml-1 py-2 place-self-center cursor-grab hover:bg-gray-200 active:cursor-grabbing"
-      >
-        <FontAwesomeIcon icon={faGripVertical} style={{ color: 'gray' }} />
-      </button>
-
-      <math-field
-        id={`mathfield-${id}`}
-        ref={latexMathfieldRef}
-        // script-depth={5}
-        default-mode="inline-math"
-        className="w-full min-w-[120px] my-2 place-content-center hide-menu"
+    return (
+      <div
+        ref={setNodeRef}
         style={{
-          fontSize: '1.25rem',
-          border: '1px solid #ccc',
-          borderRadius: '0.25rem',
+          transform: CSS.Translate.toString(transform),
+          transition,
+          zIndex: isDragging ? 999 : undefined,
+          position: 'relative',
+          // Hint to browser to use GPU acceleration for transforms during drag
+          willChange: transform ? 'transform' : undefined,
         }}
-        onInput={(event: FormEvent<MathfieldElement>) => {
-          const mf = event.target as MathfieldElement;
-          onLatexInput(mf.getValue('latex-unstyled'));
-        }}
+        className="grid grid-cols-[1.5rem_2fr_2fr_2.5rem] justify-center gap-1 border border-gray-700 bg-gray-50"
       >
-        {latexInput}
-      </math-field>
-
-      <input
-        type="text"
-        value={excelInput}
-        className="w-full min-w-[80px] px-1 py-2 place-self-center rounded border"
-        style={{
-          // In focus mode, render only black borders for minimal distraction
-          border: cellRefBorderStyle,
-          borderRadius: '0.25rem',
-        }}
-        onChange={(evt: ChangeEvent<HTMLInputElement>) => {
-          onExcelInput(evt.target.value);
-        }}
-        onKeyDown={(evt: KeyboardEvent<HTMLInputElement>) => {
-          if (evt.key === 'F4') {
-            evt.preventDefault();
-            onExcelInput(cycleCellRef(excelInput));
-          }
-        }}
-        onKeyUp={(evt: KeyboardEvent<HTMLInputElement>) => {
-          if (evt.key === 'Enter') {
-            onNewLineRequested();
-          }
-        }}
-      />
-
-      <div className="mr-1 place-self-center">
         <button
-          onClick={onDelete}
-          className="p-2 rounded border bg-red-100 text-red-700 hover:bg-red-200"
+          {...attributes}
+          {...listeners}
+          tabIndex={-1}
+          className="ml-1 py-2 place-self-center cursor-grab hover:bg-gray-200 active:cursor-grabbing"
         >
-          <FontAwesomeIcon icon={faTrashCan} />
+          <MemoizedIcon icon={faGripVertical} style={GRIP_ICON_STYLE} />
         </button>
+
+        <math-field
+          id={`mathfield-${id}`}
+          ref={latexMathfieldRef}
+          // script-depth={5}
+          default-mode="inline-math"
+          className="w-full min-w-[120px] my-2 place-content-center hide-menu"
+          style={MATHFIELD_STYLE}
+          onInput={handleLatexInput}
+        >
+          {localLatexInput}
+        </math-field>
+
+        <input
+          type="text"
+          value={localExcelInput}
+          className="w-full min-w-[80px] px-1 py-2 place-self-center rounded border"
+          style={inputStyle}
+          onChange={handleExcelChange}
+          onKeyDown={handleExcelKeyDown}
+          onKeyUp={handleExcelKeyUp}
+        />
+
+        <div className="mr-1 place-self-center">
+          <button
+            onClick={onDelete}
+            className="p-2 rounded border bg-red-100 text-red-700 hover:bg-red-200"
+          >
+            <MemoizedIcon icon={faTrashCan} />
+          </button>
+        </div>
       </div>
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  // Custom comparison to prevent re-renders when only irrelevant fields change
-  // Return true if props are equal (component should NOT re-render)
-  // Note: We intentionally skip comparing callbacks to avoid re-renders from inline functions
+    );
+  }),
+  (prevProps: VariableLineProps, nextProps: VariableLineProps) => {
+    // Custom comparison to prevent re-renders when only irrelevant fields change
+    // Return true if relevant props are equal (component should NOT re-render)
 
-  // Check if core data changed
-  if (
-    prevProps.id !== nextProps.id ||
-    prevProps.latexInput !== nextProps.latexInput ||
-    prevProps.excelInput !== nextProps.excelInput ||
-    prevProps.inFocusMode !== nextProps.inFocusMode ||
-    prevProps.focusedVariableId !== nextProps.focusedVariableId
-  ) {
-    return false; // Core data changed, must re-render
+    return (
+      prevProps.id === nextProps.id &&
+      prevProps.latexInput === nextProps.latexInput &&
+      prevProps.excelInput === nextProps.excelInput &&
+      prevProps.inFocusMode === nextProps.inFocusMode
+    );
   }
-
-  return true; // All relevant props are equal, skip re-render
-});
+);
 
 export default VariableLine;
