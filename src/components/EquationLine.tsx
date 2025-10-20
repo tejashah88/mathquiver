@@ -23,7 +23,7 @@ import MemoizedIcon from '@/components/MemoizedIcon';
 import extractEquationParts from '@/logic/extract-equation-parts';
 import { extractLatexVariables } from '@/logic/latex-var-extract';
 import { mathjsonToExcel } from '@/logic/mathjson-excel';
-import { applyStyleToRange, clearStyles, parseMathfieldDOM } from '@/logic/mathfield-dom-stylizer';
+import { applyStyleToRange, clearStyles, parseMathfieldDOM } from '@/logic/mathfield-dom-parser';
 import { FLAGS } from '@/utils/feature-flags';
 
 // Types

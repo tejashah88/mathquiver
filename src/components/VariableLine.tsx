@@ -19,7 +19,7 @@ import { cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
 
 // Hooks
 import { useDebounceCallback } from 'usehooks-ts';
-import { applyStyleToRange, clearStyles, parseMathfieldDOM } from '@/logic/mathfield-dom-stylizer';
+import { applyStyleToRange, clearStyles, parseMathfieldDOM } from '@/logic/mathfield-dom-parser';
 import { FLAGS } from '@/utils/feature-flags';
 
 // Constants
