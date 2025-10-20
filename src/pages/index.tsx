@@ -595,7 +595,9 @@ export default function Home() {
   return (
     <div className={`flex h-dvh overflow-y-hidden bg-gray-100 ${enableCompactView ? 'flex-col' : 'md:flex-row'}`}>
       {/* Equations Panel */}
-      <div className={`flex flex-col border-gray-300 ${enableCompactView ? 'h-1/2 border-b' : 'h-auto w-2/3 border-r'}`}>
+      <div className={`flex flex-col border-gray-300 ${
+        enableCompactView ? (variables.length > 0 ? 'h-3/5 border-b' : 'h-4/5 border-b') : 'h-auto w-2/3 border-r'
+      }`}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
           {/* Left side: Workspace name input */}
           <div className="flex grow items-center gap-4">
@@ -679,7 +681,7 @@ export default function Home() {
 
       {/* Variables Panel */}
       <div className={`flex flex-col border-gray-300 bg-gray-50 ${
-        enableCompactView ? 'h-1/2 border-t' : 'h-auto w-1/3 min-w-[300px] border-l'
+        enableCompactView ? (variables.length > 0 ? 'h-2/5 border-t' : 'h-1/5 border-t') : 'h-auto w-1/3 min-w-[300px] border-l'
       }`}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
           <h2 className="text-2xl font-semibold">Variables</h2>
