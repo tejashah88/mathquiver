@@ -601,8 +601,6 @@ export default function Home() {
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
           {/* Left side: Workspace name input */}
           <div className="flex grow items-center gap-4">
-            {/* <h2 className="text-2xl font-semibold">Equations</h2> */}
-
             <input
               id="workspace-name"
               type="text"

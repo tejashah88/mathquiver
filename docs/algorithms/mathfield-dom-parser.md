@@ -954,36 +954,6 @@ const htmlChild = child as HTMLElement;
 
 **Overall**: O(n * d) where d is typically very small, effectively O(n).
 
-### Space Complexity
-
-- **O(m)** for result array where m = number of characters
-- **O(d)** for recursion stack where d = nesting depth
-- **O(1)** for other data structures (counters, references)
-
-**Typical values**:
-- Small expression (10 characters): ~0.5 KB
-- Medium expression (50 characters): ~2.5 KB
-- Large expression (200 characters): ~10 KB
-
-### Scaling Characteristics
-
-**Small expressions** (< 20 characters):
-- DOM nodes: < 50
-- Processing time: < 1ms
-- Result size: < 1 KB
-
-**Medium expressions** (20-100 characters):
-- DOM nodes: 50-250
-- Processing time: 1-5ms
-- Result size: 1-5 KB
-
-**Large expressions** (100+ characters):
-- DOM nodes: 250-1000+
-- Processing time: 5-20ms
-- Result size: 5-20 KB
-
-**Empirical data**: Tested on expressions up to 500 characters. Performance scales linearly with character count. DOM traversal is the dominant factor, not context detection.
-
 ---
 
 ## Design Decisions
@@ -1499,21 +1469,14 @@ console.log('Expression statistics:', stats);
 
 ### Related Files
 
-- **Implementation**: [src/logic/mathfield-dom-parser.ts](../src/logic/mathfield-dom-parser.ts)
+- **Implementation**: [src/logic/mathfield-dom-parser.ts](../../src/logic/mathfield-dom-parser.ts)
 - **Tests**: [tests/logic/mathfield-dom-parser.test.ts](../../tests/logic/mathfield-dom-parser.test.ts)
 - **Test Fixtures**: [tests/logic/mathfield-fixtures/](../../tests/logic/mathfield-fixtures/)
-- **Documentation**: [docs/algorithms/mathfield-dom-parser.md](./mathfield-dom-parser.md) (this file)
 
 ### External Dependencies
 
 - **MathLive**: Math rendering library that generates the shadow DOM structure
   - Version: Uses standard MathLive shadow DOM structure
   - Classes: ML__base, ML__mathit, ML__cmr, ML__msubsup, ML__mfrac, etc.
-
-### Related Concepts
-
-- **Shadow DOM**: Web standard for encapsulated DOM trees
-- **MathLive Rendering**: How MathLive converts LaTeX to visual representation
-- **CSS Font Classes**: Semantic classification through typography
 
 ---
