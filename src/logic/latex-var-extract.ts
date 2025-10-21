@@ -313,45 +313,50 @@ class VariableBuilder {
      * combined variable and the extracted components.
      *
      * Key rules:
-     * - Subscripts: ALWAYS keep attached to base, never split
+     * - Subscripts: ALWAYS keep attached to base, never split (unless empty)
      * - Superscripts: Keep if pure alphabetic OR numeric-only, otherwise split
+     * - Empty modifiers: Ignore them (treat as if they don't exist)
      */
     build(): string[] {
         const results: string[] = [];
 
+        // Check if subscript/superscript are empty (important for edge cases like "tests_{}")
+        const hasNonEmptySubscript = this.subscript && this.subscript.rawString.trim() !== '';
+        const hasNonEmptySuperscript = this.superscript && this.superscript.rawString.trim() !== '';
+
         // Case 1: Both subscript and superscript present
-        if (this.subscript && this.superscript) {
+        if (hasNonEmptySubscript && hasNonEmptySuperscript) {
             let varName = this.base;
 
             // Subscripts: Always attach (never split)
-            varName += '_' + formatModifierString(this.subscript.rawString);
+            varName += '_' + formatModifierString(this.subscript!.rawString);
 
             // Superscripts: Attach if pure alphabetic or numeric-only
-            if (this.superscript.isPureAlphabetic || this.superscript.isNumericOnly) {
-                if (!this.superscript.isNumericOnly) {
-                    varName += '^' + formatModifierString(this.superscript.rawString);
+            if (this.superscript!.isPureAlphabetic || this.superscript!.isNumericOnly) {
+                if (!this.superscript!.isNumericOnly) {
+                    varName += '^' + formatModifierString(this.superscript!.rawString);
                 }
                 results.push(varName);
             } else {
                 // Mixed content superscript: keep base with subscript, extract superscript components
                 results.push(varName);
-                if (this.superscript.containsVariables) {
-                    results.push(...extractVariablesFromAST(this.superscript.nodes));
+                if (this.superscript!.containsVariables) {
+                    results.push(...extractVariablesFromAST(this.superscript!.nodes));
                 }
             }
         }
         // Case 2: Only subscript
-        else if (this.subscript) {
+        else if (hasNonEmptySubscript) {
             // Subscripts: Always attach to base (never split, regardless of content)
-            const varName = this.base + '_' + formatModifierString(this.subscript.rawString);
+            const varName = this.base + '_' + formatModifierString(this.subscript!.rawString);
             results.push(varName);
         }
         // Case 3: Only superscript
-        else if (this.superscript) {
-            if (this.superscript.isNumericOnly) {
+        else if (hasNonEmptySuperscript) {
+            if (this.superscript!.isNumericOnly) {
                 // Numeric exponent: invisible for variable naming
                 results.push(this.base);
-            } else if (this.superscript.isPureAlphabetic) {
+            } else if (this.superscript!.isPureAlphabetic) {
                 // Pure alphabetic: decide based on whether base is a constant
                 const isBaseConstant = KNOWN_CONSTANTS.has(this.base);
 
@@ -359,8 +364,8 @@ class VariableBuilder {
                     // Base is a constant: add it and extract superscript components
                     // Example: e^{e^{x}} → extract 'e' and 'x'
                     results.push(this.base);
-                    if (this.superscript.containsVariables) {
-                        results.push(...extractVariablesFromAST(this.superscript.nodes));
+                    if (this.superscript!.containsVariables) {
+                        results.push(...extractVariablesFromAST(this.superscript!.nodes));
                     }
                 } else {
                     // Pure alphabetic with non-constant base: ALWAYS keep together
@@ -368,14 +373,14 @@ class VariableBuilder {
                     // - M^{sl} (depth=0) → keep as 'M^{sl}'
                     // - x^{y^{z}} (depth=1) → keep as 'x^{y^{z}}'
                     // - a^{b^{c^{d}}} (depth=2) → keep as 'a^{b^{c^{d}}}'
-                    const varName = this.base + '^' + formatModifierString(this.superscript.rawString);
+                    const varName = this.base + '^' + formatModifierString(this.superscript!.rawString);
                     results.push(varName);
                 }
             } else {
                 // Mixed content: add base and extract components
                 results.push(this.base);
-                if (this.superscript.containsVariables) {
-                    results.push(...extractVariablesFromAST(this.superscript.nodes));
+                if (this.superscript!.containsVariables) {
+                    results.push(...extractVariablesFromAST(this.superscript!.nodes));
                 }
             }
         }

@@ -270,3 +270,48 @@ describe('Extract Variables from Latex Expression', () => {
     expect(result.toSorted()).toIncludeSameMembers(expected.toSorted());
   });
 });
+
+describe('Empty Modifier Edge Cases', () => {
+  // Edge case: Empty subscripts and superscripts should be ignored
+  // This prevents false positives like "s_{}" appearing when typing "tests_{}"
+  const emptyModifierCases = [
+    // Empty subscripts (note: 'e' and 'i' are filtered as mathematical constants)
+    [String.raw`s_{}`, ['s']],
+    [String.raw`test_{}`, ['s', 't']],  // 'e' is filtered as constant
+    [String.raw`tests_{}`, ['s', 't']], // 'e' is filtered as constant
+    [String.raw`x_{}`, ['x']],
+    [String.raw`ab_{}`, ['a', 'b']],
+
+    // Empty superscripts
+    [String.raw`s^{}`, ['s']],
+    [String.raw`test^{}`, ['s', 't']],  // 'e' is filtered as constant
+    [String.raw`tests^{}`, ['s', 't']], // 'e' is filtered as constant
+    [String.raw`x^{}`, ['x']],
+    [String.raw`ab^{}`, ['a', 'b']],
+
+    // Both empty modifiers
+    [String.raw`s_{}^{}`, ['s']],
+    [String.raw`x_{}^{}`, ['x']],
+    [String.raw`test_{}^{}`, ['s', 't']], // 'e' is filtered as constant
+
+    // Empty modifier followed by normal variable
+    [String.raw`tests_{}+x`, ['s', 't', 'x']], // 'e' is filtered as constant
+    [String.raw`tests^{}+x`, ['s', 't', 'x']], // 'e' is filtered as constant
+
+    // Normal modifiers should still work (regression tests)
+    [String.raw`x_{i}`, ['x_{i}']],  // Note: 'i' would be filtered if not in subscript
+    [String.raw`x^{2}`, ['x']],
+    [String.raw`x^{a}`, ['x^{a}']],
+    [String.raw`s_{1}`, ['s_1']],
+    [String.raw`tests_{1}`, ['s', 's_1', 't']], // 'e' is filtered as constant
+
+    // Mixed: empty and non-empty modifiers
+    [String.raw`x_{}+y_{i}`, ['x', 'y_{i}']],
+    [String.raw`a^{}+b^{c}`, ['a', 'b^{c}']],
+  ];
+
+  test.each(emptyModifierCases)('empty modifiers: %s => %s', (input, expected) => {
+    const result = extractLatexVariables(input);
+    expect(result.toSorted()).toIncludeSameMembers(expected.toSorted());
+  });
+});
