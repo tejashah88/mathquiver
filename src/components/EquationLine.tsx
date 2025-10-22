@@ -191,10 +191,34 @@ const EquationLine = memo(
 
     // Setup the mathfield element on mount
     // Source: https://mathlive.io/mathfield/lifecycle/#-attachedmounted
-    // OPTIMIZED: Callbacks are stable (via useCallback), so event listeners can use them directly
     useEffect(() => {
       const mf = latexMathfieldRef.current;
       if (!mf) return;
+
+      // Docs: https://mathlive.io/mathfield/guides/commands/#editing-commands
+      // BROKEN: Add a placeholder for subscripts and superscripts to avoid ghost characters
+      // See open issue here: https://github.com/arnog/mathlive/issues/2886
+
+      // const addPlaceholderSubSuper = (evt: any) => {
+      //   const currentValue = mf.getValue();
+      //   const newValue = currentValue
+      //     .replaceAll(/_{}/g, '_{\\placeholder{}}')
+      //     .replaceAll(/\^{}/g, '^{\\placeholder{}}');
+
+      //   if (currentValue === newValue) return;
+      //   console.log(currentValue, newValue);
+
+      //   // Use selectionMode: 'after' to keep cursor at the end
+      //   mf.setValue(newValue, {
+      //     selectionMode: 'after'
+      //   });
+
+      //   const lastCursorPos = mf.position;
+      //   mf.executeCommand('moveToPreviousPlaceholder');
+      //   if (Math.abs(lastCursorPos - mf.position) > 1) {
+      //     mf.position = lastCursorPos
+      //   }
+      // }
 
       // Setup custom menu for equation editing
       mf.menuItems = [
@@ -268,11 +292,13 @@ const EquationLine = memo(
       };
 
       // Add necessary event listeners
+      // mf.addEventListener('selection-change', addPlaceholderSubSuper);
       mf.addEventListener('beforeinput', addNewLine);
       mf.addEventListener('focusin', handleFocus);
 
       // Remember to remove the listeners, especially since dev mode can reload the same webpage multiple times
       return () => {
+        // mf.removeEventListener('selection-change', addPlaceholderSubSuper);
         mf.removeEventListener('beforeinput', addNewLine);
         mf.removeEventListener('focusin', handleFocus);
       };
