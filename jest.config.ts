@@ -30,6 +30,9 @@ const config: Config = {
 
   // The test environment that will be used for testing
   testEnvironment: 'jest-fixed-jsdom',
+
+  // A list of directories to skip scanning for test files
+  testPathIgnorePatterns: ['/node_modules/', '/mathlive/']
 };
 
 export default createJestConfig(config);

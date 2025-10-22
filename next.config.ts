@@ -12,10 +12,13 @@ const config: NextConfig = {
   basePath: '/mathquiver',
 
   // React Compiler
+  reactCompiler: {
+    compilationMode: 'annotation',
+  },
+
+  // Turbopack experimental
   experimental: {
-    reactCompiler: {
-      compilationMode: 'annotation',
-    },
+    turbopackFileSystemCacheForDev: true,
   },
 };
 

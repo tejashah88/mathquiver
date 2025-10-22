@@ -42,3 +42,6 @@ next-env.d.ts
 
 # .swc cache
 .swc
+
+# NOTE: Cloned library repositories for AI models to scan through to validate their proposed logic
+mathlive/

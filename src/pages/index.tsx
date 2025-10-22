@@ -1,8 +1,5 @@
 'use client';
 
-// Import Mathlive LaTeX rendering fonts first
-import 'mathlive/fonts.css';
-
 // React imports
 import { useState, useEffect, useRef, useCallback, useMemo, startTransition } from 'react';
 
