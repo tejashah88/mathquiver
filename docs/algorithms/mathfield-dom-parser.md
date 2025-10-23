@@ -1,30 +1,19 @@
 # MathLive Shadow DOM Parser Algorithm
 
+Author: Claude Sonnet 4.5
+
 ## Overview
 
-The MathLive Shadow DOM Parser algorithm traverses the shadow DOM structure of a MathfieldElement to build a character-level index with rich metadata. This enables direct styling and manipulation of rendered mathematical content without mutating the underlying LaTeX expression. Unlike LaTeX-based coloring approaches (e.g., `\textcolor`), this algorithm provides precise control over individual characters and their visual presentation while preserving the original mathematical notation.
+This parser algorithm traverses the shadow DOM of a MathfieldElement to build a character-level index with metadata. This enables direct styling and manipulation of rendered mathematical content without mutating the underlying LaTeX expression. Mathlive suggests using LaTeX-based commands like `\textcolor`, which is not ideal for dynamic styling.
 
 **Key Features**:
 - Recursive DOM traversal with character-level indexing
-- Five character types: variable, operator, number, punctuation, symbol
-- Five contexts: base, subscript, superscript, numerator, denominator
 - Depth tracking for nested structures (subscripts, superscripts, fractions)
-- CSS class-based character classification using MathLive's font conventions
 - Element reference preservation for direct DOM manipulation
-- Non-destructive styling that preserves LaTeX integrity
-
----
 
 ## Design Principles
 
-### 1. Non-Mutating Styling
-
-The algorithm operates directly on rendered DOM elements without modifying the LaTeX source:
-- **Traditional approach**: `\textcolor{red}{x}` mutates LaTeX and limits flexibility
-- **This approach**: Direct DOM styling via `element.style.color = 'red'` preserves LaTeX
-- **Benefit**: Enables dynamic styling, partial coloring, and interactive features
-
-### 2. CSS Class-Based Classification
+### CSS Class-Based Classification
 
 Character types are determined by MathLive's font class conventions:
 - **ML__mathit**: Italic math font (variables like `x`, `y`)
@@ -33,14 +22,14 @@ Character types are determined by MathLive's font class conventions:
 - **ML__ams**: AMS symbols (mathematical operators)
 - **Context-aware fallback**: Character content analysis when CSS classes are ambiguous
 
-### 3. Structure-Aware Context Detection
+### Structure-Aware Context Detection
 
 Context is determined by analyzing MathLive's vlist positioning structure:
 - **Subscript/Superscript detection**: Navigate `ML__msubsup > ML__vlist-t > ML__vlist-r > ML__vlist` and identify positioned children by order
 - **Fraction detection**: Navigate `ML__mfrac > ML__vlist-t > ML__vlist-r > ML__vlist` and sort by `style.top` value (more negative = numerator)
 - **Reliable positioning**: Uses MathLive's internal structure rather than heuristics
 
-### 4. Depth Tracking for Nested Elements
+### Depth Tracking for Nested Elements
 
 Maintains nesting level throughout traversal:
 - **Depth 0**: Top-level expression elements
@@ -48,11 +37,9 @@ Maintains nesting level throughout traversal:
 - **Depth tracking**: Increments when entering `ML__msubsup` or `ML__mfrac` containers
 - **Use case**: Enables depth-based filtering or styling (e.g., "color only top-level variables")
 
----
-
 ## Assumptions
 
-### 1. Valid MathLive Shadow DOM Structure
+### Valid MathLive Shadow DOM Structure
 
 The algorithm assumes the MathfieldElement has a properly rendered shadow DOM with the standard MathLive structure:
 - Shadow root is accessible via `mathfield.shadowRoot`
@@ -61,7 +48,7 @@ The algorithm assumes the MathfieldElement has a properly rendered shadow DOM wi
 
 **Rationale**: MathLive's rendering is handled by the library before this algorithm runs. Malformed shadow DOM indicates a MathLive initialization error.
 
-### 2. Stable MathLive CSS Classes
+### Stable MathLive CSS Classes
 
 The algorithm relies on MathLive's CSS class naming conventions remaining stable:
 - Font classes: `ML__mathit`, `ML__cmr`, `ML__mathbf`, etc.
@@ -70,7 +57,7 @@ The algorithm relies on MathLive's CSS class naming conventions remaining stable
 
 **Rationale**: These classes are part of MathLive's public rendering API. Breaking changes would be documented in major version updates.
 
-### 3. Shadow Root Accessibility
+### Shadow Root Accessibility
 
 The algorithm assumes shadow root access is not blocked:
 - Shadow DOM is open mode (not closed)
@@ -79,7 +66,7 @@ The algorithm assumes shadow root access is not blocked:
 
 **Rationale**: MathLive uses open shadow roots by default. Closed shadow roots would prevent any DOM-based manipulation.
 
-### 4. Standard MathLive Rendering Mode
+### Standard MathLive Rendering Mode
 
 The algorithm assumes MathLive is using standard rendering mode:
 - Static rendering (not editable mode with cursor)
@@ -87,8 +74,6 @@ The algorithm assumes MathLive is using standard rendering mode:
 - No custom styling that overwrites MathLive's structural classes
 
 **Rationale**: The algorithm is designed for reading/displaying rendered math, not editing mode. Editable mode includes additional cursor and selection elements.
-
----
 
 ## Algorithm Structure
 
@@ -132,8 +117,6 @@ For each node:
 2. If element     -> Check if nesting container, recurse into children
 3. Skip           -> Elements with skip classes are ignored
 ```
-
----
 
 ## Pseudo-Code
 
@@ -333,8 +316,6 @@ FUNCTION getContext(element: HTMLElement) -> string
     RETURN 'base'
 ```
 
----
-
 ## Mapping Tables
 
 ### CSS Font Classes (MathLive)
@@ -390,8 +371,6 @@ ML__center     -> Centered content wrapper
 ML__base       -> Base container for all math content
 ```
 
----
-
 ## Examples
 
 ### Example 1: Simple Expression
@@ -431,8 +410,6 @@ ML__base       -> Base container for all math content
   { char: 'z', index: 4, type: 'variable', depth: 0, context: 'base' }
 ]
 ```
-
----
 
 ### Example 2: Subscripts
 
@@ -490,8 +467,6 @@ ML__base       -> Base container for all math content
 ]
 ```
 
----
-
 ### Example 3: Superscripts
 
 **Input LaTeX**: `a^{2}+b^{2}=c^{2}`
@@ -537,8 +512,6 @@ ML__base       -> Base container for all math content
   { char: '2', index: 7, type: 'number', depth: 1, context: 'superscript' }
 ]
 ```
-
----
 
 ### Example 4: Fractions
 
@@ -598,8 +571,6 @@ ML__base       -> Base container for all math content
 ]
 ```
 
----
-
 ### Example 5: Mixed Nesting
 
 **Input LaTeX**: `x_{i}^{2}+\frac{y}{z}`
@@ -643,8 +614,6 @@ ML__base       -> Base container for all math content
 ```
 
 **Note**: Variable 'x' has both subscript and superscript but is marked as depth=1 context='base'. The subscript 'i' and superscript '2' are at the same depth but different contexts.
-
----
 
 ### Example 6: Deeply Nested Expression
 
@@ -693,8 +662,6 @@ ML__base       -> Base container for all math content
 
 **Note**: Context reflects the immediate positioning structure (subscript, superscript, base within ML__msubsup), not the parent fraction context. The 'x' is technically in the numerator of a fraction, but its immediate context is 'base' within ML__msubsup. To determine "x is in a fraction numerator," you would need to track parent contexts separately.
 
----
-
 ## Special Cases Handled
 
 ### 1. Zero-Width Space Characters
@@ -712,8 +679,6 @@ if (text.trim() === '' || text === '\u200B') {
 }
 ```
 
----
-
 ### 2. Fraction Line Elements
 
 Fraction horizontal lines are rendered using CSS borders or SVG, not text:
@@ -725,8 +690,6 @@ Fraction horizontal lines are rendered using CSS borders or SVG, not text:
 ```
 
 **Handling**: ML__frac-line is in SKIP_CLASSES, so these elements are not traversed.
-
----
 
 ### 3. Positioned Elements in Vlists
 
@@ -740,8 +703,6 @@ MathLive uses `style.top` to position elements vertically:
 **Handling**: Context detection filters positioned children and uses:
 - **For ML__msubsup**: Order of positioned children (first=subscript, second=superscript)
 - **For ML__mfrac**: Sorting by `style.top` value (most negative=numerator, less negative=denominator)
-
----
 
 ### 4. Multiple Modifiers on Same Base
 
@@ -757,8 +718,6 @@ DOM: ML__msubsup with two positioned children after base
 - Second positioned child -> superscript context
 - Base element gets 'base' context
 
----
-
 ### 5. Greek Letters with Modifiers
 
 Greek letters rendered with modifiers:
@@ -771,8 +730,6 @@ DOM: <span class="ML__cmmi">\u03B8</span> with subscript structure
 **Handling**: Greek letter characters are classified the same as Latin letters:
 - If in ML__mathit or ML__cmmi -> 'variable'
 - Modifiers processed identically to Latin variables
-
----
 
 ### 6. Whitespace Handling
 
@@ -791,8 +748,6 @@ for (const char of text) {
 }
 ```
 
----
-
 ### 7. Strut Elements
 
 MathLive inserts strut elements for vertical alignment:
@@ -803,8 +758,6 @@ MathLive inserts strut elements for vertical alignment:
 ```
 
 **Handling**: All strut classes are in SKIP_CLASSES, preventing traversal.
-
----
 
 ## Edge Cases & Solutions
 
@@ -823,8 +776,6 @@ return result;  // []
 
 **Behavior**: No error thrown, empty array indicates no characters to style.
 
----
-
 ### Edge Case 2: Whitespace-Only Text Nodes
 
 **Problem**: Text nodes containing only spaces, tabs, or newlines.
@@ -842,8 +793,6 @@ for (const char of text) {
 }
 ```
 
----
-
 ### Edge Case 3: Missing Parent Element
 
 **Problem**: Text node's parent element is null (orphaned text node).
@@ -858,8 +807,6 @@ if (!parentElement) return;
 
 **Note**: This indicates a malformed DOM, which shouldn't occur with valid MathLive rendering.
 
----
-
 ### Edge Case 4: Deep Nesting (Depth > 3)
 
 **Problem**: Expressions with many nested levels (e.g., `\frac{x_{i}^{2}}{y_{j}^{3}}`).
@@ -872,8 +819,6 @@ const newDepth = isNestingContainer ? depth + 1 : depth;
 ```
 
 **Test Validation**: Tests verify `depth >= 0` and `depth < 10` as reasonable bounds.
-
----
 
 ### Edge Case 5: Elements Without style.top
 
@@ -895,8 +840,6 @@ const positionedChildren = Array.from(vlist.children).filter(
 ```
 
 **Behavior**: Elements without `style.top` are excluded from positioning logic.
-
----
 
 ### Edge Case 6: Context Ambiguity in Complex Structures
 
@@ -922,8 +865,6 @@ return 'base';  // Default if no match
 
 **Behavior**: Innermost context wins (e.g., subscript within fraction returns 'subscript').
 
----
-
 ### Edge Case 7: JSDOM vs Browser DOM
 
 **Problem**: Tests use JSDOM which may have slight differences from browser DOM.
@@ -936,98 +877,7 @@ if (child.nodeType !== 1) return false;
 const htmlChild = child as HTMLElement;
 ```
 
-**Test Coverage**: All fixtures validated in JSDOM environment to ensure compatibility.
-
----
-
-## Performance Characteristics
-
-### Time Complexity
-
-- **Best case**: O(n) where n = number of DOM nodes
-- **Average case**: O(n)
-- **Worst case**: O(n * m) where m = average depth of ancestor walk
-
-**Single-pass traversal**: Each DOM node visited exactly once via recursive traversal.
-
-**Context detection overhead**: For each text node, walks up ancestor chain (typically < 10 levels). This adds O(d) where d = nesting depth, but d is usually < 5.
-
-**Overall**: O(n * d) where d is typically very small, effectively O(n).
-
----
-
 ## Design Decisions
-
-### Why Traverse Shadow DOM Instead of Parsing LaTeX?
-
-**Decision**: Parse rendered shadow DOM rather than LaTeX source.
-
-**Rationale**:
-1. **Separation of concerns**: MathLive handles rendering complexities (font selection, positioning, layout)
-2. **Visual accuracy**: DOM reflects actual rendered output, including browser-specific rendering
-3. **Access to rendered positions**: Can map characters to exact pixel positions via element references
-4. **No LaTeX mutation**: Styling via DOM doesn't modify the mathematical notation
-
-**Alternative considered**: Parse LaTeX and reconstruct rendering. Rejected because:
-- Requires duplicating MathLive's rendering logic
-- Doesn't account for browser-specific rendering differences
-- Can't access actual pixel positions
-
----
-
-### Why CSS Class-Based Classification?
-
-**Decision**: Use MathLive's CSS font classes (ML__mathit, ML__cmr) to classify characters.
-
-**Rationale**:
-1. **Semantic information**: Font classes encode mathematical semantics (variables vs operators)
-2. **Reliable**: MathLive's font selection follows mathematical typesetting conventions
-3. **Accurate**: Handles edge cases (Greek letters, special symbols) correctly
-4. **Maintainable**: Leverages MathLive's existing classification logic
-
-**Alternative considered**: Regex-based classification by character content only. Rejected because:
-- Ambiguous cases: Is 'R' a variable or a constant (gas constant)?
-- Doesn't handle Greek letters well
-- Misses semantic information encoded in fonts
-
----
-
-### Why Use Vlist Structure for Context Detection?
-
-**Decision**: Navigate MathLive's vlist (vertical list) structure to determine subscript/superscript/fraction contexts.
-
-**Rationale**:
-1. **Structural accuracy**: Vlist positioning is how MathLive actually renders subscripts/superscripts
-2. **Order preservation**: Positioned children maintain order (first=subscript, second=superscript)
-3. **Pixel-perfect**: Uses actual `style.top` values for fraction numerator/denominator detection
-4. **Robust**: Works even with complex nesting
-
-**Alternative considered**: Heuristic-based detection (e.g., "if font size is smaller, assume subscript"). Rejected because:
-- Unreliable with custom styling
-- Doesn't distinguish subscript from superscript
-- Breaks with nested structures
-
----
-
-### Why Separate Depth and Context?
-
-**Decision**: Maintain both `depth` (nesting level) and `context` (position type) as separate properties.
-
-**Rationale**:
-1. **Different information**: Depth = how nested, context = where positioned
-2. **Independent styling**: May want to style all depth=2 elements OR all subscripts
-3. **Clarity**: More explicit than encoding both in a single value
-4. **Flexibility**: Enables queries like "all top-level subscripts" (depth=1, context='subscript')
-
-**Example**:
-```
-\frac{x_{i}}{y}
-- 'x': depth=2, context='base' (base of subscript within numerator)
-- 'i': depth=2, context='subscript'
-- 'y': depth=1, context='denominator'
-```
-
----
 
 ### Why Maintain Element References?
 
@@ -1038,10 +888,6 @@ const htmlChild = child as HTMLElement;
 2. **Pixel positions**: Can query `getBoundingClientRect()` for exact positions
 3. **Interactivity**: Enables hover effects, click handlers on individual characters
 4. **Performance**: Avoids costly DOM queries during styling operations
-
-**Trade-off**: Increases memory usage (~8 bytes per character for reference), but enables core use cases.
-
----
 
 ## Testing Strategy
 
@@ -1134,16 +980,6 @@ Each fixture runs comprehensive validation:
 **(e) Nested Structures**
 - Counts fixtures with depth > 0
 - Validates substantial coverage (>= 30 fixtures)
-
-### Test Coverage Metrics
-
-**Character Types**: All 5 types covered
-**Contexts**: All 5 contexts covered
-**Nesting Depths**: Depth 0-3+ covered
-**Special Characters**: Equals signs, commas, parentheses
-**Complex Structures**: Subscripts, superscripts, fractions, nested combinations
-
----
 
 ## Implementation Notes
 
@@ -1243,13 +1079,11 @@ index
   .forEach(item => item.element.style.color = 'red');
 ```
 
----
-
 ## Future Enhancements
 
 ### Potential Improvements
 
-#### 1. Support for Matrices and Arrays
+#### Support for Matrices and Arrays
 
 **Current state**: Algorithm only handles basic structures (subscripts, superscripts, fractions).
 
@@ -1271,113 +1105,6 @@ interface CharacterIndexItem {
 ```
 
 **Use case**: Color different matrix rows, highlight diagonal elements
-
----
-
-#### 2. Custom Classification Rules
-
-**Current state**: Character types hardcoded based on CSS classes and content.
-
-**Why it would be useful**:
-- Domain-specific notation (e.g., in chemistry, 'H' might be a constant, not variable)
-- Custom font styling that doesn't match MathLive conventions
-- User-defined classification overrides
-
-**Possible API**:
-```typescript
-parseMathfieldDOM(mathfield, {
-  classify: (char: string, element: HTMLElement) => {
-    if (char === 'H') return 'constant';
-    return defaultClassify(char, element);
-  }
-});
-```
-
----
-
-#### 3. Performance Optimization with Caching
-
-**Current state**: Re-parses entire shadow DOM on each call.
-
-**Why it would be useful**:
-- Repeated styling operations on same mathfield
-- Real-time interactive features (hover effects)
-- Reduced CPU usage for large documents with many mathfields
-
-**Possible implementation**:
-```typescript
-const cache = new WeakMap<MathfieldElement, CharacterIndexItem[]>();
-
-function parseMathfieldDOM(mathfield: MathfieldElement, useCache = true) {
-  if (useCache && cache.has(mathfield)) {
-    return cache.get(mathfield)!;
-  }
-  const result = /* parse */;
-  cache.set(mathfield, result);
-  return result;
-}
-```
-
-**Considerations**: Cache invalidation when mathfield content changes
-
----
-
-#### 4. Support for Other Math Rendering Libraries
-
-**Current state**: Specifically designed for MathLive's shadow DOM structure.
-
-**Why it would be useful**:
-- KaTeX has different DOM structure
-- MathJax uses different CSS classes
-- Enable cross-library compatibility
-
-**Possible abstraction**:
-```typescript
-interface MathRenderer {
-  getBaseElement(): HTMLElement;
-  classifyCharacter(char: string, element: HTMLElement): string;
-  getContext(element: HTMLElement): string;
-}
-
-function parseMathDOM(renderer: MathRenderer): CharacterIndexItem[] {
-  // Generic parsing logic
-}
-```
-
----
-
-#### 5. Real-Time Updates on LaTeX Changes
-
-**Current state**: Static parsing, doesn't update when LaTeX changes.
-
-**Why it would be useful**:
-- Live editing with synchronized styling
-- Preserve styling during editing
-- Interactive educational tools
-
-**Possible implementation**:
-```typescript
-function watchMathfield(
-  mathfield: MathfieldElement,
-  onChange: (index: CharacterIndexItem[]) => void
-) {
-  const observer = new MutationObserver(() => {
-    const newIndex = parseMathfieldDOM(mathfield);
-    onChange(newIndex);
-  });
-
-  observer.observe(mathfield.shadowRoot!, {
-    childList: true,
-    subtree: true
-  });
-
-  return () => observer.disconnect();
-}
-```
-
-**Use case**: Maintain highlighting while user edits equation
-
----
 
 ## Usage Examples
 
@@ -1463,8 +1190,6 @@ const stats = {
 console.log('Expression statistics:', stats);
 ```
 
----
-
 ## References
 
 ### Related Files
@@ -1472,11 +1197,3 @@ console.log('Expression statistics:', stats);
 - **Implementation**: [src/logic/mathfield-dom-parser.ts](../../src/logic/mathfield-dom-parser.ts)
 - **Tests**: [tests/logic/mathfield-dom-parser.test.ts](../../tests/logic/mathfield-dom-parser.test.ts)
 - **Test Fixtures**: [tests/logic/mathfield-fixtures/](../../tests/logic/mathfield-fixtures/)
-
-### External Dependencies
-
-- **MathLive**: Math rendering library that generates the shadow DOM structure
-  - Version: Uses standard MathLive shadow DOM structure
-  - Classes: ML__base, ML__mathit, ML__cmr, ML__msubsup, ML__mfrac, etc.
-
----

@@ -1,19 +1,17 @@
 # MathJSON to Excel Formula Conversion Algorithm
 
+Author: ChatGPT 5.0
+
 ## Overview
 
-The MathJSON to Excel Formula Conversion algorithm transforms mathematical expressions from the MathJSON format into valid Excel formulas. MathJSON is a structured JSON representation of mathematical expressions that uses arrays to represent operations and their operands. The algorithm recursively traverses the MathJSON tree structure and converts each node into its corresponding Excel formula syntax, supporting variable substitution for cell references.
+This algorithm transforms MathJSON-formatted (from Mathlive) math expressions format into valid Excel formulas. It recursively traverses the Lisp-like tree structure and converts each node into its corresponding Excel formula syntax, supporting variable substitution for cell references.
 
 **Key Features**:
 - Recursive tree traversal with three base cases (numbers, strings, arrays)
 - Support for 70+ mathematical operations across 11 categories
-- Three mapping types: operators, named functions, and custom transformations
 - Optional variable substitution for Excel cell references
-- Constant evaluation (Pi, e, golden ratio, etc.)
+- Constant evaluation for `pi`, `e`, and `i`
 - Preservation of mathematical precedence through parentheses
-- Error handling with descriptive messages
-
----
 
 ## Design Principles
 
@@ -47,8 +45,6 @@ Strategic parentheses placement ensures correct precedence:
 - Custom transformations handle internal parentheses
 - Prevents Excel order-of-operations errors
 
----
-
 ## Assumptions
 
 ### 1. Valid MathJSON Input
@@ -79,8 +75,6 @@ The algorithm assumes the output will be used in Microsoft Excel or compatible s
 When using variable substitution, variable names should be valid Excel cell references or named ranges.
 
 **Rationale**: Structural parsing only - semantic validation of cell references is Excel's responsibility.
-
----
 
 ## Algorithm Structure
 
@@ -114,8 +108,6 @@ Process arguments recursively and combine with operation:
 convertedArgs = arguments.map(arg -> _mathjsonToExcel(arg, varMap))
 result = combineWithOperation(operation, convertedArgs)
 ```
-
----
 
 ## Pseudo-Code
 
@@ -203,8 +195,6 @@ FUNCTION customRoot(args: string[]) -> string
 FUNCTION customAbs(args: string[]) -> string
     RETURN "ABS(" + args[0] + ")"
 ```
-
----
 
 ## Mapping Tables
 
@@ -347,181 +337,6 @@ LessEqual -> symbol: "<="  // (a<=b)
 GreaterEqual -> symbol: ">="  // (a>=b)
 ```
 
----
-
-## Examples
-
-### Example 1: Simple Arithmetic
-
-**Input MathJSON**:
-```json
-["Add", ["Multiply", 2, 3], 4]
-```
-
-**Processing**:
-1. Root node: `["Add", ...]` -> Operation: `Add` (operator type, symbol `+`)
-2. First arg: `["Multiply", 2, 3]` -> Operation: `Multiply` (operator type, symbol `*`)
-   - Convert: `2` -> `"2"`
-   - Convert: `3` -> `"3"`
-   - Result: `"(2*3)"`
-3. Second arg: `4` -> `"4"`
-4. Combine with `+`: `"((2*3)+4)"`
-
-**Output**: `((2*3)+4)`
-
-**Excel Evaluation**: `10`
-
----
-
-### Example 2: Trigonometric Identity
-
-**Input MathJSON**:
-```json
-["Add",
-  ["Power", ["Sin", "x"], 2],
-  ["Power", ["Cos", "x"], 2]
-]
-```
-
-**Processing**:
-1. Root: `["Add", ...]` -> `+` operator
-2. First term: `["Power", ["Sin", "x"], 2]`
-   - Base: `["Sin", "x"]` -> `"SIN(x)"`
-   - Exponent: `2` -> `"2"`
-   - Result: `"(SIN(x)^2)"`
-3. Second term: `["Power", ["Cos", "x"], 2]`
-   - Base: `["Cos", "x"]` -> `"COS(x)"`
-   - Exponent: `2` -> `"2"`
-   - Result: `"(COS(x)^2)"`
-4. Combine: `"((SIN(x)^2)+(COS(x)^2))"`
-
-**Output**: `((SIN(x)^2)+(COS(x)^2))`
-
-**Mathematical Identity**: sin�(x) + cos�(x) = 1
-
----
-
-### Example 3: Variable Substitution with Cell References
-
-**Input MathJSON**:
-```json
-["Add",
-  ["Multiply", "a", ["Power", "x", 2]],
-  ["Multiply", "b", "x"],
-  "c"
-]
-```
-
-**Variable Mapping**:
-```json
-{
-  "a": "A1",
-  "b": "B1",
-  "c": "C1",
-  "x": "D1"
-}
-```
-
-**Processing**:
-1. Root: `["Add", ...]` -> `+` operator with 3 terms
-2. First term: `["Multiply", "a", ["Power", "x", 2]]`
-   - "a" -> varMap lookup -> `"A1"`
-   - `["Power", "x", 2]` -> `"(D1^2)"`
-   - Result: `"(A1*(D1^2))"`
-3. Second term: `["Multiply", "b", "x"]`
-   - "b" -> `"B1"`, "x" -> `"D1"`
-   - Result: `"(B1*D1)"`
-4. Third term: "c" -> `"C1"`
-5. Combine: `"((A1*(D1^2))+(B1*D1)+C1)"`
-
-**Output**: `((A1*(D1^2))+(B1*D1)+C1)`
-
-**Use Case**: Evaluating quadratic polynomial ax� + bx + c in Excel
-
----
-
-### Example 4: Constant Evaluation
-
-**Input MathJSON**:
-```json
-["Multiply", "Pi", ["Power", "r", 2]]
-```
-
-**Processing**:
-1. Root: `["Multiply", ...]` -> `*` operator
-2. First arg: `"Pi"` -> Constant lookup -> `"PI()"`
-3. Second arg: `["Power", "r", 2]`
-   - Base: `"r"` -> `"r"` (no varMap provided)
-   - Exponent: `2` -> `"2"`
-   - Result: `"(r^2)"`
-4. Combine: `"(PI()*(r^2))"`
-
-**Output**: `(PI()*(r^2))`
-
-**Mathematical Expression**: �r� (area of circle)
-
----
-
-### Example 5: Custom Transformation - Division
-
-**Input MathJSON**:
-```json
-["Divide", ["Add", "a", "b"], ["Subtract", "c", "d"]]
-```
-
-**Processing**:
-1. Root: `["Divide", ...]` -> Custom transformation
-2. First arg: `["Add", "a", "b"]` -> `"(a+b)"`
-3. Second arg: `["Subtract", "c", "d"]` -> `"(c-d)"`
-4. Apply custom divide logic (2 args): `"((a+b)/(c-d))"`
-
-**Output**: `((a+b)/(c-d))`
-
----
-
-**Input MathJSON (Single argument)**:
-```json
-["Divide", "x"]
-```
-
-**Processing**:
-1. Root: `["Divide", ...]` -> Custom transformation
-2. Single arg: `"x"` -> `"x"`
-3. Apply custom divide logic (1 arg): `"(1/x)"`
-
-**Output**: `(1/x)`
-
-**Note**: Single-argument division represents reciprocal
-
----
-
-### Example 6: Nested Operations with Roots
-
-**Input MathJSON**:
-```json
-["Divide",
-  ["Negate", "b"],
-  ["Multiply", 2, "a"]
-]
-```
-
-**Processing**:
-1. Root: `["Divide", ...]` -> Custom transformation
-2. Numerator: `["Negate", "b"]`
-   - Operation: `Negate` (operator type, symbol `-`)
-   - Arg: `"b"` -> `"b"`
-   - Result: `"(-b)"`
-3. Denominator: `["Multiply", 2, "a"]`
-   - Args: `2` -> `"2"`, `"a"` -> `"a"`
-   - Result: `"(2*a)"`
-4. Apply divide: `"((-b)/(2*a))"`
-
-**Output**: `((-b)/(2*a))`
-
-**Part of**: Quadratic formula: x = -b/(2a) � sqrt(b�-4ac)/(2a)
-
----
-
 ## Special Cases Handled
 
 ### 1. Reciprocal Functions
@@ -595,8 +410,6 @@ ComplexConjugate(z) -> IMCONJUGATE(z)
 ImaginaryUnit      -> (0+1i)
 ```
 
----
-
 ## Edge Cases & Solutions
 
 ### Edge Case 1: Unsupported Operations
@@ -612,8 +425,6 @@ throw new MjTranslateError(`ERROR: no mj translation for ${operation}`);
 ```
 
 **User Feedback**: Clear message identifies the missing operation name.
-
----
 
 ### Edge Case 2: Single-Argument Division
 
@@ -632,8 +443,6 @@ custom: (args: string[]) => {
 }
 ```
 
----
-
 ### Edge Case 3: Variable Not in Mapping
 
 **Problem**: Variable name not found in varMap during substitution.
@@ -651,8 +460,6 @@ return node;  // Use original variable name
 
 **Behavior**: Excel will treat it as a named range or show #NAME? error.
 
----
-
 ### Edge Case 4: Zero Arguments
 
 **Problem**: Operation with no arguments (malformed MathJSON).
@@ -668,8 +475,6 @@ return node;  // Use original variable name
 
 **Note**: This is a validation issue that should be caught by MathLive.
 
----
-
 ### Edge Case 5: Nested Constants
 
 **Problem**: Constants inside complex expressions.
@@ -683,8 +488,6 @@ return node;  // Use original variable name
 
 **Solution**: Recursive processing automatically handles constants at any depth.
 
----
-
 ### Edge Case 6: Parentheses Overuse
 
 **Problem**: Every operation wrapped in parentheses can create excessive nesting.
@@ -694,8 +497,6 @@ return node;  // Use original variable name
 **Solution Rationale**: Safety over brevity. Excel's formula parser handles nested parentheses efficiently, and this prevents any precedence errors.
 
 **Alternative**: Could implement precedence-aware parentheses (future enhancement).
-
----
 
 ## Performance Characteristics
 
@@ -720,78 +521,6 @@ Single-pass recursive traversal visits each node exactly once.
 - **Large expressions** (100+ nodes): 5-20ms
 
 Empirically tested on expressions up to 200 nodes. Performance is dominated by string concatenation rather than tree traversal.
-
----
-
-## Design Decisions
-
-### Why Wrap Every Operation in Parentheses?
-
-**Decision**: All operations return results wrapped in parentheses: `(a+b)`, `(SIN(x))`, `(A1*(D1^2))`
-
-**Rationale**:
-1. **Safety**: Prevents Excel order-of-operations errors
-2. **Simplicity**: No need to track precedence levels
-3. **Consistency**: Predictable output format
-4. **Excel Compatibility**: Excel handles nested parentheses efficiently
-
-**Trade-off**: Slightly longer formulas, but guaranteed correctness.
-
----
-
-### Why Three Mapping Types?
-
-**Decision**: Operators, named functions, and custom transformations as separate types.
-
-**Rationale**:
-1. **Operators**: Direct symbol replacement for readability `(a+b)` vs `ADD(a,b)`
-2. **Named Functions**: Simple mapping for standard Excel functions
-3. **Custom Transformations**: Complex logic for special cases (reciprocals, roots, division)
-
-**Alternative Considered**: Single mapping type with complex conditional logic. Rejected due to reduced maintainability.
-
----
-
-### Why Not Flatten N-ary Operations?
-
-**Decision**: Keep nested structure: `((a+b)+c)` instead of `(a+b+c)`
-
-**Rationale**: MathJSON structure is already nested; preserving it simplifies the algorithm.
-
-**Note**: Excel optimizes nested operations automatically, so no performance difference.
-
----
-
-### Why Custom Error Class?
-
-**Decision**: Use `MjTranslateError` class instead of generic `Error`.
-
-**Rationale**:
-1. **Type Safety**: Allows callers to catch specific error types
-2. **Debugging**: Clear indication that error originated from MathJSON conversion
-3. **Error Handling**: Can be handled differently from other errors
-
-```typescript
-class MjTranslateError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = 'MjTranslateError';
-  }
-}
-```
-
----
-
-### Why Separate Constants Table?
-
-**Decision**: Constants in separate `MATHJSON_CONSTANTS` object, not in function mapping.
-
-**Rationale**:
-1. **Clarity**: Distinguishes constants from operations
-2. **Lookup Speed**: Constants checked before variable mapping
-3. **Extensibility**: Easy to add new constants without modifying function logic
-
----
 
 ## Testing Strategy
 
@@ -890,8 +619,6 @@ class MjTranslateError extends Error {
 - Zero arguments: Empty operation (malformed MathJSON)
 - Unsupported operation: Throws `MjTranslateError`
 
----
-
 ## Implementation Notes
 
 ### MathJSON Structure
@@ -977,34 +704,11 @@ function _mathjsonToExcel(node: Expression, varMap: VarMapping): string {
 }
 ```
 
----
-
 ## Future Enhancements
 
 ### Potential Improvements
 
-#### 1. Precedence-Aware Parentheses
-
-**Current state**: All operations wrapped in parentheses: `((a+b)+c)`
-
-**Why it would be useful**:
-- Cleaner formulas: `a+b+c` instead of `((a+b)+c)`
-- Better readability for users editing formulas
-- Reduced formula length (10-20% shorter)
-
-**Possible implementation**:
-```typescript
-function needsParentheses(operation: string, parentOp: string): boolean {
-  const precedence = { Add: 1, Multiply: 2, Power: 3 };
-  return precedence[operation] < precedence[parentOp];
-}
-```
-
-**Considerations**: Complexity vs benefit trade-off, Excel auto-simplifies anyway
-
----
-
-#### 2. Array Formula Support
+#### Array Formula Support
 
 **Current state**: Returns single cell formula strings
 
@@ -1021,9 +725,7 @@ mathjsonToExcel(expr, {
 })
 ```
 
----
-
-#### 3. Custom Function Registry
+#### Custom Function Registry
 
 **Current state**: Functions hardcoded in mapping tables
 
@@ -1039,39 +741,6 @@ registerFunction('CustomFunc', {
   custom: (args) => `CUSTOM(${args.join(',')})`
 });
 ```
-
----
-
-#### 4. Excel Dialect Support
-
-**Current state**: Targets Microsoft Excel syntax
-
-**Why it would be useful**:
-- Google Sheets uses different function names (`ARRAYFORMULA`, `QUERY`)
-- LibreOffice Calc has syntax variations
-- International Excel uses localized function names
-
-**Possible implementation**:
-```typescript
-mathjsonToExcel(expr, {
-  dialect: 'google-sheets' | 'excel' | 'libreoffice'
-})
-```
-
----
-
-#### 5. Formula Optimization
-
-**Current state**: Direct conversion without optimization
-
-**Why it would be useful**:
-- Eliminate redundant operations: `x*1` -> `x`
-- Simplify constants: `2*3` -> `6`
-- Flatten nested operations: `((a+b)+c)` -> `(a+b+c)`
-
-**Considerations**: Adds complexity, may change semantics, Excel optimizer handles most cases
-
----
 
 ## Usage Examples
 
@@ -1126,24 +795,9 @@ try {
 }
 ```
 
----
-
 ## References
 
 ### Related Files
 
 - **Implementation**: [src/logic/mathjson-excel.ts](../../src/logic/mathjson-excel.ts)
 - **Tests**: [tests/logic/mathjson-excel.test.ts](../../tests/logic/mathjson-excel.test.ts)
-- **Documentation**: [docs/algorithms/mathjson-excel-formula.md](./mathjson-excel-formula.md) (this file)
-
-### External Dependencies
-
-- **MathJSON**: JSON-based mathematical expression format
-- **MathLive**: Provides MathJSON parsing from LaTeX
-
-### Related Algorithms
-
-- **LaTeX Variable Extraction**: [latex-variable-extraction.md](./latex-variable-extraction.md) - Extracts variables from LaTeX expressions
-- **Extract Equation Parts**: [extract-equation-parts.md](./extract-equation-parts.md) - Splits equations for processing
-
----

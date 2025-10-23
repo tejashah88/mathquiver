@@ -1,10 +1,10 @@
 # LaTeX Variable Extraction Algorithm
 
+Author: Claude Sonnet 4.5
+
 ## Overview
 
-The LaTeX Variable Extraction algorithm analyzes mathematical expressions written in LaTeX and extracts all variable names, including those with subscripts and superscripts. The algorithm distinguishes between variables that should be kept together (like `M^{sl}`) and those that should be split into components (like `e^{ax+b}`).
-
----
+This algorithm scans a LaTeX expreession for math variables, attempting to preserve subscript and superscript notation. It tries to distinguish between variables that should be kept together (like `M^{sl}`) and those that should be split into components (like `e^{ax+b}`).
 
 ## Design Principles
 
@@ -34,32 +34,12 @@ e^{ax+b} →  a, x, b    (mixed content, split)
 2. **Building** → Construct complete variables
 3. **Extraction** → Traverse AST and collect results
 
----
-
 ## Assumptions
 
-The algorithm makes the following assumptions about its input and environment:
-
-### 1. Valid LaTeX Input
-The algorithm assumes all input is valid, well-formed LaTeX. Input validation is handled by MathLive before reaching this layer. Malformed LaTeX may produce unexpected results or cause the parser to fail.
-
-### 2. Standardized LaTeX Format
-The algorithm assumes input follows standardized LaTeX conventions for mathematical notation. Function names like `\sin`, `\cos`, `\log` are properly formatted as LaTeX macros via MathLive, not plain text (e.g., `\sin(x)` not `sin(x)`).
-
-### 3. Parser Handles Format Variations
-The algorithm relies on the underlying `@unified-latex` parser to normalize common LaTeX variations:
-- `x^2` vs `x^{2}` (with/without braces)
-- `x_i` vs `x_{i}` (with/without braces)
-- Whitespace variations
-
-### 4. No Custom Macro Expansion
-The algorithm treats custom LaTeX macros (defined via `\newcommand`) as atomic units. It does not expand or interpret custom macro definitions.
-
-**Example**: If `\velocity` is defined as `v_{t}`, the algorithm will extract `\velocity` as-is, not `v_{t}`.
-
-**Rationale**: Macro expansion requires a full LaTeX interpreter and is out of scope for variable extraction. Standard macros (Greek letters, mathematical symbols) are fully supported.
-
----
+The algorithm makes the following assumptions about its input:
+1. The input is valid LaTeX mathematical notation. Math functions have a backslash accordingly.
+2. All greek letters are assumed to be as valid as roman letters (A-Z)
+3. No macro expansion will be done to expand their full expression.
 
 ## Algorithm Structure
 
@@ -129,8 +109,6 @@ extractVariablesFromAST(nodes) → string[]
         if group:
             recursively extract from content
 ```
-
----
 
 ## Pseudo-Code
 
@@ -267,8 +245,6 @@ CLASS VariableBuilder:
         RETURN results
 ```
 
----
-
 ## Examples
 
 ### Example 1: Engineering Variables
@@ -283,8 +259,6 @@ CLASS VariableBuilder:
 
 **Output**: `['M_{y}', 'M^{sl}', 'M^{tg}', 'M^{sr}']`
 
----
-
 ### Example 2: Mixed Content Superscript
 
 **Input**: `e^{ax+b}`
@@ -296,8 +270,6 @@ CLASS VariableBuilder:
 4. Extract from superscript: a, x, b
 
 **Output**: `['a', 'b', 'x']` (sorted, e filtered)
-
----
 
 ### Example 3: Subscript with Operators
 
@@ -311,8 +283,6 @@ CLASS VariableBuilder:
 
 **Note**: Subscripts are NEVER split, regardless of content.
 
----
-
 ### Example 4: Nested Pure Alphabetic
 
 **Input**: `x^{y^{z}}`
@@ -324,8 +294,6 @@ CLASS VariableBuilder:
 4. Keep together as complete variable
 
 **Output**: `['x^{y^{z}}']`
-
----
 
 ### Example 5: Deeply Nested Constants
 
@@ -340,8 +308,6 @@ CLASS VariableBuilder:
 
 **Output**: `['x^{y}']` (both e's filtered as constants)
 
----
-
 ### Example 6: Polynomial
 
 **Input**: `ax^2+bx+c=0`
@@ -354,8 +320,6 @@ CLASS VariableBuilder:
 5. `c`: Simple variable → `c`
 
 **Output**: `['a', 'b', 'c', 'x']`
-
----
 
 ## Special Cases Handled
 
@@ -404,8 +368,6 @@ Output: ['p', 'x', 'x^{n}', 'a_{n}', 'n']
 
 Extracts from all parts of the expression.
 
----
-
 ## Edge Cases & Solutions
 
 ### Edge Case 1: Parser Limitation with Deep Nesting
@@ -449,8 +411,6 @@ if (KNOWN_CONSTANTS.has(base)) {
 - Single letters: use braces (`x_{a}`)
 - Multi-char: use braces (`x^{sl}`)
 
----
-
 ## Performance Characteristics
 
 ### Time Complexity
@@ -473,9 +433,7 @@ Re-parsing only occurs for strings with `^` or `_` in deeply nested contexts:
 - Each re-parse is O(m) where m = string length
 - Overall negligible impact
 
----
-
-## Design Decisions
+## Design Decisions (WIP)
 
 ### Why Not Split Subscripts?
 
@@ -500,8 +458,6 @@ Pure alphabetic indicates naming convention (like `M^{sl}` for "M superscript sl
 ```
 M^{sl} → This is a single variable named "M-superscript-sl"
 ```
-
----
 
 ## Implementation Notes
 
@@ -542,37 +498,6 @@ const KNOWN_CONSTANTS = new Set(['e', 'i', '\\pi']);
 
 These are automatically excluded from results.
 
----
-
-## Future Enhancements
-
-### Potential Improvements
-
-#### 1. Configurable Constants
-
-**Current state**: Constants are hardcoded: `['e', 'i', '\\pi']`
-
-**Why it would be useful:**
-- Different domains use different constants
-  - **Physics**: `c` (speed of light), `h` (Planck's constant), `G` (gravitational constant)
-  - **Chemistry**: `R` (gas constant), `N_A` (Avogadro's number)
-  - **Mathematics**: `\phi` (golden ratio), `\gamma` (Euler's constant)
-- Users could customize behavior: `e^{ct}` → extract `['t']` instead of `['c', 't']`
-
-**Possible API:**
-```typescript
-extractLatexVariables(expr: string, options?: {
-  constants?: string[]  // Custom constants to filter
-})
-```
-
-**Implementation considerations:**
-- Backward compatibility (default to current constants)
-- Documentation for common constant sets
-- Clear behavior when constants overlap with Greek letters
-
----
-
 ## Usage Example
 
 ```typescript
@@ -595,19 +520,9 @@ const vars4 = extractLatexVariables('\\theta_1 + \\theta_2');
 // → ['\\theta_1', '\\theta_2']
 ```
 
----
-
 ## References
 
 ### Related Files
 
 - **Implementation**: `src/logic/latex-var-extract.ts`
 - **Tests**: `tests/logic/latex-var-extract.test.ts`
-- **Documentation**: `docs/algorithms/latex-variable-extraction.md` (this file)
-
-### External Dependencies
-
-- `@unified-latex/unified-latex-util-parse` - LaTeX parser
-- `@unified-latex/unified-latex-types` - TypeScript types
-
----

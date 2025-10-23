@@ -7,13 +7,13 @@ A Desmos-like experience to type Excel formulas in a more sane manner. Check it 
 Try out the example by downloading and importing [this workspace file](docs/mathquiver-example.json).
 
 ## Features
-- Desmos-like equation typing experience
+- Desmos-like equation typing experience with LaTeX support
 - Can convert algebra-level equations to Excel formulas with variable replacement
 - Detects missing variables and invalid Excel references
 - (Should) support desktop and tablet viewing (mobile not supported)
 - Can export/import workspace (as file) for later
 
-## How to use
+## Quick Start
 1. Enter your desired equations in the 'Equations' section.
    - You can type equations like functions (eg. `f(x)=Ax+b`), but only RHS is converted.
    - You can also add domain limits with a comma at the end (eg. `x, x < 0`).
