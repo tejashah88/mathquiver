@@ -597,36 +597,41 @@ export default function Home() {
       }`}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
           {/* Left side: Workspace name input */}
-          <div className="flex grow items-center gap-4">
-            <input
-              id="workspace-name"
-              type="text"
-              value={projectName}
-              onChange={handleProjectNameChange}
-              placeholder="Untitled Workspace"
-              className="min-w-120 px-2 py-1 rounded border border-gray-400 text-2xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <input
+            id="project-name"
+            type="text"
+            value={projectName}
+            onChange={handleProjectNameChange}
+            placeholder="Untitled Project"
+            className="flex shrink items-center gap-4 w-100 px-2 py-1 rounded border border-gray-400 text-2xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
 
           {/* Right side: Focus mode + Add button */}
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <label className="text-xl font-medium">Focus Mode:</label>
-              <button
-                type="button"
-                role="switch"
-                aria-checked={focusMode}
-                onClick={handleFocusModeToggle}
-                className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                  focusMode ? 'bg-blue-600' : 'bg-gray-300'
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    focusMode ? 'translate-x-7' : 'translate-x-1'
-                  }`}
+              <label className="relative inline-flex gap-2 cursor-pointer select-none items-center">
+                <span className="label flex items-center text-lg font-medium text-black">
+                  Focus Mode:
+                </span>
+                <input
+                  type="checkbox"
+                  className="sr-only"
+                  checked={focusMode}
+                  onChange={handleFocusModeToggle}
                 />
-              </button>
+
+                <span
+                  className={`slider flex min-h-[26px] min-w-[50px] items-center rounded-full p-1 duration-200 ${
+                    focusMode ? "bg-blue-600" : "bg-gray-300"
+                  }`}
+                >
+                  <span
+                    className={`dot min-h-[18px] min-w-[18px] rounded-full bg-white duration-200 ${
+                      focusMode ? "translate-x-6" : ""
+                    }`}
+                  ></span>
+                </span>
+              </label>
             </div>
 
             <button
