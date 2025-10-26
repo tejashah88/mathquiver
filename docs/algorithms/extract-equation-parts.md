@@ -4,19 +4,48 @@ Author: Claude Sonnet 4.5
 
 ## Overview
 
-This algorithm separates a LaTeX equation based on its function declaration, formula body, and domain limits. This is done by looking for the general form of `f(x) = ... , x < ...` and splitting between the function declaration (before first `=`) and the limit definition (after first top-level `,`). This is used to allow the user to type a standard math function while extracting the formula body for converting to a Excel formula.
+This algorithm separates a LaTeX equation based on its function declaration, formula body, and domain limits using an **AST-based hybrid approach**. It looks for the general form of `f(x) = ... , x < ...` and splits between the function declaration (before first `=`) and the limit definition (after first top-level `,`).
+
+**Key Innovation**: Uses the `unified-latex` Abstract Syntax Tree (AST) for structural analysis while extracting substrings from the original input to preserve exact formatting and whitespace.
 
 **Typical Use Case**:
 ```
 Input:  y = x^2 + 1, x > 0
 Output: ['y ', ' x^2 + 1', ' x > 0']
-                ^
+                ^\
           This part converts to Excel
 ```
 
 ## Design Principles
 
-### 1. Delimiter Handling
+### 1. Hybrid AST-String Approach
+
+**Why Hybrid?**
+- **AST for structure**: Provides accurate parsing of LaTeX constructs (macros, arguments, nesting)
+- **String extraction for output**: Preserves exact whitespace and formatting from original input
+- **Best of both worlds**: Robustness of AST + fidelity of string slicing
+
+**How it works**:
+```
+Input: "a_{1,2} = b_{3,4}, x > 0"
+
+AST analysis:
+  [0] String: "a"
+  [1] Macro: _ with args
+  [2] String: "="        <- equals at char offset 8
+  [3] Whitespace         <- not in substring!
+  [4] String: "b"
+  [5] Macro: _ with args
+  [6] String: ","        <- comma at char offset 17
+  ...
+
+Extraction:
+  funcDeclare = input.substring(0, 8)      -> "a_{1,2} "
+  formulaBody = input.substring(9, 17)     -> " b_{3,4}"
+  limitDef = input.substring(18)           -> " x > 0"
+```
+
+### 2. Delimiter Handling
 
 **Equals Sign (`=`)**:
 - **Split on**: `x=5`, `f(x)=x^2` (assignment/definition)
@@ -26,19 +55,20 @@ Output: ['y ', ' x^2 + 1', ' x > 0']
 - **Split on**: `y=x^2,x>0` (constraint separator)
 - **Skip**: `x_{1,2}`, `\left[0,10\right]` (nested commas)
 
-### 2. Nesting-Aware Parsing
+### 3. Nesting-Aware Parsing
 
-The algorithm tracks nesting depth to avoid splitting on delimiters inside nested structures:
+The algorithm tracks nesting depth through the AST structure:
 
 ```
 Tracked structures:
-- Braces:       x_{i,j}     -> Comma at depth 1, skip
-- Brackets:     x \in [0,1] -> Comma at depth 1, skip
-- Parentheses:  f(a,b)      -> Comma at depth 1, skip
-- \left...\right: \left[0,10\right] -> Special depth tracking
+- Parentheses:   f(a,b)      -> Detected in String nodes, tracked by depth counter
+- Macro args:    x_{i,j}     -> Automatically handled by AST (commas inside args aren't top-level nodes)
+- \left...\right: \left[0,10\right] -> Detected by Macro type, tracked by depth counter
 ```
 
-### 3. First-Match Strategy
+**Key insight**: The AST already separates subscript/superscript arguments (e.g., `_{1,2}`) into nested Argument nodes, so commas inside them never appear in the top-level node list.
+
+### 4. First-Match Strategy
 
 The algorithm finds the **first** occurrence of each delimiter:
 
@@ -47,12 +77,7 @@ x=y=5     -> Split at first '=': ['x', 'y=5', '']
 y=x^2,a,b -> Split at first ',': ['y', 'x^2', 'a,b']
 ```
 
-**Rationale**:
-- First `=` typically represents the function declaration (`y=...` or `f(x)=...`)
-- First top-level `,` separates main equation from constraints
-- Subsequent delimiters remain in their respective parts
-
-### 4. Graceful Degradation
+### 5. Graceful Degradation
 
 The algorithm handles all inputs without throwing errors:
 
@@ -63,8 +88,6 @@ The algorithm handles all inputs without throwing errors:
 'x^2,'  -> ['', 'x^2', '']      Leading delimiter
 ```
 
-**Use Case**: Real-time rendering where user is actively typing incomplete equations.
-
 ## Assumptions
 
 The algorithm makes the following assumptions about its input:
@@ -73,35 +96,66 @@ The algorithm makes the following assumptions about its input:
 
 ## Algorithm Structure
 
-The algorithm operates in two sequential phases:
+The algorithm operates in three sequential phases:
 
-### Phase 1: Find First Equals Sign
+### Phase 1: Parse to AST
 
-**Goal**: Locate the first `=` that represents assignment/definition, not comparison.
-
-**Process**:
-1. Scan string character by character
-2. When encountering `=`, check previous character
-3. Skip if preceded by `<`, `>`, `!`, or `\`
-4. Accept first valid `=` and split string
-
-**Result**: `beforeEquals` and `rest` (everything after `=`)
-
-### Phase 2: Find First Top-Level Comma
-
-**Goal**: Locate the first `,` at nesting depth 0.
+**Goal**: Convert the LaTeX string into a structured Abstract Syntax Tree.
 
 **Process**:
-1. Initialize depth counters: `depth = 0`, `leftRightDepth = 0`
-2. Scan `rest` character by character:
-   - Increment `depth` for `{`, `[`, `(`
-   - Decrement `depth` for `}`, `]`, `)`
-   - Increment `leftRightDepth` for `\left`
-   - Decrement `leftRightDepth` for `\right`
-   - When `,` found and both depths are 0, accept and split
-3. Split `rest` into `mainBody` and `afterComma`
+```typescript
+const ast = parseMath(equation);
+```
 
-**Result**: `mainBody` and `afterComma`
+**Result**: Array of `Node` objects representing the LaTeX structure:
+- `String` nodes: Literal text (e.g., `"x"`, `"="`, `","`)
+- `Macro` nodes: LaTeX commands (e.g., `\theta`, `\frac`, `^`, `_`)
+  - May have `args` array with nested `Argument` nodes
+- `Whitespace` nodes: Spaces between tokens
+- `Group` nodes: Content inside `{...}` (rare in our use case)
+
+Each node has `position` info with character offsets.
+
+### Phase 2: Find First Equals Sign
+
+**Goal**: Locate the character offset of the first `=` that represents assignment/definition, not comparison.
+
+**Process**:
+1. Traverse AST nodes sequentially
+2. For each `String` node containing `"="`:
+   - Check if previous node is a `String` ending with `<`, `>`, `!`, or `\`
+   - If yes, skip (it's part of `<=`, `>=`, `!=`, or `\neq`)
+   - If no, return the character offset from `node.position.start.offset`
+
+**Result**: Character offset of the first valid `=`, or `-1` if not found
+
+**Example**:
+```
+Input: "y<=5=true"
+AST:   [String:"y", String:"<", String:"=", String:"5", String:"=", ...]
+
+First '=' at index 2: prev node is "<" -> skip
+Second '=' at index 4: prev node is "5" -> accept! Return offset
+```
+
+### Phase 3: Find First Top-Level Comma
+
+**Goal**: Locate the character offset of the first `,` at nesting depth 0.
+
+**Process**:
+1. Initialize depth counters: `parenDepth = 0`, `leftRightDepth = 0`
+2. Traverse AST nodes starting after the equals sign:
+   - For each `String` node:
+     - Check if content is `","` and both depths are 0 -> return offset
+     - Count `(` and `)` characters, update `parenDepth`
+   - For each `Macro` node:
+     - If `content === "left"`: increment `leftRightDepth`
+     - If `content === "right"`: decrement `leftRightDepth`
+     - If node has `args`: skip (arguments are already nested, won't encounter their content)
+
+**Result**: Character offset of the first top-level `,`, or `-1` if not found
+
+**Key optimization**: Macros with arguments (like `_{1,2}`) are single nodes with nested `args`. The comma inside `{1,2}` is nested in the argument's content array, so it never appears in the top-level traversal.
 
 ## Pseudo-Code
 
@@ -109,86 +163,108 @@ The algorithm operates in two sequential phases:
 FUNCTION extractEquationParts(equation: string) -> [string, string, string]
 
     // ===========================================================
-    // PHASE 1: Find First Equals Sign
+    // PHASE 1: Parse to AST
     // ===========================================================
 
-    equalsIndex <- -1
+    IF equation is empty:
+        RETURN ['', '', '']
 
-    FOR i = 0 TO length(equation) - 1:
-        IF equation[i] = '=':
-            prevChar <- (i > 0) ? equation[i-1] : ''
+    ast <- parseMath(equation)
 
-            // Skip comparison operators: <=, >=, !=, \neq
-            IF prevChar NOT IN ['<', '>', '!', '\']:
-                equalsIndex <- i
-                BREAK
-
-    // Split by equals
-    IF equalsIndex >= 0:
-        beforeEquals <- equation[0 .. equalsIndex-1]
-        rest <- equation[equalsIndex+1 .. end]
-    ELSE:
-        beforeEquals <- ''
-        rest <- equation
+    IF ast is empty:
+        RETURN ['', '', '']
 
 
     // ===========================================================
-    // PHASE 2: Find First Top-Level Comma
+    // PHASE 2: Find First Equals Sign
     // ===========================================================
 
-    depth <- 0              // Track {}, [], () nesting
-    leftRightDepth <- 0     // Track \left...\right nesting
-    commaIndex <- -1
-    i <- 0
+    equalsOffset <- -1
 
-    WHILE i < length(rest):
-        char <- rest[i]
+    FOR each node in ast:
+        IF node.type = 'string' AND node.content = '=':
+            IF node has previous node:
+                prevNode <- previous node
+                IF prevNode.type = 'string':
+                    lastChar <- last character of prevNode.content
+                    IF lastChar IN ['<', '>', '!', '\\']:
+                        CONTINUE  // Skip comparison operator
 
-        // Handle \left (5 characters: \left)
-        IF char = '\' AND rest[i..i+4] = '\left':
-            leftRightDepth++
-            i += 4         // Skip past \left
-            CONTINUE
-
-        // Handle \right (6 characters: \right)
-        IF char = '\' AND rest[i..i+5] = '\right':
-            leftRightDepth--
-            i += 5         // Skip past \right
-            CONTINUE
-
-        // Track regular nesting depth
-        IF char IN ['{', '[', '(']:
-            depth++
-        ELSE IF char IN ['}', ']', ')']:
-            depth--
-        ELSE IF char = ',' AND depth = 0 AND leftRightDepth = 0:
-            // Found first top-level comma!
-            commaIndex <- i
+            // Found valid equals
+            equalsOffset <- node.position.start.offset
             BREAK
 
-        i++
-
-    // Split by comma
-    IF commaIndex >= 0:
-        mainBody <- rest[0 .. commaIndex-1]
-        afterComma <- rest[commaIndex+1 .. end]
+    // Split string at equals offset
+    IF equalsOffset >= 0:
+        funcDeclare <- equation.substring(0, equalsOffset)
+        restStartOffset <- equalsOffset + 1
     ELSE:
-        mainBody <- rest
-        afterComma <- ''
+        funcDeclare <- ''
+        restStartOffset <- 0
 
-    RETURN [beforeEquals, mainBody, afterComma]
+
+    // ===========================================================
+    // PHASE 3: Find First Top-Level Comma
+    // ===========================================================
+
+    parenDepth <- 0
+    leftRightDepth <- 0
+    commaOffset <- -1
+
+    // Find node index where restStartOffset begins
+    startNodeIndex <- findNodeIndexAtOffset(ast, restStartOffset)
+
+    FOR i = startNodeIndex TO end of ast:
+        node <- ast[i]
+
+        // Check for comma at depth 0 BEFORE updating depth
+        IF node.type = 'string' AND node.content = ',' AND
+           parenDepth = 0 AND leftRightDepth = 0:
+            commaOffset <- node.position.start.offset
+            BREAK
+
+        // Update depth based on node type
+        IF node.type = 'string':
+            FOR each char in node.content:
+                IF char = '(':
+                    parenDepth++
+                ELSE IF char = ')':
+                    parenDepth--
+
+        ELSE IF node.type = 'macro':
+            IF node.content = 'left':
+                leftRightDepth++
+            ELSE IF node.content = 'right':
+                leftRightDepth--
+
+            // Skip macro arguments (already nested)
+            IF node has args:
+                CONTINUE
+
+    // Split string at comma offset
+    IF commaOffset >= 0:
+        formulaBody <- equation.substring(restStartOffset, commaOffset)
+        limitDef <- equation.substring(commaOffset + 1)
+    ELSE:
+        formulaBody <- equation.substring(restStartOffset)
+        limitDef <- ''
+
+    RETURN [funcDeclare, formulaBody, limitDef]
 ```
 
 ## Special Cases Handled
 
-### 1. Comparison Operators
+### Comparison Operators
 
 **Challenge**: Distinguish assignment `=` from comparison `<=`, `>=`, `!=`, `\neq`.
 
-**Solution**: Check previous character before accepting `=`:
+**Solution**: Check if previous AST node is a `String` ending with `<`, `>`, `!`, or `\`:
 ```typescript
-if (prevChar !== '<' && prevChar !== '>' && prevChar !== '!' && prevChar !== '\\') {
+if (prevNode.type === 'string') {
+  const lastChar = prevNode.content.slice(-1);
+  if (lastChar !== '<' && lastChar !== '>' && lastChar !== '!' && lastChar !== '\\') {
     // Valid assignment '='
+  }
 }
 ```
 
@@ -196,14 +272,24 @@ if (prevChar !== '<' && prevChar !== '>' && prevChar !== '!' && prevChar !== '\\
 ```
 y<=5     -> ['', 'y<=5', '']      (No split, <= is comparison)
 x\neq 0  -> ['', 'x\neq 0', '']   (No split, \neq is comparison)
-y=x>=0   -> ['y', 'x>=0', '']     (Split at =, >= stays in mainBody)
+y=x>=0   -> ['y', 'x>=0', '']     (Split at =, >= stays in formulaBody)
 ```
 
-### 2. Commas in Subscripts and Superscripts
+### Commas in Subscripts and Superscripts
 
 **Challenge**: Commas like `x_{1,2}` should not split the equation.
 
-**Solution**: Track brace depth; only split at depth 0.
+**V2 Advantage**: The AST automatically handles this! The subscript `_{1,2}` is parsed as:
+```
+Macro: _
+  args: [
+    Argument {
+      content: [String:"1", String:",", String:"2"]
+    }
+  ]
+```
+
+The comma is nested inside the Argument node's content, so it never appears in the top-level node traversal. **No manual depth tracking needed for braces!**
 
 **Examples**:
 ```
@@ -211,11 +297,11 @@ a_{1,2} = b      -> ['a_{1,2} ', ' b', '']
 x^{a,b} = y, z>0 -> ['x^{a,b} ', ' y', ' z>0']
 ```
 
-### 3. \left and \right Delimiters
+### \left and \right Delimiters
 
 **Challenge**: Commas inside `\left[0,10\right]` should not split.
 
-**Solution**: Separate depth counter for `\left...\right` pairs.
+**Solution**: Track `leftRightDepth` counter for `\left` and `\right` Macro nodes.
 
 **Examples**:
 ```
@@ -223,7 +309,7 @@ x\in\left[0,10\right]   -> No split (comma at leftRightDepth > 0)
 x\in\left(a,b\right)    -> No split (comma at leftRightDepth > 0)
 ```
 
-### 4. Empty Parts
+### Empty Parts
 
 **Challenge**: Handle incomplete or malformed input gracefully.
 
@@ -238,16 +324,35 @@ x\in\left(a,b\right)    -> No split (comma at leftRightDepth > 0)
 'x^2,'   -> ['', 'x^2', '']
 ```
 
-### 5. Function Notation
+### Function Notation
 
 **Challenge**: Functions like `f(x,y)` have commas in parameters.
 
-**Solution**: Depth tracking handles parentheses automatically.
+**Solution**: The parentheses tracking handles this automatically. Commas inside `(...)` are at `parenDepth > 0`, so they're skipped.
 
 **Examples**:
 ```
 f(x,y) = x + y       -> ['f(x,y) ', ' x + y', '']
 g(a,b,c) = 0, x > 0  -> ['g(a,b,c) ', ' 0', ' x > 0']
+```
+
+### Whitespace Preservation
+
+**Challenge**: Preserve all whitespace exactly as in the original input.
+
+**V2 Advantage**: By using character offsets and substring extraction from the original string, all whitespace is automatically preserved - even spaces that the AST parser doesn't explicitly represent as `Whitespace` nodes (like the space after `a_{1,2}` in `a_{1,2} = b`).
+
+**Example**:
+```
+Input:  "a_{1,2} = b_{3,4}, x > 0"
+        ^       ^ ^^        ^^ ^ ^
+        0       7 8 9     17 18...
+
+AST provides offsets: equals at 8, comma at 17
+String extraction:
+  - funcDeclare: input[0:8]   = "a_{1,2} "   (includes trailing space!)
+  - formulaBody: input[9:17]  = " b_{3,4}"   (includes leading space!)
+  - limitDef: input[18:]      = " x > 0"     (includes all spaces!)
 ```
 
 ## Edge Cases & Solutions
@@ -258,34 +363,36 @@ g(a,b,c) = 0, x > 0  -> ['g(a,b,c) ', ' 0', ' x > 0']
 
 **Example**: `\theta_{y,3}^{wr} = F_{n,m}(x,y), x \in [0,10]`
 
-**Solution**: Depth counter handles arbitrary nesting:
+**V2 Solution**: The AST automatically nests subscript/superscript commas:
 ```
-\theta_{y,3}  -> { depth=1, comma skipped }
-F_{n,m}(x,y)  -> { depth=1, comma skipped }
-              -> ( depth=2, comma skipped )
-First ,       -> depth=0 -> Split here!
-[0,10]        -> Will be in afterComma (not split again)
+Macro: _ with args containing [String:"y", String:",", String:"3"]
+Macro: _ with args containing [String:"n", String:",", String:"m"]
+String: "(" -> parenDepth++
+  String: ","  -> at parenDepth=1, skip
+String: ")" -> parenDepth--
+String: ","  -> at parenDepth=0, leftRightDepth=0 -> Split here!
 ```
 
 **Output**: `['\theta_{y,3}^{wr} ', ' F_{n,m}(x,y)', ' x \in [0,10]']`
 
 ### Edge Case 2: Mixed \left...\right and Braces
 
-**Problem**: `\left[...\right]` contains braces with commas.
+**Problem**: `\left[...\ right]` contains braces with commas.
 
 **Example**: `y=f(x),x\in\left[\frac{l_i}{2},l_i\right]`
 
 **Solution**: Two independent depth counters:
 ```
-Scan mainBody: f(x)
-  - ( depth=1
-  - ) depth=0
-First , -> Both depths=0 -> Split!
+Scan formula body: f(x)
+  - String:"(" -> parenDepth=1
+  - String:"," -> at parenDepth=1, skip
+  - String:")" -> parenDepth=0
+First top-level ","  -> Both depths=0 -> Split!
 
-In afterComma: \left[\frac{l_i}{2},l_i\right]
-  - \left: leftRightDepth=1
-  - , stays because leftRightDepth>0
-  - \right: leftRightDepth=0
+In limitDef: \left[\frac{l_i}{2},l_i\right]
+  - Macro: \left -> leftRightDepth=1
+  - String:"," -> at leftRightDepth=1, wouldn't split if checked
+  - Macro: \right -> leftRightDepth=0
 ```
 
 **Output**: `['y', 'f(x)', 'x\in\left[\frac{l_i}{2},l_i\right]']`
@@ -296,87 +403,86 @@ In afterComma: \left[\frac{l_i}{2},l_i\right]
 
 **Example**: `y<=5=true`
 
-**Solution**: First `=` is skipped (prev char is `<`), but second `=` is accepted.
+**Solution**: First `=` is skipped (prev node is `String:"<"`), but second `=` is accepted (prev node is `String:"5"`).
 
 ```
-Scan: y<=5=true
-  - First '=' at index 3: prevChar='<' -> Skip
-  - Second '=' at index 6: prevChar='5' -> Accept!
+AST: [String:"y", String:"<", String:"=", String:"5", String:"=", String:"true"]
+
+First '=' (index 2): prevNode = String:"<" -> Skip
+Second '=' (index 4): prevNode = String:"5" -> Accept!
 ```
 
 **Output**: `['y<=5', 'true', '']`
 
-### Edge Case 4: Whitespace Preservation
-
-**Problem**: Spaces around delimiters should be preserved.
-
-**Example**: `y = x + 1`
-
-**Solution**: No trimming occurs; spaces are preserved exactly.
-
-**Output**: `['y ', ' x + 1', '']` (spaces preserved)
-
-**Rationale**: Downstream processing (Excel conversion) may need original formatting.
-
 ## Implementation Notes
 
-### String-Based Approach
+### AST-Based Structural Analysis
 
-The implementation uses direct string manipulation:
+The implementation uses `parseMath()` from `@unified-latex/unified-latex-util-parse`:
 
 ```typescript
-// No AST parsing, just character scanning:
-for (let i = 0; i < equation.length; i++) {
-    const char = equation[i];
-    // Process character...
+import { parseMath } from '@unified-latex/unified-latex-util-parse';
+import * as Ast from '@unified-latex/unified-latex-types';
+
+const ast = parseMath(equation);  // Returns Node[]
+```
+
+**Key Node Types**:
+- `String`: Literal text content
+- `Macro`: LaTeX commands (with optional `args: Argument[]`)
+- `Whitespace`: Space characters
+- `Group`: Content inside `{...}` braces
+
+### Position-Based String Extraction
+
+Each node has optional `position` metadata:
+```typescript
+node.position.start.offset  // Character index where node starts
+node.position.end.offset    // Character index where node ends
+```
+
+For macros with arguments, we calculate the full range including arguments:
+```typescript
+function getNodeCharRange(node: Ast.Node): { start: number; end: number } {
+  let end = node.position.end.offset;
+  if (node.type === 'macro' && node.args) {
+    for (const arg of node.args) {
+      end = Math.max(end, arg.position.end.offset);
+    }
+  }
+  return { start: node.position.start.offset, end };
 }
 ```
 
-### Depth Tracking
+### Hybrid Extraction Strategy
 
-Two independent depth counters:
+**Why not reconstruct from AST?**
+- AST may not preserve exact whitespace (e.g., space after `a_{1,2}`)
+- Reconstructing LaTeX from AST is complex (need to handle all node types)
+- Original string already has perfect formatting
 
-1. **`depth`**: Regular bracket nesting
-   ```typescript
-   if (char === '{' || char === '[' || char === '(') depth++;
-   if (char === '}' || char === ']' || char === ')') depth--;
-   ```
-
-2. **`leftRightDepth`**: LaTeX delimiter pairs
-   ```typescript
-   if (rest.substring(i, i+5) === '\\left') leftRightDepth++;
-   if (rest.substring(i, i+6) === '\\right') leftRightDepth--;
-   ```
-
-**Why separate?**: `\left[...\right]` should be treated as a unit even though it contains `[` and `]`.
+**Best of both worlds**:
+1. Parse with AST to find logical structure (where is the equals? where is the comma?)
+2. Get character offsets from AST position info
+3. Extract substrings from original input using offsets
+4. Result: Robust parsing + perfect formatting preservation
 
 ### Character Lookahead
 
 The algorithm performs limited lookahead:
 
 ```typescript
-// Check previous character for '='
-const prevChar = i > 0 ? equation[i - 1] : '';
-
-// Check next 5-6 characters for '\left' or '\right'
-const next5 = rest.substring(i, i + 5);
-```
-
-**Lookahead length**: Maximum 6 characters (length of `\right`).
-
-### Index Skipping
-
-When detecting `\left` or `\right`, skip past the keyword:
-
-```typescript
-if (next5 === '\\left') {
-    leftRightDepth++;
-    i += 4;  // Skip past "left" (loop will increment by 1)
-    continue;
+// Check previous node for comparison operator detection
+if (i > 0) {
+  const prevNode = nodes[i - 1];
+  if (prevNode.type === 'string') {
+    const lastChar = prevNode.content.slice(-1);
+    // ... check if <, >, !, or \
+  }
 }
 ```
 
-**Why**: Avoid re-processing characters that are part of the keyword.
+**Lookahead length**: Maximum 1 node (only check previous node, not previous character).
 
 ## Usage Example
 
@@ -387,6 +493,14 @@ const [funcDeclare, formulaBody, limitDef] = extractEquationParts('y=x^2,x>0');
 console.log(funcDeclare);  // 'y'
 console.log(formulaBody);  // 'x^2'
 console.log(limitDef);     // 'x>0'
+
+// Complex example with nested commas
+const [fd, fb, ld] = extractEquationParts(
+  '\\theta_{y,3}^{wr} = \\frac{W_r^g}{4EI}\\left(2l_i x - x^2 - \\frac{3}{4}l_i^2\\right), x \\in \\left[\\frac{l_i}{2}, l_i\\right]'
+);
+console.log(fd);  // '\\theta_{y,3}^{wr} '
+console.log(fb);  // ' \\frac{W_r^g}{4EI}\\left(2l_i x - x^2 - \\frac{3}{4}l_i^2\\right)'
+console.log(ld);  // ' x \\in \\left[\\frac{l_i}{2}, l_i\\right]'
 ```
 
 ## References
@@ -395,3 +509,8 @@ console.log(limitDef);     // 'x>0'
 
 - **Implementation**: [src/logic/extract-equation-parts.ts](../../src/logic/extract-equation-parts.ts)
 - **Tests**: [tests/logic/extract-equation-parts.test.ts](../../tests/logic/extract-equation-parts.test.ts)
+
+### External Dependencies
+
+- `@unified-latex/unified-latex-util-parse`: [GitHub](https://github.com/siefkenj/unified-latex)
+- `@unified-latex/unified-latex-types`: Type definitions for the AST

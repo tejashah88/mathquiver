@@ -1,101 +1,246 @@
-// Author: Claude Sonnet 4.5 as of 10/18/2025
+// Author: Claude Sonnet 4.5 as of 10/25/2025
+// AST-based implementation of equation parts extraction
+// Uses AST for structural analysis but extracts from original string to preserve exact formatting
+
+import { parseMath } from '@unified-latex/unified-latex-util-parse';
+import * as Ast from '@unified-latex/unified-latex-types';
+
+/**
+ * Gets the character offset range for a node and all its content.
+ * For macros with arguments, this includes the arguments.
+ *
+ * @param node - The node to get the range for
+ * @returns Object with start and end offsets, or null if no position info
+ */
+function getNodeCharRange(node: Ast.Node): { start: number; end: number } | null {
+  if (!node.position) {
+    return null;
+  }
+
+  let start = node.position.start.offset;
+  let end = node.position.end.offset;
+
+  // For macros with arguments, we need to include the argument positions
+  if (node.type === 'macro' && node.args) {
+    for (const arg of node.args) {
+      if (arg.type === 'argument' && arg.position) {
+        end = Math.max(end, arg.position.end.offset);
+      }
+    }
+  }
+
+  return { start, end };
+}
+
+/**
+ * Finds the character offset of the first equals sign that is NOT part of a comparison operator.
+ * Skips equals signs that are preceded by <, >, !, or \ in the previous String node.
+ *
+ * @param nodes - Array of AST nodes to search
+ * @returns Character offset of the first valid equals sign, or -1 if not found
+ */
+function findFirstEqualsOffset(nodes: Ast.Node[]): number {
+  for (let i = 0; i < nodes.length; i++) {
+    const node = nodes[i];
+
+    // Look for String nodes containing "="
+    if (node.type === 'string' && node.content === '=') {
+      // Check if previous node is a String ending with <, >, !, or \
+      if (i > 0) {
+        const prevNode = nodes[i - 1];
+        if (prevNode.type === 'string') {
+          const lastChar = prevNode.content.slice(-1);
+          if (lastChar === '<' || lastChar === '>' || lastChar === '!' || lastChar === '\\') {
+            // This is part of a comparison operator, skip it
+            continue;
+          }
+        }
+      }
+
+      // This is a valid equals sign - return its character offset
+      if (node.position) {
+        return node.position.start.offset;
+      }
+    }
+  }
+
+  return -1;
+}
+
+/**
+ * Tracks depth state while traversing nodes.
+ * Depth increases when entering nested structures (parentheses, macro args, \left...\right).
+ */
+interface DepthTracker {
+  parenDepth: number;     // Depth from ( and )
+  leftRightDepth: number; // Depth from \left and \right macros
+}
+
+/**
+ * Updates depth based on a node.
+ * Returns the new depth after processing this node.
+ *
+ * @param node - The node to process
+ * @param depth - Current depth state
+ * @returns Updated depth state
+ */
+function updateDepth(node: Ast.Node, depth: DepthTracker): DepthTracker {
+  const newDepth = { ...depth };
+
+  if (node.type === 'string') {
+    // Count parentheses in the string
+    for (const char of node.content) {
+      if (char === '(') {
+        newDepth.parenDepth++;
+      } else if (char === ')') {
+        newDepth.parenDepth--;
+      }
+    }
+  } else if (node.type === 'macro') {
+    if (node.content === 'left') {
+      newDepth.leftRightDepth++;
+    } else if (node.content === 'right') {
+      newDepth.leftRightDepth--;
+    }
+  }
+
+  return newDepth;
+}
+
+/**
+ * Finds the character offset of the first comma at top-level (depth 0).
+ * Skips commas inside parentheses, macro arguments, and \left...\right blocks.
+ *
+ * @param nodes - Array of AST nodes to search
+ * @param startIndex - Index to start searching from (default 0)
+ * @returns Character offset of the first top-level comma, or -1 if not found
+ */
+function findFirstTopLevelCommaOffset(nodes: Ast.Node[], startIndex: number = 0): number {
+  let depth: DepthTracker = { parenDepth: 0, leftRightDepth: 0 };
+
+  for (let i = startIndex; i < nodes.length; i++) {
+    const node = nodes[i];
+
+    // Check if this node is a comma at depth 0 BEFORE updating depth
+    // This ensures we catch commas before they're affected by depth changes
+    if (
+      node.type === 'string' &&
+      node.content === ',' &&
+      depth.parenDepth === 0 &&
+      depth.leftRightDepth === 0
+    ) {
+      // Return the character offset of this comma
+      if (node.position) {
+        return node.position.start.offset;
+      }
+    }
+
+    // Update depth for this node
+    depth = updateDepth(node, depth);
+
+    // For macros with args, we need to skip over the arguments
+    // because they represent nested content (like subscripts/superscripts)
+    if (node.type === 'macro' && node.args) {
+      // Arguments are already parsed and nested, so they don't affect
+      // our top-level comma search. We just skip them.
+      // The comma inside a subscript like \theta_{y,3} is inside the args,
+      // so it won't be encountered in this loop.
+      continue;
+    }
+  }
+
+  return -1;
+}
+
+/**
+ * Finds the index of the node that contains or comes after a given character offset.
+ *
+ * @param nodes - Array of AST nodes
+ * @param charOffset - Character offset to search for
+ * @returns Index of the node at or after this offset, or nodes.length if offset is beyond all nodes
+ */
+function findNodeIndexAtOffset(nodes: Ast.Node[], charOffset: number): number {
+  for (let i = 0; i < nodes.length; i++) {
+    const range = getNodeCharRange(nodes[i]);
+    if (range && charOffset < range.end) {
+      return i;
+    }
+  }
+  return nodes.length;
+}
 
 /**
  * Extracts the parts of an equation split by '=' and ','
  *
- * Uses string splitting to find the first '=' and first top-level ',' to separate the equation into three parts:
- * - Index 0 (beforeEquals): Everything before the first '=' (or empty string if no '=' found)
- * - Index 1 (mainBody): Everything between the first '=' and first top-level ',' (or entire string if neither found)
- * - Index 2 (afterComma): Everything after the first top-level ',' (or empty string if no ',' found)
+ * Uses AST-based parsing to find the first '=' and first top-level ',' to separate the equation into three parts:
+ * - Index 0 (funcDeclare): Everything before the first '=' (or empty string if no '=' found)
+ * - Index 1 (formulaBody): Everything between the first '=' and first top-level ',' (or entire string if neither found)
+ * - Index 2 (limitDef): Everything after the first top-level ',' (or empty string if no ',' found)
  *
  * Smart equals handling: The function skips '=' signs that are part of comparison operators
- * (<=, >=, !=) or LaTeX commands (\neq), so mathematical constraints are handled correctly.
+ * (<=, >=, !=) by checking if the previous node is a String ending with <, >, or !.
  *
- * Smart comma handling: The function finds the FIRST comma at nesting level 0 (not inside {}, [], or ()).
- * This correctly separates the equation body from constraints while handling commas in LaTeX
- * subscripts/superscripts and within \left...\right delimiters.
+ * Smart comma handling: The function finds the FIRST comma at nesting level 0 (not inside (),
+ * macro args, or \left...\right blocks). This correctly separates the equation body from
+ * constraints while handling commas in LaTeX subscripts/superscripts and intervals.
  *
  * This function is permissive and never throws errors - it handles all inputs gracefully,
  * including empty strings, trailing commas, and other edge cases. This is useful for
  * text coloring/rendering where you want to handle partial or incomplete input.
  *
+ * Implementation note: This uses a hybrid approach - AST for structural analysis but
+ * substring extraction from the original string to preserve exact formatting and whitespace.
+ *
  * @param equation - The equation string to parse
- * @returns Array of [beforeEquals, mainBody, afterComma] where:
- *   - beforeEquals: Everything before the first '='
- *   - mainBody: Everything between the first '=' and first top-level ','
- *   - afterComma: Everything after the first top-level ','
+ * @returns Array of [funcDeclare, formulaBody, limitDef] where:
+ *   - funcDeclare: Everything before the first '='
+ *   - formulaBody: Everything between the first '=' and first top-level ','
+ *   - limitDef: Everything after the first top-level ','
  */
 export default function extractEquationParts(equation: string): [string, string, string] {
-  // Find first '=' that is NOT part of '<=', '>=', '!=', or '\neq'
-  // We look for '=' that is not preceded by '<', '>', '!', or '\'
-  let equalsIndex = -1;
-  for (let i = 0; i < equation.length; i++) {
-    if (equation[i] === '=') {
-      const prevChar = i > 0 ? equation[i - 1] : '';
-      // Skip if this '=' is part of <=, >=, !=, or \neq (in LaTeX)
-      if (prevChar !== '<' && prevChar !== '>' && prevChar !== '!' && prevChar !== '\\') {
-        equalsIndex = i;
-        break;
-      }
-    }
+  // Handle empty string
+  if (equation.length === 0) {
+    return ['', '', ''];
   }
 
-  let beforeEquals = '';
-  let rest: string = equation;
+  // Parse the equation into an AST
+  const ast = parseMath(equation);
 
-  if (equalsIndex !== -1) {
-    beforeEquals = equation.substring(0, equalsIndex);
-    rest = equation.substring(equalsIndex + 1);
+  // If parsing resulted in empty AST, return empty parts
+  if (ast.length === 0) {
+    return ['', '', ''];
   }
 
-  // Find first ',' at nesting level 0 (not inside {}, [], or (), and not inside \left...\right)
-  // This correctly handles commas in subscripts like \theta_{y,3} and constraints like x \in [a, b]
-  let depth = 0;
-  let leftRightDepth = 0;
-  let firstTopLevelCommaIndex = -1;
+  // Find the character offset of the first equals sign
+  const equalsOffset = findFirstEqualsOffset(ast);
 
-  for (let i = 0; i < rest.length; i++) {
-    const char = rest[i];
+  let funcDeclare = '';
+  let restStartOffset = 0;
 
-    // Handle LaTeX delimiters \left and \right
-    if (char === '\\' && i + 5 <= rest.length) {
-      const next5 = rest.substring(i, i + 5);
-      if (next5 === '\\left') {
-        leftRightDepth++;
-        i += 4; // Will be incremented by loop to skip the full \left
-        continue;
-      }
-    }
-    if (char === '\\' && i + 6 <= rest.length) {
-      const next6 = rest.substring(i, i + 6);
-      if (next6 === '\\right') {
-        leftRightDepth--;
-        i += 5; // Will be incremented by loop to skip the full \right
-        continue;
-      }
-    }
-
-    // Track nesting depth
-    if (char === '{' || char === '[' || char === '(') {
-      depth++;
-    } else if (char === '}' || char === ']' || char === ')') {
-      depth--;
-    } else if (char === ',' && depth === 0 && leftRightDepth === 0) {
-      // Found a comma at top level - record it and break (we want the FIRST one)
-      firstTopLevelCommaIndex = i;
-      break;
-    }
+  if (equalsOffset !== -1) {
+    // Split at the equals sign
+    funcDeclare = equation.substring(0, equalsOffset);
+    restStartOffset = equalsOffset + 1; // +1 to skip the equals character
   }
 
-  let mainBody: string;
-  let afterComma = '';
+  // Find the node index where we should start searching for commas
+  // (we need to search from after the equals sign)
+  const startNodeIndex = findNodeIndexAtOffset(ast, restStartOffset);
 
-  if (firstTopLevelCommaIndex !== -1) {
-    mainBody = rest.substring(0, firstTopLevelCommaIndex);
-    afterComma = rest.substring(firstTopLevelCommaIndex + 1);
+  // Find the character offset of the first top-level comma in the rest
+  const commaOffset = findFirstTopLevelCommaOffset(ast, startNodeIndex);
+
+  let formulaBody: string;
+  let limitDef = '';
+
+  if (commaOffset !== -1) {
+    // Split at the comma
+    formulaBody = equation.substring(restStartOffset, commaOffset);
+    limitDef = equation.substring(commaOffset + 1); // +1 to skip the comma character
   } else {
-    mainBody = rest;
+    // No comma found
+    formulaBody = equation.substring(restStartOffset);
   }
 
-  return [beforeEquals, mainBody, afterComma];
+  return [funcDeclare, formulaBody, limitDef];
 }
