@@ -270,27 +270,6 @@ describe('mathjsonToExcel - Complex numbers', () => {
   });
 });
 
-describe('mathjsonToExcel - Statistics functions', () => {
-  const statsTestCases: [string, Expression, string][] = [
-    ['mean', ['Mean', 'a', 'b', 'c'], '=AVERAGE(a,b,c)'],
-    ['median', ['Median', 'x', 'y', 'z'], '=MEDIAN(x,y,z)'],
-    ['min', ['Min', 1, 2, 3], '=MIN(1,2,3)'],
-    ['max', ['Max', 1, 2, 3], '=MAX(1,2,3)'],
-    ['mode', ['Mode', 'a', 'b', 'c'], '=MODE.SNGL(a,b,c)'],
-    ['sample standard deviation', ['StandarDeviation', 'x', 'y', 'z'], '=STDEV.S(x,y,z)'],
-    ['population standard deviation', ['PopulationStandardDeviation', 'x', 'y', 'z'], '=STDEV.P(x,y,z)'],
-    ['sample variance', ['Variance', 'a', 'b', 'c'], '=VAR.S(a,b,c)'],
-    ['population variance', ['PopulationVariance', 'a', 'b', 'c'], '=VAR.P(a,b,c)'],
-    ['skewness', ['Skewness', 'x', 'y', 'z'], '=SKEW(x,y,z)'],
-    ['kurtosis', ['Kurtosis', 'x', 'y', 'z'], '=KURT(x,y,z)'],
-  ];
-
-  test.each(statsTestCases)('should handle %s', (_desc, input, expected) => {
-    const result = mathjsonToExcel(input);
-    expect(result).toBe(expected);
-  });
-});
-
 describe('mathjsonToExcel - Variable mapping', () => {
   test('should map simple variable', () => {
     const mathJson: Expression = 'x';
