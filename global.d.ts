@@ -11,3 +11,6 @@ declare module 'react' {
     }
   }
 }
+
+// Import jest-extended types for test matchers
+import 'jest-extended';

@@ -274,7 +274,7 @@ describe('Extract Variables from Latex Expression', () => {
 describe('Empty Modifier Edge Cases', () => {
   // Edge case: Empty subscripts and superscripts should be ignored
   // This prevents false positives like "s_{}" appearing when typing "tests_{}"
-  const emptyModifierCases = [
+  const emptyModifierCases: [string, string[]][] = [
     // Empty subscripts (note: 'e' and 'i' are filtered as mathematical constants)
     [String.raw`s_{}`, ['s']],
     [String.raw`test_{}`, ['s', 't']],  // 'e' is filtered as constant

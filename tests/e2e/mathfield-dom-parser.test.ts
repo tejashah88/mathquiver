@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /**
  * @jest-environment node
  *
@@ -14,6 +16,7 @@ import { CharacterIndexItem, traverseNode } from '@/logic/mathfield-dom-parser';
 // Set up JSDOM globals for Node.js environment
 const jsdom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
 const { window } = jsdom;
+
 global.Node = window.Node;
 global.HTMLElement = window.HTMLElement as any;
 global.Element = window.Element as any;
@@ -255,7 +258,7 @@ describe('MathField DOM Parser with Playwright', () => {
   });
 
   describe('Aggregated Coverage', () => {
-    let allParsed: CharacterIndexItem[] = [];
+    const allParsed: CharacterIndexItem[] = [];
 
     beforeAll(async () => {
       for (const latex of TEST_CASES) {
@@ -263,6 +266,7 @@ describe('MathField DOM Parser with Playwright', () => {
           const html = await browserFixture.renderLatex(latex);
           allParsed.push(...parseBase(html));
         } catch (error) {
+          // eslint-disable-next-line no-console
           console.warn(`Failed to process "${latex}":`, error);
         }
       }

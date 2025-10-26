@@ -622,12 +622,12 @@ export default function Home() {
 
                 <span
                   className={`slider flex min-h-[26px] min-w-[50px] items-center rounded-full p-1 duration-200 ${
-                    focusMode ? "bg-blue-600" : "bg-gray-300"
+                    focusMode ? 'bg-blue-600' : 'bg-gray-300'
                   }`}
                 >
                   <span
                     className={`dot min-h-[18px] min-w-[18px] rounded-full bg-white duration-200 ${
-                      focusMode ? "translate-x-6" : ""
+                      focusMode ? 'translate-x-6' : ''
                     }`}
                   ></span>
                 </span>

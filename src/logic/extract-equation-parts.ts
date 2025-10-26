@@ -17,7 +17,7 @@ function getNodeCharRange(node: Ast.Node): { start: number; end: number } | null
     return null;
   }
 
-  let start = node.position.start.offset;
+  const start = node.position.start.offset;
   let end = node.position.end.offset;
 
   // For macros with arguments, we need to include the argument positions
