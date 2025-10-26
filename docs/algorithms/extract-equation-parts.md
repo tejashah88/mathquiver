@@ -1,6 +1,7 @@
-# Equation Parts Extraction Algorithm
-
-Author: Claude Sonnet 4.5
+# Equation Parts Extraction
+- **Original Author**: Claude Sonnet 4.5
+- **Implementation**: [`src/logic/extract-equation-parts.ts`](../../src/logic/extract-equation-parts.ts)
+- **Tests**: [`tests/logic/extract-equation-parts.test.ts`](../../tests/logic/extract-equation-parts.test.ts)
 
 ## Overview
 
@@ -455,10 +456,6 @@ function getNodeCharRange(node: Ast.Node): { start: number; end: number } {
 
 ### Hybrid Extraction Strategy
 
-**Why not reconstruct from AST?**:
-- AST is not guaranteed to preserve exact whitespace (e.g., space after `a_{1,2}`)
-
-**Best of both worlds**:
 1. Parse with AST to find logical structure (where is the equals? where is the comma?)
 2. Get character offsets from AST position info
 3. Extract substrings from original input using offsets
@@ -499,15 +496,3 @@ console.log(fd);  // '\\theta_{y,3}^{wr} '
 console.log(fb);  // ' \\frac{W_r^g}{4EI}\\left(2l_i x - x^2 - \\frac{3}{4}l_i^2\\right)'
 console.log(ld);  // ' x \\in \\left[\\frac{l_i}{2}, l_i\\right]'
 ```
-
-## References
-
-### Related Files
-
-- **Implementation**: [src/logic/extract-equation-parts.ts](../../src/logic/extract-equation-parts.ts)
-- **Tests**: [tests/logic/extract-equation-parts.test.ts](../../tests/logic/extract-equation-parts.test.ts)
-
-### External Dependencies
-
-- `@unified-latex/unified-latex-util-parse`: [GitHub](https://github.com/siefkenj/unified-latex)
-- `@unified-latex/unified-latex-types`: Type definitions for the AST

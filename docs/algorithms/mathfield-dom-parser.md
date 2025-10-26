@@ -1,6 +1,7 @@
-# MathLive Shadow DOM Parser Algorithm
-
-Author: Claude Sonnet 4.5
+# MathLive Shadow DOM Parser
+- **Original Author**: Claude Sonnet 4.5
+- **Implementation**: [`src/logic/mathfield-dom-parser.ts`](../../src/logic/mathfield-dom-parser.ts)
+- **Tests**: [`tests/e2e/mathfield-dom-parser.test.ts`](../../tests/e2e/mathfield-dom-parser.test.ts)
 
 ## Overview
 
@@ -46,16 +47,12 @@ The algorithm assumes the MathfieldElement has a properly rendered shadow DOM wi
 - `.ML__base` container exists and holds rendered content
 - MathLive's vlist structure is present for positioned elements
 
-**Rationale**: MathLive's rendering is handled by the library before this algorithm runs. Malformed shadow DOM indicates a MathLive initialization error.
-
 ### Stable MathLive CSS Classes
 
 The algorithm relies on MathLive's CSS class naming conventions remaining stable:
 - Font classes: `ML__mathit`, `ML__cmr`, `ML__mathbf`, etc.
 - Structural classes: `ML__vlist-t`, `ML__vlist-r`, `ML__vlist`, `ML__msubsup`, `ML__mfrac`
 - Skip classes: `ML__strut`, `ML__frac-line`, `ML__vlist-s`, etc.
-
-**Rationale**: These classes are part of MathLive's public rendering API. Breaking changes would be documented in major version updates.
 
 ### Shadow Root Accessibility
 
@@ -64,16 +61,11 @@ The algorithm assumes shadow root access is not blocked:
 - No browser restrictions on shadow root access
 - MathfieldElement is fully initialized before parsing
 
-**Rationale**: MathLive uses open shadow roots by default. Closed shadow roots would prevent any DOM-based manipulation.
-
 ### Standard MathLive Rendering Mode
 
 The algorithm assumes MathLive is using standard rendering mode:
-- Static rendering (not editable mode with cursor)
 - Standard font settings (no custom fonts that change CSS classes)
 - No custom styling that overwrites MathLive's structural classes
-
-**Rationale**: The algorithm is designed for reading/displaying rendered math, not editing mode. Editable mode includes additional cursor and selection elements.
 
 ## Algorithm Structure
 
@@ -664,7 +656,7 @@ ML__base       -> Base container for all math content
 
 ## Special Cases Handled
 
-### 1. Zero-Width Space Characters
+### Zero-Width Space Characters
 
 MathLive uses zero-width space (U+200B) as visual markers in the DOM structure:
 
@@ -679,7 +671,7 @@ if (text.trim() === '' || text === '\u200B') {
 }
 ```
 
-### 2. Fraction Line Elements
+### Fraction Line Elements
 
 Fraction horizontal lines are rendered using CSS borders or SVG, not text:
 
@@ -691,7 +683,7 @@ Fraction horizontal lines are rendered using CSS borders or SVG, not text:
 
 **Handling**: ML__frac-line is in SKIP_CLASSES, so these elements are not traversed.
 
-### 3. Positioned Elements in Vlists
+### Positioned Elements in Vlists
 
 MathLive uses `style.top` to position elements vertically:
 
@@ -704,7 +696,7 @@ MathLive uses `style.top` to position elements vertically:
 - **For ML__msubsup**: Order of positioned children (first=subscript, second=superscript)
 - **For ML__mfrac**: Sorting by `style.top` value (most negative=numerator, less negative=denominator)
 
-### 4. Multiple Modifiers on Same Base
+### Multiple Modifiers on Same Base
 
 A variable can have both subscript and superscript:
 
@@ -718,7 +710,7 @@ DOM: ML__msubsup with two positioned children after base
 - Second positioned child -> superscript context
 - Base element gets 'base' context
 
-### 5. Greek Letters with Modifiers
+### Greek Letters with Modifiers
 
 Greek letters rendered with modifiers:
 
@@ -731,7 +723,7 @@ DOM: <span class="ML__cmmi">\u03B8</span> with subscript structure
 - If in ML__mathit or ML__cmmi -> 'variable'
 - Modifiers processed identically to Latin variables
 
-### 6. Whitespace Handling
+### Whitespace Handling
 
 MathLive may include whitespace text nodes for layout:
 
@@ -748,7 +740,7 @@ for (const char of text) {
 }
 ```
 
-### 7. Strut Elements
+### Strut Elements
 
 MathLive inserts strut elements for vertical alignment:
 
@@ -877,110 +869,6 @@ if (child.nodeType !== 1) return false;
 const htmlChild = child as HTMLElement;
 ```
 
-## Design Decisions
-
-### Why Maintain Element References?
-
-**Decision**: Store reference to parent `HTMLElement` for each character.
-
-**Rationale**:
-1. **Direct styling**: Enables immediate DOM manipulation without re-searching
-2. **Pixel positions**: Can query `getBoundingClientRect()` for exact positions
-3. **Interactivity**: Enables hover effects, click handlers on individual characters
-4. **Performance**: Avoids costly DOM queries during styling operations
-
-## Testing Strategy
-
-### Test Organization (Fixture-Based)
-
-#### Fixtures
-- **Source**: `tests/logic/mathfield-fixtures/*.html`
-- **Format**: HTML files with declarative shadow DOM
-- **Count**: Multiple fixtures covering diverse expressions
-- **Content**: Real MathLive rendered output with shadow DOM structure
-
-#### Test Structure
-
-**1. Fixture Loading and Parsing**
-- Load all HTML fixtures from directory
-- Extract LaTeX from light DOM content
-- Parse shadow DOM template
-- Find `.ML__base` element for traversal
-
-**2. Basic Smoke Test (1 test)**
-- Validates all fixtures have valid structure
-- Ensures no parsing errors
-- Reports any invalid fixtures
-
-**3. Individual Fixture Tests (9 tests per fixture)**
-Each fixture runs comprehensive validation:
-
-**(a) Proper Indexing**
-- All items have required properties
-- Indices are sequential starting from 0
-- Index matches array position
-
-**(b) Character Type Classification**
-- All types are valid: 'variable', 'operator', 'number', 'punctuation', 'symbol'
-- Type coverage is reasonable
-
-**(c) Context Identification**
-- All contexts are valid: 'base', 'subscript', 'superscript', 'numerator', 'denominator'
-- At least one 'base' context item exists
-
-**(d) Depth Tracking**
-- All depths are non-negative
-- Depths are reasonable (< 10)
-- At least one depth=0 item exists
-
-**(e) Element References**
-- All elements are truthy
-- Elements are valid DOM nodes (nodeType=1)
-- Element text content contains the character
-
-**(f) Atom IDs**
-- Atom IDs are non-empty strings when present
-- Tests existence but not specific values
-
-**(g) Equals Sign Handling**
-- Top-level equals signs have type='operator'
-- Top-level equals signs have depth=0
-- Top-level equals signs have context='base'
-
-**(h) Comma Handling**
-- Top-level commas have type='punctuation'
-- Top-level commas have context='base'
-
-**(i) Nested Structure Handling**
-- Nested items (depth > 0) have appropriate contexts
-- Subscripts have depth > 0
-- Superscripts have depth > 0
-- Fraction chars (numerator/denominator) have depth > 0
-
-**4. Aggregate Statistics Tests (4 tests)**
-
-**(a) Character Type Coverage**
-- Aggregates types across all fixtures
-- Verifies all 5 types are encountered: variable, number, operator, punctuation, symbol
-- Ensures comprehensive test coverage
-
-**(b) Context Coverage**
-- Aggregates contexts across all fixtures
-- Verifies all 5 contexts are encountered: base, subscript, superscript, numerator, denominator
-- Ensures comprehensive test coverage
-
-**(c) Equations with Equals Signs**
-- Counts fixtures with top-level equals signs
-- Validates substantial coverage (>= 10 fixtures)
-
-**(d) Equations with Commas**
-- Counts fixtures with commas
-- Validates substantial coverage (>= 10 fixtures)
-
-**(e) Nested Structures**
-- Counts fixtures with depth > 0
-- Validates substantial coverage (>= 30 fixtures)
-
 ## Implementation Notes
 
 ### Shadow DOM Structure
@@ -1081,9 +969,7 @@ index
 
 ## Future Enhancements
 
-### Potential Improvements
-
-#### Support for Matrices and Arrays
+### Support for Matrices and Arrays
 
 **Current state**: Algorithm only handles basic structures (subscripts, superscripts, fractions).
 
@@ -1111,8 +997,6 @@ interface CharacterIndexItem {
 ```typescript
 import {
   parseMathfieldDOM,
-  applyStyleToRange,
-  clearStyles,
   CharacterIndexItem
 } from '@/logic/mathfield-dom-parser';
 
@@ -1140,10 +1024,18 @@ index
   });
 
 // Example 4: Style a specific character range (0-4)
-applyStyleToRange(index, 0, 5, { color: 'green' });
+index
+  .filter(item => item.index >= 0 && item.index < 5)
+  .forEach(item => {
+    item.element.style.color = 'green';
+  });
 
 // Example 5: Clear all styling
-clearStyles(index);
+index.forEach(item => {
+  item.element.style.color = '';
+  item.element.style.backgroundColor = '';
+  item.element.style.fontWeight = '';
+});
 
 // Example 6: Find equals sign position
 const equalsSign = index.find(item => item.char === '=' && item.depth === 0);
@@ -1189,10 +1081,3 @@ const stats = {
 
 console.log('Expression statistics:', stats);
 ```
-
-## References
-
-### Related Files
-
-- **Implementation**: [src/logic/mathfield-dom-parser.ts](../../src/logic/mathfield-dom-parser.ts)
-- **Tests**: [tests/logic/mathfield-dom-parser.test.ts](../../tests/e2e/mathfield-dom-parser.test.ts)

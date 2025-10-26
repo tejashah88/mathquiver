@@ -1,6 +1,7 @@
-# LaTeX Variable Extraction Algorithm
-
-Author: Claude Sonnet 4.5
+# LaTeX Variable Extraction
+- **Original Author**: Claude Sonnet 4.5
+- **Implementation**: [`src/logic/latex-var-extract.ts`](../../src/logic/latex-var-extract.ts)
+- **Tests**: [`tests/logic/latex-var-extract.test.ts`](../../tests/logic/latex-var-extract.test.ts)
 
 ## Overview
 
@@ -323,7 +324,7 @@ CLASS VariableBuilder:
 
 ## Special Cases Handled
 
-### 1. Greek Letters
+### Greek Letters
 
 ```
 Input:  \theta_{y}=\theta^{nl}
@@ -332,7 +333,7 @@ Output: ['\theta_{y}', '\theta^{nl}']
 
 Greek letters are treated as variable bases.
 
-### 2. Multiple Variables in Superscript
+### Multiple Variables in Superscript
 
 ```
 Input:  x^{2y}
@@ -341,7 +342,7 @@ Output: ['x', 'y']
 
 Mixed content (number + variable) → split and extract.
 
-### 3. Nested Superscripts (Deep)
+### Nested Superscripts (Deep)
 
 ```
 Input:  a^{b^{c^{d}}}
@@ -350,7 +351,7 @@ Output: ['a^{b^{c^{d}}}']
 
 All pure alphabetic → keep entire structure.
 
-### 4. Combination Subscript/Superscript
+### Combination Subscript/Superscript
 
 ```
 Input:  R_{x}^{x}
@@ -359,7 +360,7 @@ Output: ['R_{x}^{x}']
 
 Both modifiers pure alphabetic → keep together.
 
-### 5. Function Notation
+### Function Notation
 
 ```
 Input:  p(x)=a_nx^n
@@ -411,53 +412,10 @@ if (KNOWN_CONSTANTS.has(base)) {
 - Single letters: use braces (`x_{a}`)
 - Multi-char: use braces (`x^{sl}`)
 
-## Performance Characteristics
+## Design Decisions
 
-### Time Complexity
-
-- **Best case**: O(n) where n = number of AST nodes
-- **Average case**: O(n)
-- **Worst case**: O(n log n) due to sorting
-
-The single-pass traversal with lookahead is efficient.
-
-### Space Complexity
-
-- **O(n)** for storing variables
-- **O(d)** for recursion depth (typically small, d < 5)
-
-### Re-parsing Impact
-
-Re-parsing only occurs for strings with `^` or `_` in deeply nested contexts:
-- Rare in practice (< 5% of expressions)
-- Each re-parse is O(m) where m = string length
-- Overall negligible impact
-
-## Design Decisions (WIP)
-
-### Why Not Split Subscripts?
-
-Mathematical convention: subscripts represent indexing or categorization and should stay intact.
-
-```
-x_{i+1}  → This is "x at position i+1", not separate variables
-```
-
-### Why Split Mixed Superscripts?
-
-Superscripts with operators represent computations where we want the component variables.
-
-```
-e^{ax+b} → We care about variables a, x, b in the exponent
-```
-
-### Why Keep Pure Alphabetic Together?
-
-Pure alphabetic indicates naming convention (like `M^{sl}` for "M superscript sl") rather than computation.
-
-```
-M^{sl} → This is a single variable named "M-superscript-sl"
-```
+- Superscripts and subscripts in variables like `T_{n+1}^{ab}` are treated as if it's one whole variable.
+- However, operators in mixed superscripts like `T_{n+1}^{ax+b}` will be extracted as `['T_{n+1}', 'a', 'x', 'b']`.
 
 ## Implementation Notes
 
@@ -519,10 +477,3 @@ const vars3 = extractLatexVariables('e^{e^{x^y}}');
 const vars4 = extractLatexVariables('\\theta_1 + \\theta_2');
 // → ['\\theta_1', '\\theta_2']
 ```
-
-## References
-
-### Related Files
-
-- **Implementation**: `src/logic/latex-var-extract.ts`
-- **Tests**: `tests/logic/latex-var-extract.test.ts`

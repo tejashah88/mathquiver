@@ -139,7 +139,7 @@ function convertMjsonToExcel(node: Expression, varMap: VarMapping = {}): string 
   if (Array.isArray(node)) {
     const [op, ...args] = node;
     const mapping = MATHJSON_FUNCTIONS[op];
-    if (!mapping) throw new MJEXTranslateError(`Unsupported operator: ${op}`);
+    if (!mapping) throw new MJEXTranslateError(`No Excel equivalent for operator "${op}"`);
 
     const excelArgs = args.map(arg => convertMjsonToExcel(arg, varMap));
     if (mapping.type === 'operator') return `(${excelArgs.join(mapping.symbol)})`;
@@ -149,7 +149,7 @@ function convertMjsonToExcel(node: Expression, varMap: VarMapping = {}): string 
     }
   }
 
-  throw new MJEXTranslateError(`Unknown node type: ${node}`);
+  throw new MJEXTranslateError(`Unknown MathJSON node type: ${node}`);
 }
 
 
