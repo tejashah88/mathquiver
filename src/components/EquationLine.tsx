@@ -37,6 +37,7 @@ import { CondensedVariableItem, VarMapping } from '@/types';
 
 // Constants
 export const INPUT_DEBOUNCE_DELAY = 200;
+export const RESIZE_DEBOUNCE_DELAY = 300;
 
 
 // Equation validation states for border rendering
@@ -115,6 +116,13 @@ const EquationLine = memo(
     // without recreating the observer on every drag state change
     const isDraggingRef = useRef<boolean>(false);
 
+    // Track window resize state in a ref so the observer callback can read latest value
+    // without recreating the observer on every resize event
+    const isResizingRef = useRef<boolean>(false);
+
+    // Store function to force style updates (set by MutationObserver effect)
+    const forceStyleUpdateRef = useRef<(() => void) | null>(null);
+
     ///////////
     // STATE //
     ///////////
@@ -183,6 +191,33 @@ const EquationLine = memo(
       isDraggingRef.current = isDragging;
     }, [isDragging]);
 
+    // Track window resize to skip expensive styling operations during resize
+    useEffect(() => {
+      let resizeTimeout: NodeJS.Timeout | undefined;
+
+      const handleResize = () => {
+        // Set flag immediately when resize starts
+        isResizingRef.current = true;
+
+        // Clear existing timeout
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+
+        // Debounce: clear flag after resize stops and force style update
+        resizeTimeout = setTimeout(() => {
+          isResizingRef.current = false;
+          // Force a style update now that resize has stopped
+          forceStyleUpdateRef.current?.();
+        }, RESIZE_DEBOUNCE_DELAY);
+      };
+
+      window.addEventListener('resize', handleResize);
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+      };
+    }, []);
+
     // Sync prop changes to local state (handles external updates like imports)
     useEffect(() => {
       setLocalEquation(equation);
@@ -199,8 +234,8 @@ const EquationLine = memo(
       if (!mf) return;
 
       // Docs: https://mathlive.io/mathfield/guides/commands/#editing-commands
-      // BROKEN: Add a placeholder for subscripts and superscripts to avoid ghost characters
-      // See open issue here: https://github.com/arnog/mathlive/issues/2886
+      // NOTE: Add a placeholder for subscripts and superscripts to avoid ghost characters
+      // FIXME: See open issue here: https://github.com/arnog/mathlive/issues/2886
 
       // const addPlaceholderSubSuper = (evt: any) => {
       //   const currentValue = mf.getValue();
@@ -300,6 +335,9 @@ const EquationLine = memo(
         // Skip styling during drag to improve drag performance
         if (isDraggingRef.current) return;
 
+        // Skip styling during window resize to improve resize performance
+        if (isResizingRef.current) return;
+
         try {
           const charIndex = parseMathfieldDOM(mf);
           clearColors(charIndex);
@@ -334,6 +372,9 @@ const EquationLine = memo(
         pendingRaf = requestAnimationFrame(applyStylesToMathfield);
       };
 
+      // Store the style updater function so resize handler can force updates
+      forceStyleUpdateRef.current = scheduleStyleApplication;
+
       // Set up MutationObserver to watch for shadow DOM changes
       // Handles: typing, blur, focus, DevTools, window resize, file imports, etc.
       const observer = new MutationObserver(scheduleStyleApplication);
@@ -350,6 +391,7 @@ const EquationLine = memo(
       return () => {
         if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
         observer.disconnect();
+        forceStyleUpdateRef.current = null;
       };
       // NOTE: Setup runs once on mount, while listeners use refs for latest callbacks
     }, []);
@@ -491,6 +533,7 @@ const EquationLine = memo(
             {...attributes}
             {...listeners}
             tabIndex={-1}
+            title="Drag to Reorder"
             className="mr-2 py-2 rounded border border-gray-400 cursor-grab hover:bg-gray-200 active:cursor-grabbing"
           >
             <MemoizedIcon
@@ -516,20 +559,23 @@ const EquationLine = memo(
               <button
                 disabled={!MathfieldElement.computeEngine || localEquation.length == 0 || inputEquationState != EQUATION_STATES.VALID}
                 onClick={handleExcelExport}
+                title="Copy Excel Formula"
                 className="p-2 rounded border hover:bg-gray-200"
               >
                 <MemoizedIcon icon={faFileExcel} />
               </button>
 
               <span
+                hidden={!showCopiedFormulaTooltip}
                 className="absolute right-full top-1/2 hidden mr-2 px-2 py-1 rounded bg-gray-700 text-xs text-white shadow -translate-y-1/2 group-hover:block"
               >
-                {!showCopiedFormulaTooltip ? 'Copy Excel Formula' : 'Copied!'}
+                Copied!
               </span>
             </div>
 
             <button
               onClick={onDeleteLine}
+              title="Delete Equation"
               className="p-2 rounded border bg-red-100 text-red-700 hover:bg-red-200"
             >
               <MemoizedIcon icon={faTrashCan} />

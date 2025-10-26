@@ -26,12 +26,3 @@ math-field.hide-menu::part(menu-toggle) {
 ::-webkit-scrollbar-thumb {
   background-color: #a0a0a0; /* gray-300 */
 }
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}

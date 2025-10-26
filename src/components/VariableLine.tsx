@@ -27,6 +27,7 @@ import { FLAGS } from '@/utils/feature-flags';
 
 // Constants
 export const INPUT_DEBOUNCE_DELAY = 200;
+export const RESIZE_DEBOUNCE_DELAY = 300;
 
 
 // Excel cell reference validation states for border rendering
@@ -109,6 +110,13 @@ const VariableLine = memo(
     // without recreating the observer on every drag state change
     const isDraggingRef = useRef<boolean>(false);
 
+    // Track window resize state in a ref so the observer callback can read latest value
+    // without recreating the observer on every resize event
+    const isResizingRef = useRef<boolean>(false);
+
+    // Store function to force style updates (set by MutationObserver effect)
+    const forceStyleUpdateRef = useRef<(() => void) | null>(null);
+
     ///////////
     // STATE //
     ///////////
@@ -178,6 +186,33 @@ const VariableLine = memo(
       isDraggingRef.current = isDragging;
     }, [isDragging]);
 
+    // Track window resize to skip expensive styling operations during resize
+    useEffect(() => {
+      let resizeTimeout: NodeJS.Timeout | undefined;
+
+      const handleResize = () => {
+        // Set flag immediately when resize starts
+        isResizingRef.current = true;
+
+        // Clear existing timeout
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+
+        // Debounce: clear flag after resize stops and force style update
+        resizeTimeout = setTimeout(() => {
+          isResizingRef.current = false;
+          // Force a style update now that resize has stopped
+          forceStyleUpdateRef.current?.();
+        }, RESIZE_DEBOUNCE_DELAY);
+      };
+
+      window.addEventListener('resize', handleResize);
+
+      return () => {
+        window.removeEventListener('resize', handleResize);
+        if (resizeTimeout) clearTimeout(resizeTimeout);
+      };
+    }, []);
+
     ////////////////////////
     // EFFECTS: PROP SYNC //
     ////////////////////////
@@ -246,6 +281,9 @@ const VariableLine = memo(
         // Skip styling during drag to improve drag performance
         if (isDraggingRef.current) return;
 
+        // Skip styling during window resize to improve resize performance
+        if (isResizingRef.current) return;
+
         try {
           const charIndex = parseMathfieldDOM(mf);
           clearColors(charIndex);
@@ -273,6 +311,9 @@ const VariableLine = memo(
         pendingRaf = requestAnimationFrame(applyStylesToMathfield);
       };
 
+      // Store the style updater function so resize handler can force updates
+      forceStyleUpdateRef.current = scheduleStyleApplication;
+
       // Set up MutationObserver to watch for shadow DOM changes
       // Handles: typing, blur, focus, DevTools, window resize, file imports, etc.
       const observer = new MutationObserver(scheduleStyleApplication);
@@ -289,6 +330,7 @@ const VariableLine = memo(
       return () => {
         if (pendingRaf !== undefined) cancelAnimationFrame(pendingRaf);
         observer.disconnect();
+        forceStyleUpdateRef.current = null;
       };
       // NOTE: Setup runs once on mount, while listeners use refs for latest callbacks
     }, []);
@@ -387,6 +429,7 @@ const VariableLine = memo(
           {...attributes}
           {...listeners}
           tabIndex={-1}
+          title="Drag to Reorder"
           className="ml-1 py-2 place-self-center cursor-grab hover:bg-gray-200 active:cursor-grabbing"
         >
           <MemoizedIcon icon={faGripVertical} style={GRIP_ICON_STYLE} />
@@ -417,6 +460,7 @@ const VariableLine = memo(
         <div className="mr-1 place-self-center">
           <button
             onClick={onDelete}
+            title="Delete Variable"
             className="p-2 rounded border bg-red-100 text-red-700 hover:bg-red-200"
           >
             <MemoizedIcon icon={faTrashCan} />

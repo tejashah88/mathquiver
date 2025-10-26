@@ -15,7 +15,7 @@ import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifi
 import Markdown from 'react-markdown';
 
 // Font Awesome Icons
-import { faBars, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faEye, faEyeSlash, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
 import MemoizedIcon from '@/components/MemoizedIcon';
 
 // Utility methods for QoL
@@ -562,6 +562,7 @@ export default function Home() {
           </p>
           <button
             onClick={() => window.location.reload()}
+            title="Reload Page"
             className="px-6 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
           >
             Reload Page
@@ -607,36 +608,20 @@ export default function Home() {
           />
 
           {/* Right side: Focus mode + Add button */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <label className="relative inline-flex gap-2 cursor-pointer select-none items-center">
-                <span className="label flex items-center text-lg font-medium text-black">
-                  Focus Mode:
-                </span>
-                <input
-                  type="checkbox"
-                  className="sr-only"
-                  checked={focusMode}
-                  onChange={handleFocusModeToggle}
-                />
-
-                <span
-                  className={`slider flex min-h-[26px] min-w-[50px] items-center rounded-full p-1 duration-200 ${
-                    focusMode ? 'bg-blue-600' : 'bg-gray-300'
-                  }`}
-                >
-                  <span
-                    className={`dot min-h-[18px] min-w-[18px] rounded-full bg-white duration-200 ${
-                      focusMode ? 'translate-x-6' : ''
-                    }`}
-                  ></span>
-                </span>
-              </label>
-            </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleFocusModeToggle}
+              title={focusMode ? 'Disable Focus Mode' : 'Enable Focus Mode'}
+              className="p-2 rounded border font-semibold whitespace-nowrap border-black hover:bg-gray-200 text-black"
+            >
+              {'Focus Mode: '}
+              <MemoizedIcon className={focusMode ? 'text-green-600' : 'text-black'} icon={focusMode ? faEye : faEyeSlash} />
+            </button>
 
             <button
-              className="p-2 rounded border font-bold hover:bg-gray-200"
+              className="p-2 rounded border ml-2 font-bold hover:bg-gray-200"
               onClick={handleAddEquation}
+              title="Add Equation"
             >
               <MemoizedIcon icon={faPlus} />
             </button>
@@ -687,6 +672,7 @@ export default function Home() {
           <h2 className="text-2xl font-semibold">Variables</h2>
           <button
             onClick={handleAddVariable}
+            title="Add Variable"
             className="p-2 rounded border font-bold hover:bg-gray-200"
           >
             <MemoizedIcon icon={faPlus} />
@@ -740,6 +726,7 @@ export default function Home() {
       {/* Floating Help Button */}
       <button
         onClick={handleHelpOpen}
+        title="Open Main Menu"
         className="fixed bottom-4 right-4 p-2 rounded bg-blue-600 text-white shadow-lg hover:bg-blue-700"
       >
         <MemoizedIcon icon={faBars} size="sm" />
@@ -753,6 +740,7 @@ export default function Home() {
               <h2 className="text-2xl font-semibold">Main Menu</h2>
               <button
                 onClick={handleHelpClose}
+                title="Close Menu"
                 className="p-2 border text-red-700 hover:bg-gray-100"
               >
                 <MemoizedIcon icon={faX} />
@@ -770,6 +758,7 @@ export default function Home() {
             <div className="flex items-center justify-between p-4 border-t">
               <button
                 onClick={handleImportClick}
+                title="Import Workspace"
                 className="px-6 py-2 border hover:bg-gray-100"
               >
                 Import...
@@ -784,6 +773,7 @@ export default function Home() {
               <button
                 className="px-6 py-2 border hover:bg-gray-100"
                 onClick={handleExportClick}
+                title="Export Workspace"
               >
                 Export...
               </button>
