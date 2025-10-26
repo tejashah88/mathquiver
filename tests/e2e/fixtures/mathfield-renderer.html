@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MathField Renderer for Testing</title>
+
+  <!-- MathLive from CDN (same version as project) -->
+  <script defer src="https://unpkg.com/mathlive@0.107.1"></script>
+
+  <style>
+    body {
+      margin: 20px;
+      font-family: sans-serif;
+    }
+    math-field {
+      font-size: 2rem;
+      padding: 10px;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      min-width: 300px;
+    }
+  </style>
+</head>
+<body>
+  <h1>MathField Renderer (Test Fixture)</h1>
+  <p>This page is used by Playwright to generate shadow DOM fixtures for testing.</p>
+
+  <math-field id="test-mathfield">x^2</math-field>
+
+  <script>
+    /**
+     * Sets the LaTeX content of the mathfield and returns the .ML__base element HTML.
+     * This is the absolute minimum needed for testing - just the rendered math content.
+     */
+    async function setLatexAndExport(latex) {
+      const mathfield = document.getElementById('test-mathfield');
+
+      // Set the LaTeX content
+      mathfield.setValue(latex);
+
+      // Wait for next animation frame to ensure rendering is complete
+      await new Promise(resolve => requestAnimationFrame(resolve));
+
+      // Additional small delay to ensure shadow DOM is fully updated
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      // Extract just the .ML__base element which contains all the math content
+      const shadowRoot = mathfield.shadowRoot;
+      if (!shadowRoot) {
+        throw new Error('Shadow root not accessible on mathfield element');
+      }
+
+      const base = shadowRoot.querySelector('.ML__base');
+      if (!base) {
+        throw new Error('No .ML__base element found in shadow root');
+      }
+
+      // Return only the .ML__base outerHTML - no wrappers needed
+      return base.outerHTML;
+    }
+
+    // Expose function globally for Playwright to call
+    window.setLatexAndExport = setLatexAndExport;
+
+    // Mark as ready for Playwright
+    window.mathfieldRendererReady = true;
+  </script>
+</body>
+</html>
