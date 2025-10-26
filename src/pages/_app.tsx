@@ -11,21 +11,11 @@ import '@/styles/globals.css';
 
 // Default library imports
 import type { AppProps } from 'next/app';
-import { useEffect } from 'react';
 
 // Custom components
 import ErrorBoundary from '@/components/ErrorBoundary';
-import { enableConsoleExports } from '@/tools/export-mathfield/run';
-import { FLAGS } from '@/utils/feature-flags';
 
 export default function App({ Component, pageProps }: AppProps) {
-  // Enable mathfield export utilities in development mode
-  useEffect(() => {
-    if (FLAGS.enableDebugLogging) {
-      enableConsoleExports();
-    }
-  }, []);
-
   return (
     <ErrorBoundary>
       <Component {...pageProps} />

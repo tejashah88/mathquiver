@@ -1195,5 +1195,4 @@ console.log('Expression statistics:', stats);
 ### Related Files
 
 - **Implementation**: [src/logic/mathfield-dom-parser.ts](../../src/logic/mathfield-dom-parser.ts)
-- **Tests**: [tests/logic/mathfield-dom-parser.test.ts](../../tests/logic/mathfield-dom-parser.test.ts)
-- **Test Fixtures**: [tests/logic/mathfield-fixtures/](../../tests/logic/mathfield-fixtures/)
+- **Tests**: [tests/logic/mathfield-dom-parser.test.ts](../../tests/e2e/mathfield-dom-parser.test.ts)

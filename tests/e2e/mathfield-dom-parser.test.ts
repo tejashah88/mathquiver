@@ -13,6 +13,10 @@ import { join } from 'path';
 import { pathToFileURL } from 'url';
 import { CharacterIndexItem, traverseNode } from '@/logic/mathfield-dom-parser';
 
+// Polyfills for setImmediate & clearImmediate
+import 'core-js/stable/set-immediate';
+import 'core-js/stable/clear-immediate';
+
 // Set up JSDOM globals for Node.js environment
 const jsdom = new JSDOM('<!DOCTYPE html><html><body></body></html>');
 const { window } = jsdom;

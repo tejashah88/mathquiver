@@ -8,28 +8,26 @@ This algorithm transforms MathJSON-formatted (from Mathlive) math expressions fo
 
 **Key Features**:
 - Recursive tree traversal with three base cases (numbers, strings, arrays)
-- Support for 70+ mathematical operations across 11 categories
 - Optional variable substitution for Excel cell references
 - Constant evaluation for `pi`, `e`, and `i`
-- Preservation of mathematical precedence through parentheses
 
 ## Design Principles
 
-### 1. Recursive Tree Traversal
+### Recursive Tree Traversal
 
 The algorithm processes MathJSON as a tree structure with recursive descent:
 - **Numbers** -> Direct string conversion
 - **Strings** -> Variable lookup or constant evaluation
 - **Arrays** -> Operation mapping with recursive argument processing
 
-### 2. Three Mapping Types
+### Three Mapping Types
 
 Operations are classified into three types for flexible conversion:
 - **Operators**: Binary/n-ary operations with symbol notation (`+`, `-`, `*`, `/`, `^`)
 - **Named Functions**: Direct mapping to Excel functions (`SIN`, `COS`, `LOG`)
 - **Custom Transformations**: Complex logic for special cases (`Square`, `Root`, `Divide`)
 
-### 3. Variable Substitution
+### Variable Substitution
 
 Support for mapping mathematical variables to Excel cell references:
 ```
@@ -38,43 +36,11 @@ VarMap: {a: "A1", b: "B1"}
 Output: "(A1+B1)"
 ```
 
-### 4. Parentheses Management
-
-Strategic parentheses placement ensures correct precedence:
-- All operations wrapped in parentheses for safety
-- Custom transformations handle internal parentheses
-- Prevents Excel order-of-operations errors
-
 ## Assumptions
 
-### 1. Valid MathJSON Input
-
-The algorithm assumes all input is valid, well-formed MathJSON. The MathJSON structure follows the standard format:
-- Numbers: `5`, `3.14`, `-2.5`
-- Variables: `"x"`, `"theta"`
-- Operations: `["Add", 2, 3]`, `["Sin", "x"]`
-
-**Rationale**: MathJSON validation is handled by MathLive's parser before reaching this conversion layer.
-
-### 2. Supported Operations Only
-
-The algorithm only handles operations defined in the mapping tables. Unsupported operations throw errors with descriptive messages.
-
-**Example**: `["CustomOp", "x"]` will throw `MJEXTranslateError: ERROR: no mj translation for CustomOp`
-
-**Rationale**: Clear error messages help identify gaps in operation support.
-
-### 3. Excel Formula Compatibility
-
-The algorithm assumes the output will be used in Microsoft Excel or compatible spreadsheet applications (Google Sheets, LibreOffice Calc) that support standard Excel functions.
-
-**Rationale**: Function names and syntax follow Excel conventions (e.g., `ASIN` not `ARCSIN`).
-
-### 4. Variable Names Match Excel Conventions
-
-When using variable substitution, variable names should be valid Excel cell references or named ranges.
-
-**Rationale**: Structural parsing only - semantic validation of cell references is Excel's responsibility.
+The algorithm makes the following assumptions about its input:
+1. The input is valid, well-formed MathJSON.
+2. Defined variables for substitution have valid Excel cell references.
 
 ## Algorithm Structure
 
@@ -487,16 +453,6 @@ return node;  // Use original variable name
 3. Result: `"(PI()+(EXP(1)*x))"`
 
 **Solution**: Recursive processing automatically handles constants at any depth.
-
-### Edge Case 6: Parentheses Overuse
-
-**Problem**: Every operation wrapped in parentheses can create excessive nesting.
-
-**Example**: `((((a+b)+c)+d)+e)` instead of `(a+b+c+d+e)`
-
-**Solution Rationale**: Safety over brevity. Excel's formula parser handles nested parentheses efficiently, and this prevents any precedence errors.
-
-**Alternative**: Could implement precedence-aware parentheses (future enhancement).
 
 ## Performance Characteristics
 

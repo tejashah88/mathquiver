@@ -20,9 +20,6 @@ const config: Config = {
   // Make calling deprecated APIs throw helpful error messages
   errorOnDeprecated: true,
 
-  // Setup files to run before tests
-  setupFiles: ['<rootDir>/tests/setup-playwright.ts'],
-
   // Import extended matcher clauses
   setupFilesAfterEnv: ['jest-extended/all'],
 

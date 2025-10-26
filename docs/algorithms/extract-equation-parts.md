@@ -6,7 +6,7 @@ Author: Claude Sonnet 4.5
 
 This algorithm separates a LaTeX equation based on its function declaration, formula body, and domain limits using an **AST-based hybrid approach**. It looks for the general form of `f(x) = ... , x < ...` and splits between the function declaration (before first `=`) and the limit definition (after first top-level `,`).
 
-**Key Innovation**: Uses the `unified-latex` Abstract Syntax Tree (AST) for structural analysis while extracting substrings from the original input to preserve exact formatting and whitespace.
+Uses the `unified-latex` Abstract Syntax Tree (AST) for structural analysis while extracting substrings from the original input to preserve exact formatting and whitespace.
 
 **Typical Use Case**:
 ```
@@ -18,12 +18,11 @@ Output: ['y ', ' x^2 + 1', ' x > 0']
 
 ## Design Principles
 
-### 1. Hybrid AST-String Approach
+### Hybrid AST-String Approach
 
 **Why Hybrid?**
 - **AST for structure**: Provides accurate parsing of LaTeX constructs (macros, arguments, nesting)
 - **String extraction for output**: Preserves exact whitespace and formatting from original input
-- **Best of both worlds**: Robustness of AST + fidelity of string slicing
 
 **How it works**:
 ```
@@ -45,7 +44,7 @@ Extraction:
   limitDef = input.substring(18)           -> " x > 0"
 ```
 
-### 2. Delimiter Handling
+### Delimiter Handling
 
 **Equals Sign (`=`)**:
 - **Split on**: `x=5`, `f(x)=x^2` (assignment/definition)
@@ -55,7 +54,7 @@ Extraction:
 - **Split on**: `y=x^2,x>0` (constraint separator)
 - **Skip**: `x_{1,2}`, `\left[0,10\right]` (nested commas)
 
-### 3. Nesting-Aware Parsing
+### Nesting-Aware Parsing
 
 The algorithm tracks nesting depth through the AST structure:
 
@@ -68,7 +67,7 @@ Tracked structures:
 
 **Key insight**: The AST already separates subscript/superscript arguments (e.g., `_{1,2}`) into nested Argument nodes, so commas inside them never appear in the top-level node list.
 
-### 4. First-Match Strategy
+### First-Match Strategy
 
 The algorithm finds the **first** occurrence of each delimiter:
 
@@ -77,7 +76,7 @@ x=y=5     -> Split at first '=': ['x', 'y=5', '']
 y=x^2,a,b -> Split at first ',': ['y', 'x^2', 'a,b']
 ```
 
-### 5. Graceful Degradation
+### Graceful Degradation
 
 The algorithm handles all inputs without throwing errors:
 
@@ -92,7 +91,7 @@ The algorithm handles all inputs without throwing errors:
 
 The algorithm makes the following assumptions about its input:
 1. The input is valid LaTeX mathematical notation.
-2. There's only 1 equation in the expression (no support for delimited piecewise functions)
+2. There's only 1 equation in the expression (no support for delimited piecewise functions).
 
 ## Algorithm Structure
 
@@ -456,10 +455,8 @@ function getNodeCharRange(node: Ast.Node): { start: number; end: number } {
 
 ### Hybrid Extraction Strategy
 
-**Why not reconstruct from AST?**
-- AST may not preserve exact whitespace (e.g., space after `a_{1,2}`)
-- Reconstructing LaTeX from AST is complex (need to handle all node types)
-- Original string already has perfect formatting
+**Why not reconstruct from AST?**:
+- AST is not guaranteed to preserve exact whitespace (e.g., space after `a_{1,2}`)
 
 **Best of both worlds**:
 1. Parse with AST to find logical structure (where is the equals? where is the comma?)

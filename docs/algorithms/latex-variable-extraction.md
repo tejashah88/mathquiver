@@ -8,14 +8,14 @@ This algorithm scans a LaTeX expreession for math variables, attempting to prese
 
 ## Design Principles
 
-### 1. Context-Aware Processing
+### Context-Aware Processing
 
 The algorithm makes decisions based on the content type:
 - **Pure alphabetic modifiers** → Keep together as one variable
 - **Mixed content (operators/numbers)** → Split and extract components
 - **Constants (e, π)** → Extract variables from their modifiers
 
-### 2. Modifier Rules
+### Modifier Rules
 
 **Subscripts**: Always stay attached to the base (never split)
 ```
@@ -28,7 +28,7 @@ M^{sl}   →  M^{sl}     (pure alphabetic, keep)
 e^{ax+b} →  a, x, b    (mixed content, split)
 ```
 
-### 3. Three-Phase Architecture
+### Three-Phase Architecture
 
 1. **Classification** → Analyze content type
 2. **Building** → Construct complete variables
@@ -38,7 +38,7 @@ e^{ax+b} →  a, x, b    (mixed content, split)
 
 The algorithm makes the following assumptions about its input:
 1. The input is valid LaTeX mathematical notation. Math functions have a backslash accordingly.
-2. All greek letters are assumed to be as valid as roman letters (A-Z)
+2. All greek letters are assumed to be as valid as roman letters (A-Z).
 3. No macro expansion will be done to expand their full expression.
 
 ## Algorithm Structure
