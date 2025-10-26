@@ -240,29 +240,6 @@ const EquationLine = memo(
           keyboardShortcut: 'meta+C',
           onMenuSelect: () => mf.executeCommand('copyToClipboard'),
         },
-        // Add new menu item to allow copying of LaTeX rendered image (thanks to latex.codecogs.com)
-        {
-          type: 'command',
-          id: 'copy-image',
-          label: 'Copy Image',
-          onMenuSelect: async () => {
-            const latex = encodeURIComponent(mf.getValue('latex-unstyled'));
-              const url = `https://latex.codecogs.com/png.image?\\large&space;\\dpi{300}&space;${latex}`;
-
-              try {
-                const res = await fetch(url);
-                const blob = await res.blob();
-                // NOTE: This can throw an error if the document if unfocused
-                await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
-              } catch (err) {
-                if (FLAGS.enableDebugLogging) {
-                  // eslint-disable-next-line no-console
-                  console.error('Failed to copy LaTeX image:', err);
-                }
-                alert('Failed to copy LaTeX image render, please try again!');
-              }
-          },
-        },
         {
           type: 'command',
           id: 'paste-latex',
