@@ -1,5 +1,7 @@
 # Supported Excel Functions
 
+This features the list of Excel functions implemented for the LaTeX expression to Excel formula conversion.
+
 ## Constants
 
 The following mathematical constants are converted to Excel function calls or literal values:
@@ -111,17 +113,10 @@ IMARGUMENT(z)           - Argument (phase angle)
 IMABS(z)                - Magnitude (absolute value)
 ```
 
-## Notes
-
-### Multi-Argument Functions
-
-Some functions accept multiple arguments:
-- `LCM(a,b,c,...)` - Least common multiple with multiple numbers
-
-### Unsupported Operations
+## Unsupported Operations
 
 The following are NOT supported:
-- Statistical functions (AVERAGE, MEDIAN, STDEV, etc.)
+- Array-based functions (AVERAGE, MEDIAN, STDEV, etc.)
 - Logical functions (IF, AND, OR, NOT)
 - Comparison operators (as functions)
 - Matrix operations
