@@ -27,7 +27,7 @@ export interface CharacterIndexItem {
   /** MathLive's internal atom ID (from data-atom-id attribute) */
   atomId?: string;
 
-  /** Character classification: 'variable', 'operator', 'number', 'punctuation', 'symbol' */
+  /** Character classification:  */
   type: string;
 
   /** Nesting depth: 0 = top-level, 1+ = nested (subscript, superscript, fraction, etc.) */
@@ -172,7 +172,7 @@ export function getContext(element: HTMLElement): string {
             const positionedChildren = Array.from(vlist.children).filter(
               (child): child is HTMLElement => {
                 // In JSDOM, need to check if it's an Element with nodeType 1
-                if (child.nodeType !== 1) return false;
+                if (child.nodeType !== Node.ELEMENT_NODE) return false;
                 const htmlChild = child as HTMLElement;
                 return (
                   !!htmlChild.style &&
@@ -211,7 +211,7 @@ export function getContext(element: HTMLElement): string {
             const centeredChildren = Array.from(vlist.children).filter(
               (child): child is HTMLElement => {
                 // In JSDOM, need to check if it's an Element with nodeType 1
-                if (child.nodeType !== 1) return false;
+                if (child.nodeType !== Node.ELEMENT_NODE) return false;
                 const htmlChild = child as HTMLElement;
                 return (
                   htmlChild.classList.contains('ML__center') &&
@@ -343,37 +343,4 @@ export function parseMathfieldDOM(mathfield: MathfieldElement): CharacterIndexIt
   traverseNode(baseElement, result, 0, currentIndex);
 
   return result;
-}
-
-/**
- * Utility function to apply a style to a range of characters.
- *
- * @param index - The character index array
- * @param startIndex - Starting character index (inclusive)
- * @param endIndex - Ending character index (exclusive)
- * @param styles - CSS styles to apply
- */
-export function applyStyleToRange(
-  index: CharacterIndexItem[],
-  startIndex: number,
-  endIndex: number,
-  styles: Partial<CSSStyleDeclaration>
-): void {
-  index
-    .filter(item => item.index >= startIndex && item.index < endIndex)
-    .forEach(item => {
-      Object.assign(item.element.style, styles);
-    });
-}
-
-/**
- * Utility function to clear all inline styles from character elements.
- *
- * @param index - The character index array
- */
-export function clearStyles(index: CharacterIndexItem[]): void {
-  index.forEach(item => {
-    // Preserve MathLive's original styles by only removing color
-    item.element.style.color = '';
-  });
 }

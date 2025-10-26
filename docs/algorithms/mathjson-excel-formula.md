@@ -60,7 +60,7 @@ The algorithm assumes all input is valid, well-formed MathJSON. The MathJSON str
 
 The algorithm only handles operations defined in the mapping tables. Unsupported operations throw errors with descriptive messages.
 
-**Example**: `["CustomOp", "x"]` will throw `MjTranslateError: ERROR: no mj translation for CustomOp`
+**Example**: `["CustomOp", "x"]` will throw `MJEXTranslateError: ERROR: no mj translation for CustomOp`
 
 **Rationale**: Clear error messages help identify gaps in operation support.
 
@@ -421,7 +421,7 @@ ImaginaryUnit      -> (0+1i)
 **Solution**: Throw descriptive error:
 
 ```typescript
-throw new MjTranslateError(`ERROR: no mj translation for ${operation}`);
+throw new MJEXTranslateError(`ERROR: no mj translation for ${operation}`);
 ```
 
 **User Feedback**: Clear message identifies the missing operation name.
@@ -617,7 +617,7 @@ Empirically tested on expressions up to 200 nodes. Performance is dominated by s
 - Mixed operations: Trig + arithmetic + powers
 - Single-argument division: `["Divide", "x"]` -> `"(1/x)"`
 - Zero arguments: Empty operation (malformed MathJSON)
-- Unsupported operation: Throws `MjTranslateError`
+- Unsupported operation: Throws `MJEXTranslateError`
 
 ## Implementation Notes
 
@@ -670,16 +670,16 @@ interface VarMapping {
 ### Error Handling
 
 ```typescript
-class MjTranslateError extends Error {
+class MJEXTranslateError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'MjTranslateError';
+    this.name = 'MJEXTranslateError';
   }
 }
 
 // Usage:
 if (!(operation in MATHJSON_FUNCTIONS)) {
-  throw new MjTranslateError(`ERROR: no mj translation for ${operation}`);
+  throw new MJEXTranslateError(`ERROR: no mj translation for ${operation}`);
 }
 ```
 
@@ -788,7 +788,7 @@ try {
   const expr6 = ["UnsupportedOp", "x"];
   mathjsonToExcel(expr6);
 } catch (error) {
-  if (error instanceof MjTranslateError) {
+  if (error instanceof MJEXTranslateError) {
     console.error(error.message);
     // -> "ERROR: no mj translation for UnsupportedOp"
   }

@@ -14,12 +14,15 @@ import { MathfieldElement } from 'mathlive';
 import { faGripVertical, faTrashCan } from '@fortawesome/free-solid-svg-icons';
 import MemoizedIcon from '@/components/MemoizedIcon';
 
-// Local imports
-import { cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
-
 // Hooks
 import { useDebounceCallback } from 'usehooks-ts';
-import { applyStyleToRange, clearStyles, parseMathfieldDOM } from '@/logic/mathfield-dom-parser';
+
+// Local algorithms
+import { cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
+import { parseMathfieldDOM } from '@/logic/mathfield-dom-parser';
+
+// Local utilities
+import { applyStyleToRange, clearColors } from '@/logic/mathfield-dom-stylizer';
 import { FLAGS } from '@/utils/feature-flags';
 
 // Constants
@@ -245,7 +248,7 @@ const VariableLine = memo(
 
         try {
           const charIndex = parseMathfieldDOM(mf);
-          clearStyles(charIndex);
+          clearColors(charIndex);
 
           // Find markers at depth 0 (top-level, not in subscripts/superscripts)
           const leftBracket = charIndex.find(item => item.char === '[' && item.depth === 0);

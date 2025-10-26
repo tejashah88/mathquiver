@@ -1,4 +1,4 @@
-import { mathjsonToExcel, MjTranslateError } from '@/logic/mathjson-excel';
+import { mathjsonToExcel, MJEXTranslateError } from '@/logic/mathjson-excel';
 import type { Expression } from 'mathlive';
 
 describe('mathjsonToExcel - Basic functionality', () => {
@@ -15,7 +15,7 @@ describe('mathjsonToExcel - Basic functionality', () => {
 
   test('should throw error for unsupported operator', () => {
     const mathJson: Expression = ['UnsupportedOp', 1, 2];
-    expect(() => mathjsonToExcel(mathJson)).toThrow(MjTranslateError);
+    expect(() => mathjsonToExcel(mathJson)).toThrow(MJEXTranslateError);
     expect(() => mathjsonToExcel(mathJson)).toThrow('Unsupported operator: UnsupportedOp');
   });
 });

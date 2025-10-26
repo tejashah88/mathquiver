@@ -16,21 +16,24 @@ import { faFileExcel, faGripVertical, faTrashCan } from '@fortawesome/free-solid
 // Utilities
 import { deepEqual } from 'fast-equals';
 
+// Hooks
+import { useDebounceCallback } from 'usehooks-ts';
+
 // Local components
 import MemoizedIcon from '@/components/MemoizedIcon';
 
-// Local logic & utilities
+// Local algorithms
 import extractEquationParts from '@/logic/extract-equation-parts';
 import { extractLatexVariables } from '@/logic/latex-var-extract';
 import { mathjsonToExcel } from '@/logic/mathjson-excel';
-import { applyStyleToRange, clearStyles, parseMathfieldDOM } from '@/logic/mathfield-dom-parser';
+import { parseMathfieldDOM } from '@/logic/mathfield-dom-parser';
+
+// Local utilities
+import { applyStyleToRange, clearColors } from '@/logic/mathfield-dom-stylizer';
 import { FLAGS } from '@/utils/feature-flags';
 
 // Types
 import { CondensedVariableItem, VarMapping } from '@/types';
-
-// Hooks
-import { useDebounceCallback } from 'usehooks-ts';
 
 // Constants
 export const INPUT_DEBOUNCE_DELAY = 200;
@@ -322,7 +325,7 @@ const EquationLine = memo(
 
         try {
           const charIndex = parseMathfieldDOM(mf);
-          clearStyles(charIndex);
+          clearColors(charIndex);
 
           // Find markers at depth 0 (top-level, not in subscripts/superscripts)
           const equalsSign = charIndex.find(item => item.char === '=' && item.depth === 0);

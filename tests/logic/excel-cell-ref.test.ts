@@ -6,6 +6,8 @@ describe('Column Letter to Number Conversion', () => {
     ['A', 1],
     ['S', 19],
     ['Z', 26],
+    ['b', 2],
+    ['q', 17],
     ['AA', 27],
     ['CT', 98],
     ['ZA', 677],
@@ -16,8 +18,6 @@ describe('Column Letter to Number Conversion', () => {
     '12',
     'A2',
     '!@#',
-    'b',
-    'q',
   ];
 
   test.each(validCases)('valid: %s => %s', (input, expected) => {
