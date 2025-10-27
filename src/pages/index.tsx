@@ -571,7 +571,7 @@ export default function Home() {
           </div>
         </div>
 
-        <div className="flex-1 py-2 pl-2 pr-0">
+        <div className="flex-1 pt-2 pl-2">
           <EquationsList
             equations={equations}
             condensedVariables={condensedVariables}
@@ -604,7 +604,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="flex-1 w-full p-4">
+        <div className="flex-1 w-full px-2 pt-2">
           <div className={`grid grid-cols-[1.7rem_2fr_2fr_2.7rem] border-t gap-0 bg-gray-200 font-bold ${
             variables.length === 0 ? 'border-b' : ''}`
           }>

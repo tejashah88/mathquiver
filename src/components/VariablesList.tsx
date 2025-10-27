@@ -1,7 +1,7 @@
 'use client';
 
 // React imports
-import { memo, RefObject, useMemo } from 'react';
+import { memo, RefObject, useCallback, useMemo } from 'react';
 
 // Drag-and-drop kit integration
 import { DndContext, DragOverlay, DragStartEvent, DragEndEvent, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
@@ -68,6 +68,20 @@ const VariablesList = memo(
     // Compute variable IDs for SortableContext
     const variablesIds = useMemo(() => variables.map(item => item.id), [variables]);
 
+    // Memoize dragged variable to avoid O(n) searches during drag renders
+    const draggedVariable = useMemo(() => {
+      return draggedVariableId ? variables.find(v => v.id === draggedVariableId) : null;
+    }, [draggedVariableId, variables]);
+
+    // Memoize ref callback to prevent unnecessary ref updates on every render
+    const handleVariableRef = useCallback((id: string, el: VariableLineHandle | null) => {
+      if (el) {
+        variableRefs.current?.set(id, el);
+      } else {
+        variableRefs.current?.delete(id);
+      }
+    }, [variableRefs]);
+
     return (
       <DndContext
         sensors={sensors}
@@ -82,13 +96,7 @@ const VariablesList = memo(
             {variables.map((_var: VariableItem) => (
               <VariableLine
                 key={_var.id}
-                ref={(el: VariableLineHandle | null) => {
-                  if (el) {
-                    variableRefs.current?.set(_var.id, el);
-                  } else {
-                    variableRefs.current?.delete(_var.id);
-                  }
-                }}
+                ref={(el: VariableLineHandle | null) => handleVariableRef(_var.id, el)}
                 id={_var.id}
                 latexInput={_var._latexRender}
                 excelInput={_var.excelVar}
@@ -104,12 +112,12 @@ const VariablesList = memo(
         </SortableContext>
 
         <DragOverlay dropAnimation={null}>
-          {draggedVariableId ? (
+          {draggedVariable ? (
             <div style={{ opacity: 0.9, cursor: 'grabbing' }}>
               <VariableLine
-                id={draggedVariableId}
-                latexInput={variables.find(v => v.id === draggedVariableId)?._latexRender || ''}
-                excelInput={variables.find(v => v.id === draggedVariableId)?.excelVar || ''}
+                id={draggedVariable.id}
+                latexInput={draggedVariable._latexRender}
+                excelInput={draggedVariable.excelVar}
                 inFocusMode={false}
                 onVariableLatexInput={() => {}}
                 onVariableExcelInput={() => {}}

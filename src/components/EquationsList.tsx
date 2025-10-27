@@ -1,7 +1,7 @@
 'use client';
 
 // React imports
-import { memo, RefObject, useMemo } from 'react';
+import { memo, RefObject, useCallback, useMemo } from 'react';
 
 // Drag-and-drop kit integration
 import { DndContext, DragOverlay, DragStartEvent, DragEndEvent, PointerSensor, KeyboardSensor, useSensor, useSensors, closestCenter } from '@dnd-kit/core';
@@ -71,6 +71,20 @@ const EquationsList = memo(
     // Compute equation IDs for SortableContext
     const equationIds = useMemo(() => equations.map(item => item.id), [equations]);
 
+    // Memoize dragged equation to avoid O(n) search during drag renders
+    const draggedEquation = useMemo(() => {
+      return draggedEquationId ? equations.find(e => e.id === draggedEquationId) : null;
+    }, [draggedEquationId, equations]);
+
+    // Memoize ref callback to prevent unnecessary ref updates on every render
+    const handleEquationRef = useCallback((id: string, el: EquationLineHandle | null) => {
+      if (el) {
+        equationRefs.current?.set(id, el);
+      } else {
+        equationRefs.current?.delete(id);
+      }
+    }, [equationRefs]);
+
     return (
       <DndContext
         sensors={sensors}
@@ -84,13 +98,7 @@ const EquationsList = memo(
             {equations.map((equ: EquationItem) => (
               <EquationLine
                 key={equ.id}
-                ref={(el: EquationLineHandle | null) => {
-                  if (el) {
-                    equationRefs.current?.set(equ.id, el);
-                  } else {
-                    equationRefs.current?.delete(equ.id);
-                  }
-                }}
+                ref={(el: EquationLineHandle | null) => handleEquationRef(equ.id, el)}
                 id={equ.id}
                 equation={equ.latex}
                 variableList={condensedVariables}
@@ -105,11 +113,11 @@ const EquationsList = memo(
         </SortableContext>
 
         <DragOverlay dropAnimation={null}>
-          {draggedEquationId ? (
+          {draggedEquation ? (
             <div style={{ opacity: 0.9, cursor: 'grabbing' }}>
               <EquationLine
-                id={draggedEquationId}
-                equation={equations.find(e => e.id === draggedEquationId)?.latex || ''}
+                id={draggedEquation.id}
+                equation={draggedEquation.latex}
                 variableList={condensedVariables}
                 inFocusMode={false}
                 onEquationInput={() => {}}

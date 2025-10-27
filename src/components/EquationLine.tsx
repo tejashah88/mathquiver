@@ -408,6 +408,17 @@ const EquationLine = memo(
     borderRadius: '0.25rem',
   }), [inFocusMode, inputEquationState]);
 
+  // Memoize variable to Excel cell reference mapping to avoid recreation on every export
+  const variableExcelMap = useMemo(() => {
+    return variableList.reduce((acc, entry) => {
+      if (entry.latexVar) {
+        const mjsonVar = MathfieldElement.computeEngine!.parse(entry.latexVar.trim());
+        acc[mjsonVar.json.toString()] = entry.excelVar.trim();
+      }
+      return acc;
+    }, {} as VarMapping);
+  }, [variableList]);
+
   ////////////////////////////////////
   // EFFECTS: VALIDATION & TRACKING //
   ////////////////////////////////////
@@ -487,21 +498,12 @@ const EquationLine = memo(
     debouncedOnEquInput(latex);
   }, [debouncedOnEquInput, onEquationFocus, id]);
 
-  // Memoize Excel export handler (expensive: equation parsing + variable mapping + clipboard)
+  // Memoize Excel export handler (expensive: equation parsing + clipboard)
   const handleExcelExport = useCallback(async () => {
     // Extract the main body of equation to allow typing f(x) = ... and limits (note: keep other variables for readability)
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [eqFuncDefine, eqMainBody, eqLimits] = extractEquationParts(localEquation);
     const boxedExpression = MathfieldElement.computeEngine!.parse(eqMainBody, { canonical: true });
-
-    // Create variable to Excel cell reference map
-    const variableExcelMap = variableList.reduce((acc, entry) => {
-      if (entry.latexVar) {
-        const mjsonVar = MathfieldElement.computeEngine!.parse(entry.latexVar.trim());
-        acc[mjsonVar.json.toString()] = entry.excelVar.trim();
-      }
-      return acc;
-    }, {} as VarMapping);
 
     // Generate the Excel Formula and copy it to the clipboard
     const excelFormula = mathjsonToExcel(boxedExpression.json, variableExcelMap);
@@ -521,7 +523,7 @@ const EquationLine = memo(
     // Show a tooltip saying that the copy action was successful
     setCopiedFormulaTooltip(true);
     setTimeout(() => setCopiedFormulaTooltip(false), 1000);
-  }, [localEquation, variableList]);
+  }, [localEquation, variableExcelMap]);
 
   ////////////
   // RENDER //
