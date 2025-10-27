@@ -1,13 +1,12 @@
 import React from 'react';
 import { ErrorBoundary as ReactErrorBoundary, FallbackProps } from 'react-error-boundary';
-import { FLAGS } from '@/utils/feature-flags';
+import { FLAGS } from '@/debug/feature-flags';
 
 /**
  * Error fallback component displayed when an error is caught by the ErrorBoundary.
  * Shows a user-friendly error message with options to recover or reload.
  */
 function ErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
-  'use memo';
   return (
     <div className="flex min-h-screen items-center justify-center px-4 bg-gray-100">
       <div className="max-w-md p-6 rounded-lg border border-red-300 bg-white shadow-lg">

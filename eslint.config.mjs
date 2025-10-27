@@ -23,6 +23,7 @@ const eslintConfig = defineConfig([
     },
     rules: {
       'react-compiler/react-compiler': 'error',
+      'react-hooks/rules-of-hooks': 'error',
       'jsx-quotes': ['warn', 'prefer-double'],
       'no-console': 'warn',
       'no-unused-vars': 'off',
@@ -38,10 +39,7 @@ const eslintConfig = defineConfig([
         'useReducer',
         'useContext',
         'createContext',
-        'forwardRef',
-        'memo',
         'useRef',
-        'useImperativeHandle',
       ]],
     },
   },

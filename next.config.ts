@@ -13,7 +13,7 @@ const config: NextConfig = {
 
   // React Compiler
   reactCompiler: {
-    compilationMode: 'annotation',
+    compilationMode: 'infer',
   },
 
   // Turbopack experimental
