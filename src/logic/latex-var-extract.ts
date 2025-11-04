@@ -11,21 +11,55 @@ import * as Ast from '@unified-latex/unified-latex-types';
 
 // Greek letters - lowercase (24 letters)
 const GREEK_LOWERCASE = [
-  'alpha', 'beta', 'gamma', 'delta', 'epsilon', 'zeta', 'eta', 'theta',
-  'iota', 'kappa', 'lambda', 'mu', 'nu', 'xi', 'pi', 'rho', 'sigma',
-  'tau', 'upsilon', 'phi', 'chi', 'psi', 'omega'
+  'alpha',
+  'beta',
+  'gamma',
+  'delta',
+  'epsilon',
+  'zeta',
+  'eta',
+  'theta',
+  'iota',
+  'kappa',
+  'lambda',
+  'mu',
+  'nu',
+  'xi',
+  'pi',
+  'rho',
+  'sigma',
+  'tau',
+  'upsilon',
+  'phi',
+  'chi',
+  'psi',
+  'omega',
 ];
 
 // Greek letters - uppercase (11 letters that differ from Latin)
 const GREEK_UPPERCASE = [
-  'Gamma', 'Delta', 'Theta', 'Lambda', 'Xi', 'Pi', 'Sigma',
-  'Upsilon', 'Phi', 'Psi', 'Omega'
+  'Gamma',
+  'Delta',
+  'Theta',
+  'Lambda',
+  'Xi',
+  'Pi',
+  'Sigma',
+  'Upsilon',
+  'Phi',
+  'Psi',
+  'Omega',
 ];
 
 // Greek letter variants (alternative forms)
 const GREEK_VARIANTS = [
-  'varepsilon', 'vartheta', 'varkappa', 'varpi',
-  'varrho', 'varsigma', 'varphi'
+  'varepsilon',
+  'vartheta',
+  'varkappa',
+  'varpi',
+  'varrho',
+  'varsigma',
+  'varphi',
 ];
 
 // Combine all symbol categories into a single Set for O(1) lookup
@@ -39,65 +73,62 @@ const VARIABLE_MACROS = new Set([
 // These are treated as part of the variable's identity (e.g., \overline{x} is one variable)
 const ACCENT_DECORATORS = [
   // Over-decorations (above the symbol)
-  'overline',    // Long horizontal line over symbol (complex conjugate, closure)
-  'bar',         // Short horizontal bar over symbol (mean, conjugate)
-  'hat',         // Circumflex accent (unit vectors, estimators, Fourier transforms)
-  'widehat',     // Wide hat for multiple characters (operators, estimators)
-  'tilde',       // Tilde accent (equivalence, approximation, transforms)
-  'widetilde',   // Wide tilde for multiple characters (covering spaces, equivalence classes)
-  'vec',         // Arrow over symbol (vectors in physics and linear algebra)
-  'overrightarrow',   // Right-pointing arrow (vectors, directional notation)
-  'overleftarrow',    // Left-pointing arrow (reverse directions, sequences)
+  'overline', // Long horizontal line over symbol (complex conjugate, closure)
+  'bar', // Short horizontal bar over symbol (mean, conjugate)
+  'hat', // Circumflex accent (unit vectors, estimators, Fourier transforms)
+  'widehat', // Wide hat for multiple characters (operators, estimators)
+  'tilde', // Tilde accent (equivalence, approximation, transforms)
+  'widetilde', // Wide tilde for multiple characters (covering spaces, equivalence classes)
+  'vec', // Arrow over symbol (vectors in physics and linear algebra)
+  'overrightarrow', // Right-pointing arrow (vectors, directional notation)
+  'overleftarrow', // Left-pointing arrow (reverse directions, sequences)
   'overleftrightarrow', // Bidirectional arrow (lines in geometry)
-  'dot',         // Single dot above (time derivatives, Newton notation)
-  'ddot',        // Two dots above (second time derivatives)
-  'dddot',       // Three dots above (third derivatives)
-  'ddddot',      // Four dots above (fourth derivatives)
-  'acute',       // Acute accent (differential geometry)
-  'grave',       // Grave accent (dual spaces, covariant derivatives)
-  'breve',       // Breve/curved accent (specialized notations)
-  'check',       // Háček/inverted circumflex (Čech cohomology)
-  'mathring',    // Ring above symbol (ring operations, interior in topology)
+  'dot', // Single dot above (time derivatives, Newton notation)
+  'ddot', // Two dots above (second time derivatives)
+  'dddot', // Three dots above (third derivatives)
+  'ddddot', // Four dots above (fourth derivatives)
+  'acute', // Acute accent (differential geometry)
+  'grave', // Grave accent (dual spaces, covariant derivatives)
+  'breve', // Breve/curved accent (specialized notations)
+  'check', // Háček/inverted circumflex (Čech cohomology)
+  'mathring', // Ring above symbol (ring operations, interior in topology)
   // Under-decorations (below the symbol)
-  'underline',   // Horizontal line under symbol (vectors, emphasis, infimum)
-  'underbar',    // Bar under symbol (similar to underline)
+  'underline', // Horizontal line under symbol (vectors, emphasis, infimum)
+  'underbar', // Bar under symbol (similar to underline)
 ];
 
 // Font-changing macros used for mathematical typography
 // These distinguish different types of mathematical objects (e.g., \mathbb{R} for reals)
 const FONT_DECORATORS = [
-  'mathbf',      // Bold font (vectors, matrices, tensors)
-  'boldsymbol',  // Bold italic preserving Greek (vector notation with Greek symbols)
-  'bm',          // Bold math from bm package (comprehensive bold)
-  'pmb',         // Poor man's bold (fallback when bold glyphs unavailable)
-  'mathcal',     // Calligraphic uppercase (categories, sheaves, Laplace transforms, power sets)
-  'mathscr',     // Script font (sheaves, sigma-algebras, alternative to mathcal)
-  'mathbb',      // Blackboard bold uppercase (number sets ℕ, ℤ, ℚ, ℝ, ℂ)
-  'mathfrak',    // Fraktur/Gothic font (Lie algebras, ideals, cardinalities)
-  'mathrm',      // Roman upright font (operators, differentials, units, multi-letter IDs)
-  'mathsf',      // Sans-serif font (categories, types in type theory)
-  'mathtt',      // Typewriter/monospace font (computational/algorithmic notation)
-  'mathit',      // Math italic with different spacing (multi-letter variable names)
+  'mathbf', // Bold font (vectors, matrices, tensors)
+  'boldsymbol', // Bold italic preserving Greek (vector notation with Greek symbols)
+  'bm', // Bold math from bm package (comprehensive bold)
+  'pmb', // Poor man's bold (fallback when bold glyphs unavailable)
+  'mathcal', // Calligraphic uppercase (categories, sheaves, Laplace transforms, power sets)
+  'mathscr', // Script font (sheaves, sigma-algebras, alternative to mathcal)
+  'mathbb', // Blackboard bold uppercase (number sets ℕ, ℤ, ℚ, ℝ, ℂ)
+  'mathfrak', // Fraktur/Gothic font (Lie algebras, ideals, cardinalities)
+  'mathrm', // Roman upright font (operators, differentials, units, multi-letter IDs)
+  'mathsf', // Sans-serif font (categories, types in type theory)
+  'mathtt', // Typewriter/monospace font (computational/algorithmic notation)
+  'mathit', // Math italic with different spacing (multi-letter variable names)
 ];
 
 // Combine all decorator categories into a single Set for O(1) lookup
-const DECORATOR_MACROS = new Set([
-  ...ACCENT_DECORATORS,
-  ...FONT_DECORATORS,
-]);
+const DECORATOR_MACROS = new Set([...ACCENT_DECORATORS, ...FONT_DECORATORS]);
 
 // Text macros for decorative/explanatory text
 // These should NOT contribute any variables to extraction
 // Example: \text{velocity} should extract nothing, while "v = velocity" would extract 'v'
 const TEXT_MACROS = new Set([
-  'text',       // Standard text macro (most common)
-  'textrm',     // Roman (upright) text
-  'textbf',     // Bold text
-  'textit',     // Italic text
-  'textsf',     // Sans-serif text
-  'texttt',     // Typewriter/monospace text
-  'textsl',     // Slanted text
-  'textsc',     // Small caps text
+  'text', // Standard text macro (most common)
+  'textrm', // Roman (upright) text
+  'textbf', // Bold text
+  'textit', // Italic text
+  'textsf', // Sans-serif text
+  'texttt', // Typewriter/monospace text
+  'textsl', // Slanted text
+  'textsc', // Small caps text
 ]);
 
 const KNOWN_CONSTANTS = new Set(['e', 'i', '\\pi']);
@@ -110,7 +141,7 @@ interface ModifierAnalysis {
   isPureAlphabetic: boolean;
   containsVariables: boolean;
   isNumericOnly: boolean;
-  nestingDepth: number;  // How many levels of nesting (0 = no nesting, 1 = one level, etc.)
+  nestingDepth: number; // How many levels of nesting (0 = no nesting, 1 = one level, etc.)
   rawString: string;
   nodes: Ast.Node[];
 }
@@ -120,13 +151,13 @@ interface ModifierAnalysis {
 // ============================================================================
 
 /**
-* Checks if content is purely alphabetic (no operators, numbers, or functions).
-* This is used to determine if a subscript/superscript should be kept as part
-* of the variable name or extracted separately.
-*
-* Special handling: Inside braces like {b^{c^{d}}}, the parser creates strings like "b^"
-* followed by groups. We need to recognize this pattern as nested superscripts.
-*/
+ * Checks if content is purely alphabetic (no operators, numbers, or functions).
+ * This is used to determine if a subscript/superscript should be kept as part
+ * of the variable name or extracted separately.
+ *
+ * Special handling: Inside braces like {b^{c^{d}}}, the parser creates strings like "b^"
+ * followed by groups. We need to recognize this pattern as nested superscripts.
+ */
 function isContentPureAlphabetic(nodes: Ast.Node[]): boolean {
   for (let i = 0; i < nodes.length; i++) {
     const node = nodes[i];
@@ -186,8 +217,8 @@ function isContentPureAlphabetic(nodes: Ast.Node[]): boolean {
 }
 
 /**
-* Checks if nodes contain any variables (not just numbers/operators).
-*/
+ * Checks if nodes contain any variables (not just numbers/operators).
+ */
 function containsVariables(nodes: Ast.Node[]): boolean {
   for (const node of nodes) {
     if (node.type === 'string') {
@@ -208,9 +239,9 @@ function containsVariables(nodes: Ast.Node[]): boolean {
 }
 
 /**
-* Counts the nesting depth of superscripts/subscripts in a node tree.
-* Returns 0 for no nesting, 1 for one level (e.g., "x^a"), 2 for two levels (e.g., "x^{a^b}"), etc.
-*/
+ * Counts the nesting depth of superscripts/subscripts in a node tree.
+ * Returns 0 for no nesting, 1 for one level (e.g., "x^a"), 2 for two levels (e.g., "x^{a^b}"), etc.
+ */
 function countNestingDepth(nodes: Ast.Node[]): number {
   let maxDepth = 0;
 
@@ -229,7 +260,11 @@ function countNestingDepth(nodes: Ast.Node[]): number {
           continue;
         }
       }
-    } else if (node.type === 'macro' && (node.content === '^' || node.content === '_') && node.args) {
+    } else if (
+      node.type === 'macro' &&
+      (node.content === '^' || node.content === '_') &&
+      node.args
+    ) {
       // Count depth of nested modifiers
       const nestedDepth = 1 + countNestingDepth(node.args[0].content);
       maxDepth = Math.max(maxDepth, nestedDepth);
@@ -243,8 +278,8 @@ function countNestingDepth(nodes: Ast.Node[]): number {
 }
 
 /**
-* Checks if content is purely numeric.
-*/
+ * Checks if content is purely numeric.
+ */
 function isNumericOnly(nodes: Ast.Node[]): boolean {
   for (const node of nodes) {
     if (node.type === 'string') {
@@ -256,7 +291,11 @@ function isNumericOnly(nodes: Ast.Node[]): boolean {
       if (!isNumericOnly(node.content)) {
         return false;
       }
-    } else if (node.type === 'macro' || node.type === 'whitespace' || node.type === 'parbreak') {
+    } else if (
+      node.type === 'macro' ||
+      node.type === 'whitespace' ||
+      node.type === 'parbreak'
+    ) {
       // Skip whitespace, but any macro makes it non-numeric
       if (node.type === 'macro') {
         return false;
@@ -267,12 +306,12 @@ function isNumericOnly(nodes: Ast.Node[]): boolean {
 }
 
 /**
-* Converts AST nodes to LaTeX string representation.
-* Follows LaTeX conventions for brace usage.
-*
-* Special handling: When inside braces, "b^" followed by a group represents nested
-* superscripts like {b^{c^{d}}}. We need to reconstruct this properly.
-*/
+ * Converts AST nodes to LaTeX string representation.
+ * Follows LaTeX conventions for brace usage.
+ *
+ * Special handling: When inside braces, "b^" followed by a group represents nested
+ * superscripts like {b^{c^{d}}}. We need to reconstruct this properly.
+ */
 function toLatexString(nodes: Ast.Node[]): string {
   const parts: string[] = [];
 
@@ -341,9 +380,9 @@ function toLatexString(nodes: Ast.Node[]): string {
 }
 
 /**
-* Formats a modifier string with appropriate braces.
-* LaTeX convention: single digits don't need braces, everything else does for consistency.
-*/
+ * Formats a modifier string with appropriate braces.
+ * LaTeX convention: single digits don't need braces, everything else does for consistency.
+ */
 function formatModifierString(rawString: string): string {
   // Single digit doesn't need braces
   if (/^\d$/.test(rawString)) {
@@ -358,9 +397,9 @@ function formatModifierString(rawString: string): string {
 // ============================================================================
 
 /**
-* Constructs complete variables from a base and its modifiers.
-* Handles the logic of when to keep modifiers attached vs. when to extract them.
-*/
+ * Constructs complete variables from a base and its modifiers.
+ * Handles the logic of when to keep modifiers attached vs. when to extract them.
+ */
 class VariableBuilder {
   private base: string;
   private subscript: ModifierAnalysis | null = null;
@@ -371,8 +410,8 @@ class VariableBuilder {
   }
 
   /**
-  * Analyzes a modifier to determine how it should be handled.
-  */
+   * Analyzes a modifier to determine how it should be handled.
+   */
   private analyzeModifier(nodes: Ast.Node[]): ModifierAnalysis {
     const rawString = toLatexString(nodes);
 
@@ -382,7 +421,7 @@ class VariableBuilder {
       isNumericOnly: isNumericOnly(nodes),
       nestingDepth: countNestingDepth(nodes),
       rawString: rawString,
-      nodes: nodes
+      nodes: nodes,
     };
   }
 
@@ -395,27 +434,29 @@ class VariableBuilder {
   }
 
   /**
-  * Builds the final variable(s) based on the collected information.
-  * Returns an array because in some cases we need to return both the
-  * combined variable and the extracted components.
-  *
-  * Key rules:
-  * - Subscripts: ALWAYS keep attached to base, never split (unless empty or contains only text macros)
-  * - Superscripts: Keep if pure alphabetic OR numeric-only, otherwise split
-  * - Empty modifiers: Ignore them (treat as if they don't exist)
-  * - Text-only modifiers: Ignore them (text macros are decorative, not variables)
-  */
+   * Builds the final variable(s) based on the collected information.
+   * Returns an array because in some cases we need to return both the
+   * combined variable and the extracted components.
+   *
+   * Key rules:
+   * - Subscripts: ALWAYS keep attached to base, never split (unless empty or contains only text macros)
+   * - Superscripts: Keep if pure alphabetic OR numeric-only, otherwise split
+   * - Empty modifiers: Ignore them (treat as if they don't exist)
+   * - Text-only modifiers: Ignore them (text macros are decorative, not variables)
+   */
   build(): string[] {
     const results: string[] = [];
 
     // Check if subscript/superscript are empty or contain only text macros
     // (important for edge cases like "tests_{}" or "y_{\text{initial}}")
-    const hasNonEmptySubscript = this.subscript &&
-                                  this.subscript.rawString.trim() !== '' &&
-                                  !this.subscript.rawString.includes('\\text');
-    const hasNonEmptySuperscript = this.superscript &&
-                                   this.superscript.rawString.trim() !== '' &&
-                                   !this.superscript.rawString.includes('\\text');
+    const hasNonEmptySubscript =
+      this.subscript &&
+      this.subscript.rawString.trim() !== '' &&
+      !this.subscript.rawString.includes('\\text');
+    const hasNonEmptySuperscript =
+      this.superscript &&
+      this.superscript.rawString.trim() !== '' &&
+      !this.superscript.rawString.includes('\\text');
 
     // Case 1: Both subscript and superscript present
     if (hasNonEmptySubscript && hasNonEmptySuperscript) {
@@ -425,7 +466,10 @@ class VariableBuilder {
       varName += '_' + formatModifierString(this.subscript!.rawString);
 
       // Superscripts: Attach if pure alphabetic or numeric-only
-      if (this.superscript!.isPureAlphabetic || this.superscript!.isNumericOnly) {
+      if (
+        this.superscript!.isPureAlphabetic ||
+        this.superscript!.isNumericOnly
+      ) {
         if (!this.superscript!.isNumericOnly) {
           varName += '^' + formatModifierString(this.superscript!.rawString);
         }
@@ -441,7 +485,8 @@ class VariableBuilder {
     // Case 2: Only subscript
     else if (hasNonEmptySubscript) {
       // Subscripts: Always attach to base (never split, regardless of content)
-      const varName = this.base + '_' + formatModifierString(this.subscript!.rawString);
+      const varName =
+        this.base + '_' + formatModifierString(this.subscript!.rawString);
       results.push(varName);
     }
     // Case 3: Only superscript
@@ -466,7 +511,8 @@ class VariableBuilder {
           // - M^{sl} (depth=0) → keep as 'M^{sl}'
           // - x^{y^{z}} (depth=1) → keep as 'x^{y^{z}}'
           // - a^{b^{c^{d}}} (depth=2) → keep as 'a^{b^{c^{d}}}'
-          const varName = this.base + '^' + formatModifierString(this.superscript!.rawString);
+          const varName =
+            this.base + '^' + formatModifierString(this.superscript!.rawString);
           results.push(varName);
         }
       } else {
@@ -491,9 +537,9 @@ class VariableBuilder {
 // ============================================================================
 
 /**
-* Extracts all variables from an array of AST nodes.
-* Uses a single-pass approach with lookahead for modifiers.
-*/
+ * Extracts all variables from an array of AST nodes.
+ * Uses a single-pass approach with lookahead for modifiers.
+ */
 function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
   const variables = new Set<string>();
   let i = 0;
@@ -513,7 +559,7 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
       if (/[\^_]/.test(content)) {
         // Re-parse this string as LaTeX to recover the structure
         const reparsedAST = parseMath(content);
-        extractVariablesFromAST(reparsedAST).forEach(v => variables.add(v));
+        extractVariablesFromAST(reparsedAST).forEach((v) => variables.add(v));
         i++;
         continue;
       }
@@ -524,243 +570,242 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
         let j = i + 1;
 
         // Look ahead for subscript
-        if (j < nodes.length &&
-          nodes[j].type === 'macro') {
-            const macro = nodes[j] as Ast.Macro;
-            if (macro.content === '_' && macro.args) {
-              builder.addSubscript(macro.args[0].content);
-              j++;
-            }
+        if (j < nodes.length && nodes[j].type === 'macro') {
+          const macro = nodes[j] as Ast.Macro;
+          if (macro.content === '_' && macro.args) {
+            builder.addSubscript(macro.args[0].content);
+            j++;
           }
+        }
 
-          // Look ahead for superscript
-          if (j < nodes.length &&
-            nodes[j].type === 'macro') {
-              const macro = nodes[j] as Ast.Macro;
-              if (macro.content === '^' && macro.args) {
-                builder.addSuperscript(macro.args[0].content);
-                j++;
-              }
-            }
-
-            // Build and add variables
-            builder.build().forEach(v => variables.add(v));
-
-            // Skip past the modifiers we processed
-            i = j;
-            continue;
+        // Look ahead for superscript
+        if (j < nodes.length && nodes[j].type === 'macro') {
+          const macro = nodes[j] as Ast.Macro;
+          if (macro.content === '^' && macro.args) {
+            builder.addSuperscript(macro.args[0].content);
+            j++;
           }
+        }
 
-          // Multi-character string: split into individual letters
-          for (const char of content) {
-            if (/[a-zA-Z]/.test(char)) {
-              variables.add(char);
-            }
-          }
+        // Build and add variables
+        builder.build().forEach((v) => variables.add(v));
 
+        // Skip past the modifiers we processed
+        i = j;
+        continue;
+      }
+
+      // Multi-character string: split into individual letters
+      for (const char of content) {
+        if (/[a-zA-Z]/.test(char)) {
+          variables.add(char);
+        }
+      }
+
+      i++;
+      continue;
+    }
+
+    // ----------------------------------------------------------------
+    // PHASE 2: Handle Greek letter macros
+    // ----------------------------------------------------------------
+    if (node.type === 'macro' && VARIABLE_MACROS.has(node.content)) {
+      const builder = new VariableBuilder(`\\${node.content}`);
+      let j = i + 1;
+
+      // Look ahead for subscript
+      if (j < nodes.length && nodes[j].type === 'macro') {
+        const macro = nodes[j] as Ast.Macro;
+        if (macro.content === '_' && macro.args) {
+          builder.addSubscript(macro.args[0].content);
+          j++;
+        }
+      }
+
+      // Look ahead for superscript
+      if (j < nodes.length && nodes[j].type === 'macro') {
+        const macro = nodes[j] as Ast.Macro;
+        if (macro.content === '^' && macro.args) {
+          builder.addSuperscript(macro.args[0].content);
+          j++;
+        }
+      }
+
+      // Build and add variables
+      builder.build().forEach((v) => variables.add(v));
+
+      i = j;
+      continue;
+    }
+
+    // ----------------------------------------------------------------
+    // PHASE 2.5: Handle decorator macros (e.g., \overline{x}, \vec{v})
+    // ----------------------------------------------------------------
+    if (node.type === 'macro' && DECORATOR_MACROS.has(node.content)) {
+      let decoratedContent: string;
+      let j: number;
+
+      // Pattern 1: Macro with args property (font decorators like \mathbb, \mathcal)
+      if (node.args && node.args.length > 0) {
+        decoratedContent = toLatexString(node.args[0].content);
+        j = i + 1; // Skip only the macro
+      }
+      // Pattern 2: Macro followed by sibling group (accent decorators like \bar, \overline)
+      else {
+        const nextNode = i + 1 < nodes.length ? nodes[i + 1] : null;
+        if (nextNode && nextNode.type === 'group') {
+          decoratedContent = toLatexString(nextNode.content);
+          j = i + 2; // Skip both the macro and the group
+        } else {
+          // No valid argument found, skip this macro
           i++;
           continue;
         }
+      }
 
-        // ----------------------------------------------------------------
-        // PHASE 2: Handle Greek letter macros
-        // ----------------------------------------------------------------
-        if (node.type === 'macro' && VARIABLE_MACROS.has(node.content)) {
-          const builder = new VariableBuilder(`\\${node.content}`);
-          let j = i + 1;
+      // Construct the decorated base as \decorator{content}
+      const decoratedBase = `\\${node.content}{${decoratedContent}}`;
+      const builder = new VariableBuilder(decoratedBase);
 
-          // Look ahead for subscript
-          if (j < nodes.length &&
-            nodes[j].type === 'macro') {
-              const macro = nodes[j] as Ast.Macro;
-              if (macro.content === '_' && macro.args) {
-                builder.addSubscript(macro.args[0].content);
-                j++;
-              }
-            }
+      // Look ahead for subscript
+      if (j < nodes.length && nodes[j].type === 'macro') {
+        const macro = nodes[j] as Ast.Macro;
+        if (macro.content === '_' && macro.args) {
+          builder.addSubscript(macro.args[0].content);
+          j++;
+        }
+      }
 
-            // Look ahead for superscript
-            if (j < nodes.length &&
-              nodes[j].type === 'macro') {
-                const macro = nodes[j] as Ast.Macro;
-                if (macro.content === '^' && macro.args) {
-                  builder.addSuperscript(macro.args[0].content);
-                  j++;
-                }
-              }
+      // Look ahead for superscript
+      if (j < nodes.length && nodes[j].type === 'macro') {
+        const macro = nodes[j] as Ast.Macro;
+        if (macro.content === '^' && macro.args) {
+          builder.addSuperscript(macro.args[0].content);
+          j++;
+        }
+      }
 
-              // Build and add variables
-              builder.build().forEach(v => variables.add(v));
+      // Build and add variables
+      builder.build().forEach((v) => variables.add(v));
 
-              i = j;
-              continue;
-            }
+      i = j;
+      continue;
+    }
 
-            // ----------------------------------------------------------------
-            // PHASE 2.5: Handle decorator macros (e.g., \overline{x}, \vec{v})
-            // ----------------------------------------------------------------
-            if (node.type === 'macro' && DECORATOR_MACROS.has(node.content)) {
-              let decoratedContent: string;
-              let j: number;
+    // ----------------------------------------------------------------
+    // PHASE 2.75: Handle text macros (excluded from variables)
+    // ----------------------------------------------------------------
+    if (node.type === 'macro' && TEXT_MACROS.has(node.content)) {
+      let j: number;
 
-              // Pattern 1: Macro with args property (font decorators like \mathbb, \mathcal)
-              if (node.args && node.args.length > 0) {
-                decoratedContent = toLatexString(node.args[0].content);
-                j = i + 1; // Skip only the macro
-              }
-              // Pattern 2: Macro followed by sibling group (accent decorators like \bar, \overline)
-              else {
-                const nextNode = i + 1 < nodes.length ? nodes[i + 1] : null;
-                if (nextNode && nextNode.type === 'group') {
-                  decoratedContent = toLatexString(nextNode.content);
-                  j = i + 2; // Skip both the macro and the group
-                } else {
-                  // No valid argument found, skip this macro
-                  i++;
-                  continue;
-                }
-              }
+      // Pattern 1: Macro with args property
+      if (node.args && node.args.length > 0) {
+        j = i + 1; // Skip only the macro
+      }
+      // Pattern 2: Macro followed by sibling group
+      else {
+        const nextNode = i + 1 < nodes.length ? nodes[i + 1] : null;
+        if (nextNode && nextNode.type === 'group') {
+          j = i + 2; // Skip both the macro and the group
+        } else {
+          // No valid argument found, just skip the macro
+          j = i + 1;
+        }
+      }
 
-              // Construct the decorated base as \decorator{content}
-              const decoratedBase = `\\${node.content}{${decoratedContent}}`;
-              const builder = new VariableBuilder(decoratedBase);
+      // Also skip any subscripts/superscripts that follow the text macro
+      // (e.g., \text{max}_i should skip both the text and the subscript)
+      while (j < nodes.length && nodes[j].type === 'macro') {
+        const macro = nodes[j] as Ast.Macro;
+        if (macro.content === '_' || macro.content === '^') {
+          j++; // Skip the modifier macro itself
+          // Note: the modifier's argument will be skipped naturally by moving j forward
+        } else {
+          break; // Stop if we hit a non-modifier macro
+        }
+      }
 
-              // Look ahead for subscript
-              if (j < nodes.length &&
-                nodes[j].type === 'macro') {
-                  const macro = nodes[j] as Ast.Macro;
-                  if (macro.content === '_' && macro.args) {
-                    builder.addSubscript(macro.args[0].content);
-                    j++;
-                  }
-                }
+      // Don't extract variables from text content - completely skip it
+      i = j;
+      continue;
+    }
 
-                // Look ahead for superscript
-                if (j < nodes.length &&
-                  nodes[j].type === 'macro') {
-                    const macro = nodes[j] as Ast.Macro;
-                    if (macro.content === '^' && macro.args) {
-                      builder.addSuperscript(macro.args[0].content);
-                      j++;
-                    }
-                  }
+    // ----------------------------------------------------------------
+    // PHASE 3: Handle standalone modifiers (not attached to variables)
+    // ----------------------------------------------------------------
+    if (
+      node.type === 'macro' &&
+      (node.content === '^' || node.content === '_') &&
+      node.args
+    ) {
+      // Check if previous node was a variable base
+      const prevNode = i > 0 ? nodes[i - 1] : null;
+      const isAttachedToVariable =
+        prevNode &&
+        ((prevNode.type === 'string' &&
+          prevNode.content.trim().length === 1 &&
+          /[a-zA-Z]/.test(prevNode.content)) ||
+          (prevNode.type === 'macro' &&
+            VARIABLE_MACROS.has(prevNode.content)) ||
+          (prevNode.type === 'macro' &&
+            DECORATOR_MACROS.has(prevNode.content)));
 
-                  // Build and add variables
-                  builder.build().forEach(v => variables.add(v));
+      if (!isAttachedToVariable) {
+        // Standalone modifier: extract contents recursively
+        for (const arg of node.args) {
+          extractVariablesFromAST(arg.content).forEach((v) => variables.add(v));
+        }
+      }
 
-                  i = j;
-                  continue;
-                }
+      i++;
+      continue;
+    }
 
-                // ----------------------------------------------------------------
-                // PHASE 2.75: Handle text macros (excluded from variables)
-                // ----------------------------------------------------------------
-                if (node.type === 'macro' && TEXT_MACROS.has(node.content)) {
-                  let j: number;
+    // ----------------------------------------------------------------
+    // PHASE 4: Handle other macros with arguments (recursively)
+    // ----------------------------------------------------------------
+    if (node.type === 'macro' && node.args) {
+      // Recursively extract from all arguments
+      for (const arg of node.args) {
+        extractVariablesFromAST(arg.content).forEach((v) => variables.add(v));
+      }
 
-                  // Pattern 1: Macro with args property
-                  if (node.args && node.args.length > 0) {
-                    j = i + 1; // Skip only the macro
-                  }
-                  // Pattern 2: Macro followed by sibling group
-                  else {
-                    const nextNode = i + 1 < nodes.length ? nodes[i + 1] : null;
-                    if (nextNode && nextNode.type === 'group') {
-                      j = i + 2; // Skip both the macro and the group
-                    } else {
-                      // No valid argument found, just skip the macro
-                      j = i + 1;
-                    }
-                  }
+      i++;
+      continue;
+    }
 
-                  // Also skip any subscripts/superscripts that follow the text macro
-                  // (e.g., \text{max}_i should skip both the text and the subscript)
-                  while (j < nodes.length && nodes[j].type === 'macro') {
-                    const macro = nodes[j] as Ast.Macro;
-                    if (macro.content === '_' || macro.content === '^') {
-                      j++; // Skip the modifier macro itself
-                      // Note: the modifier's argument will be skipped naturally by moving j forward
-                    } else {
-                      break; // Stop if we hit a non-modifier macro
-                    }
-                  }
+    // ----------------------------------------------------------------
+    // PHASE 5: Handle groups (recursively)
+    // ----------------------------------------------------------------
+    if (node.type === 'group') {
+      extractVariablesFromAST(node.content).forEach((v) => variables.add(v));
+      i++;
+      continue;
+    }
 
-                  // Don't extract variables from text content - completely skip it
-                  i = j;
-                  continue;
-                }
+    // ----------------------------------------------------------------
+    // PHASE 6: Skip other nodes (whitespace, comments, etc.)
+    // ----------------------------------------------------------------
+    i++;
+  }
 
-                // ----------------------------------------------------------------
-                // PHASE 3: Handle standalone modifiers (not attached to variables)
-                // ----------------------------------------------------------------
-            if (node.type === 'macro' &&
-              (node.content === '^' || node.content === '_') &&
-              node.args) {
+  // Convert to array, filter constants, and sort
+  return Array.from(variables)
+    .filter((v) => !KNOWN_CONSTANTS.has(v))
+    .sort();
+}
 
-                // Check if previous node was a variable base
-                const prevNode = i > 0 ? nodes[i - 1] : null;
-                const isAttachedToVariable = prevNode && (
-                  (prevNode.type === 'string' && prevNode.content.trim().length === 1 && /[a-zA-Z]/.test(prevNode.content)) ||
-                  (prevNode.type === 'macro' && VARIABLE_MACROS.has(prevNode.content)) ||
-                  (prevNode.type === 'macro' && DECORATOR_MACROS.has(prevNode.content))
-                );
+// ============================================================================
+// PART 4: PUBLIC API
+// ============================================================================
 
-                if (!isAttachedToVariable) {
-                  // Standalone modifier: extract contents recursively
-                  for (const arg of node.args) {
-                    extractVariablesFromAST(arg.content).forEach(v => variables.add(v));
-                  }
-                }
-
-                i++;
-                continue;
-              }
-
-              // ----------------------------------------------------------------
-              // PHASE 4: Handle other macros with arguments (recursively)
-              // ----------------------------------------------------------------
-              if (node.type === 'macro' && node.args) {
-                // Recursively extract from all arguments
-                for (const arg of node.args) {
-                  extractVariablesFromAST(arg.content).forEach(v => variables.add(v));
-                }
-
-                i++;
-                continue;
-              }
-
-              // ----------------------------------------------------------------
-              // PHASE 5: Handle groups (recursively)
-              // ----------------------------------------------------------------
-              if (node.type === 'group') {
-                extractVariablesFromAST(node.content).forEach(v => variables.add(v));
-                i++;
-                continue;
-              }
-
-              // ----------------------------------------------------------------
-              // PHASE 6: Skip other nodes (whitespace, comments, etc.)
-              // ----------------------------------------------------------------
-              i++;
-            }
-
-            // Convert to array, filter constants, and sort
-            return Array.from(variables)
-            .filter(v => !KNOWN_CONSTANTS.has(v))
-            .sort();
-          }
-
-          // ============================================================================
-          // PART 4: PUBLIC API
-          // ============================================================================
-
-          /**
-          * Extracts all variables from a LaTeX expression string.
-          *
-          * @param latexExpr - The LaTeX expression to parse
-          * @returns Sorted array of unique variable names
-          */
-          export function extractLatexVariables(latexExpr: string): string[] {
-            const ast = parseMath(latexExpr);
-            return extractVariablesFromAST(ast);
-          }
+/**
+ * Extracts all variables from a LaTeX expression string.
+ *
+ * @param latexExpr - The LaTeX expression to parse
+ * @returns Sorted array of unique variable names
+ */
+export function extractLatexVariables(latexExpr: string): string[] {
+  const ast = parseMath(latexExpr);
+  return extractVariablesFromAST(ast);
+}
