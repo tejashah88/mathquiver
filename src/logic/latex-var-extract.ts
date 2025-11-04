@@ -86,6 +86,20 @@ const DECORATOR_MACROS = new Set([
   ...FONT_DECORATORS,
 ]);
 
+// Text macros for decorative/explanatory text
+// These should NOT contribute any variables to extraction
+// Example: \text{velocity} should extract nothing, while "v = velocity" would extract 'v'
+const TEXT_MACROS = new Set([
+  'text',       // Standard text macro (most common)
+  'textrm',     // Roman (upright) text
+  'textbf',     // Bold text
+  'textit',     // Italic text
+  'textsf',     // Sans-serif text
+  'texttt',     // Typewriter/monospace text
+  'textsl',     // Slanted text
+  'textsc',     // Small caps text
+]);
+
 const KNOWN_CONSTANTS = new Set(['e', 'i', '\\pi']);
 
 // ============================================================================
@@ -386,16 +400,22 @@ class VariableBuilder {
   * combined variable and the extracted components.
   *
   * Key rules:
-  * - Subscripts: ALWAYS keep attached to base, never split (unless empty)
+  * - Subscripts: ALWAYS keep attached to base, never split (unless empty or contains only text macros)
   * - Superscripts: Keep if pure alphabetic OR numeric-only, otherwise split
   * - Empty modifiers: Ignore them (treat as if they don't exist)
+  * - Text-only modifiers: Ignore them (text macros are decorative, not variables)
   */
   build(): string[] {
     const results: string[] = [];
 
-    // Check if subscript/superscript are empty (important for edge cases like "tests_{}")
-    const hasNonEmptySubscript = this.subscript && this.subscript.rawString.trim() !== '';
-    const hasNonEmptySuperscript = this.superscript && this.superscript.rawString.trim() !== '';
+    // Check if subscript/superscript are empty or contain only text macros
+    // (important for edge cases like "tests_{}" or "y_{\text{initial}}")
+    const hasNonEmptySubscript = this.subscript &&
+                                  this.subscript.rawString.trim() !== '' &&
+                                  !this.subscript.rawString.includes('\\text');
+    const hasNonEmptySuperscript = this.superscript &&
+                                   this.superscript.rawString.trim() !== '' &&
+                                   !this.superscript.rawString.includes('\\text');
 
     // Case 1: Both subscript and superscript present
     if (hasNonEmptySubscript && hasNonEmptySuperscript) {
@@ -628,6 +648,44 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
                   // Build and add variables
                   builder.build().forEach(v => variables.add(v));
 
+                  i = j;
+                  continue;
+                }
+
+                // ----------------------------------------------------------------
+                // PHASE 2.75: Handle text macros (excluded from variables)
+                // ----------------------------------------------------------------
+                if (node.type === 'macro' && TEXT_MACROS.has(node.content)) {
+                  let j: number;
+
+                  // Pattern 1: Macro with args property
+                  if (node.args && node.args.length > 0) {
+                    j = i + 1; // Skip only the macro
+                  }
+                  // Pattern 2: Macro followed by sibling group
+                  else {
+                    const nextNode = i + 1 < nodes.length ? nodes[i + 1] : null;
+                    if (nextNode && nextNode.type === 'group') {
+                      j = i + 2; // Skip both the macro and the group
+                    } else {
+                      // No valid argument found, just skip the macro
+                      j = i + 1;
+                    }
+                  }
+
+                  // Also skip any subscripts/superscripts that follow the text macro
+                  // (e.g., \text{max}_i should skip both the text and the subscript)
+                  while (j < nodes.length && nodes[j].type === 'macro') {
+                    const macro = nodes[j] as Ast.Macro;
+                    if (macro.content === '_' || macro.content === '^') {
+                      j++; // Skip the modifier macro itself
+                      // Note: the modifier's argument will be skipped naturally by moving j forward
+                    } else {
+                      break; // Stop if we hit a non-modifier macro
+                    }
+                  }
+
+                  // Don't extract variables from text content - completely skip it
                   i = j;
                   continue;
                 }

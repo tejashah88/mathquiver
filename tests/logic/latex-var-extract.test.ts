@@ -436,3 +436,103 @@ describe('Decorator Macros', () => {
     expect(result.toSorted()).toIncludeSameMembers(expected.toSorted());
   });
 });
+
+describe('Text Macros (Excluded from Variables)', () => {
+  // Test cases for \text and related macros that should be completely ignored
+  // These macros are for decorative/explanatory text and should not contribute variables
+  const textMacroCases: [string, string[]][] = [
+    // ========== Basic text macros ==========
+    // Single character in text should not be extracted
+    [String.raw`\text{x}`, []],
+    [String.raw`\text{a}`, []],
+    [String.raw`\text{T}`, []],
+
+    // Multiple characters in text
+    [String.raw`\text{hello}`, []],
+    [String.raw`\text{test}`, []],
+    [String.raw`\text{ABC}`, []],
+
+    // ========== Text macros with common variable names ==========
+    // Even if the text contains typical variable names, they should be ignored
+    [String.raw`\text{x}`, []],
+    [String.raw`\text{xy}`, []],
+    [String.raw`\text{abc}`, []],
+    [String.raw`\text{n}`, []],
+
+    // ========== Mixed: text macros and real variables ==========
+    // Real variables outside text should still be extracted
+    [String.raw`x + \text{hello}`, ['x']],
+    [String.raw`\text{velocity} = v`, ['v']],
+    [String.raw`a + \text{plus} + b`, ['a', 'b']],
+    [String.raw`x^2 + \text{squared}`, ['x']],
+    [String.raw`\text{Let } x = 5`, ['x']],
+
+    // ========== Text in equations ==========
+    [String.raw`\text{if } x > 0`, ['x']],
+    [String.raw`y = mx + b \text{ where m is slope}`, ['b', 'm', 'x', 'y']],
+    [String.raw`F = ma \text{ (Newton's law)}`, ['F', 'a', 'm']],
+
+    // ========== Text with subscripts/superscripts ==========
+    // Subscripts/superscripts on text macros should also be ignored
+    [String.raw`\text{max}_i`, []],
+    [String.raw`\text{min}^2`, []],
+    [String.raw`\text{label}_{test}`, []],
+    [String.raw`x + \text{suffix}_1`, ['x']],
+
+    // ========== Text with spaces and punctuation ==========
+    [String.raw`\text{hello world}`, []],
+    [String.raw`\text{x, y, z}`, []],
+    [String.raw`\text{(test)}`, []],
+    [String.raw`a = \text{value: } b`, ['a', 'b']],
+
+    // ========== Different text macro variants ==========
+    // All text macro variants should behave the same
+    [String.raw`\textrm{abc}`, []],
+    [String.raw`\textbf{xyz}`, []],
+    [String.raw`\textit{test}`, []],
+    [String.raw`\textsf{hello}`, []],
+    [String.raw`\texttt{code}`, []],
+    [String.raw`\textsl{slant}`, []],
+    [String.raw`\textsc{small caps}`, []],
+
+    // ========== Multiple text macros ==========
+    [String.raw`\text{a} + \text{b}`, []],
+    [String.raw`x + \text{plus} + y + \text{equals} + z`, ['x', 'y', 'z']],
+    [String.raw`\text{start} \text{middle} \text{end}`, []],
+
+    // ========== Text in fractions ==========
+    [String.raw`\frac{\text{rise}}{\text{run}}`, []],
+    [String.raw`\frac{x}{\text{total}}`, ['x']],
+    [String.raw`\frac{\text{numerator}}{y}`, ['y']],
+    [String.raw`\frac{a+b}{\text{sum}}`, ['a', 'b']],
+
+    // ========== Text with Greek letters (as text, not as variables) ==========
+    [String.raw`\text{alpha}`, []],
+    [String.raw`\text{theta}`, []],
+    [String.raw`\text{beta} + \beta`, ['\\beta']],  // Real Greek variable should be extracted
+
+    // ========== Complex expressions with text ==========
+    [String.raw`E = mc^2 \text{ (Einstein)}`, ['E', 'c', 'm']],
+    [String.raw`\sum_{i=1}^{n} x_i \text{ for all i}`, ['n', 'x_{i}']],
+    [String.raw`\int_{a}^{b} f(x)dx \text{ where } a < b`, ['a', 'b', 'd', 'f', 'x']],
+
+    // ========== Edge case: Empty text ==========
+    [String.raw`\text{}`, []],
+    [String.raw`x + \text{} + y`, ['x', 'y']],
+
+    // ========== Nested structures with text ==========
+    [String.raw`x^{\text{max}}`, ['x']],
+    [String.raw`y_{\text{initial}}`, ['y']],
+    [String.raw`z^{a}_{\text{label}}`, ['z^{a}']],
+
+    // ========== Text doesn't interfere with decorator macros ==========
+    [String.raw`\overline{x} + \text{mean}`, [String.raw`\overline{x}`]],
+    [String.raw`\vec{v} \text{ velocity}`, [String.raw`\vec{v}`]],
+    [String.raw`\text{field} + \mathbb{R}`, [String.raw`\mathbb{R}`]],
+  ];
+
+  test.each(textMacroCases)('text macros: %s => %s', (input, expected) => {
+    const result = extractLatexVariables(input);
+    expect(result.toSorted()).toIncludeSameMembers(expected.toSorted());
+  });
+});

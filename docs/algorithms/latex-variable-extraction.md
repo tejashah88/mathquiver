@@ -49,6 +49,22 @@ e^{ax+b} →  a, x, b    (mixed content, split)
 
 **Key principle**: Decorator content is NOT recursively extracted - the entire `\decorator{content}` is one variable unit.
 
+### Text Macros
+
+**Definition**: Macros for decorative/explanatory text that should not contribute variables
+
+**Macros**: `\text`, `\textrm`, `\textbf`, `\textit`, `\textsf`, `\texttt`, `\textsl`, `\textsc`
+
+**Behavior**: Entire text macro and its content are completely ignored
+```
+\text{hello}           →  (no variables extracted)
+x + \text{plus} + y    →  ['x', 'y']
+\text{velocity} = v    →  ['v']
+\frac{x}{\text{total}} →  ['x']
+```
+
+**Key principle**: Text macro content is NOT examined for variables - it's completely skipped.
+
 ### Three-Phase Architecture
 
 1. **Classification** → Analyze content type
@@ -216,6 +232,20 @@ FUNCTION extractVariablesFromAST(nodes: Node[]) → string[]
             // ... modifier lookahead logic ...
 
             variables.addAll(builder.build())
+            i ← j
+            CONTINUE
+
+        // ─────────────────────────────────────────────
+        // PHASE 2.75: Handle Text Macros
+        // ─────────────────────────────────────────────
+        IF node is macro AND isTextMacro(node):
+            // Skip text macros entirely (don't extract from content)
+            IF node has args:
+                j ← i + 1
+            ELSE IF next node is group:
+                j ← i + 2
+            ELSE:
+                j ← i + 1
             i ← j
             CONTINUE
 
@@ -388,6 +418,20 @@ CLASS VariableBuilder:
 **Output**: `['\overline{x+y}', 'z']`
 
 **Note**: Even though `x+y` contains an operator and multiple variables, the decorator makes it a single unit.
+
+### Example 9: Text Macros (Excluded)
+
+**Input**: `x + \text{plus} + y = \text{sum}`
+
+**Processing**:
+1. `x`: Simple variable → `x`
+2. `\text{plus}`: Text macro → Completely ignored (no extraction)
+3. `y`: Simple variable → `y`
+4. `\text{sum}`: Text macro → Completely ignored (no extraction)
+
+**Output**: `['x', 'y']`
+
+**Note**: Even if text contains typical variable names like `\text{xy}`, no variables are extracted. Text macros are for decorative/explanatory purposes only.
 
 ## Special Cases Handled
 
