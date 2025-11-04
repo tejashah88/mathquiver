@@ -315,3 +315,124 @@ describe('Empty Modifier Edge Cases', () => {
     expect(result.toSorted()).toIncludeSameMembers(expected.toSorted());
   });
 });
+
+describe('Decorator Macros', () => {
+  // Test cases for accent decorators and font decorators
+  // These macros modify the appearance of variables and should be kept as part of the variable identity
+  const decoratorCases: [string, string[]][] = [
+    // ========== Basic decorator macros ==========
+    // Single character with various decorators
+    [String.raw`\overline{x}`, [String.raw`\overline{x}`]],
+    [String.raw`\bar{x}`, [String.raw`\bar{x}`]],
+    [String.raw`\hat{x}`, [String.raw`\hat{x}`]],
+    [String.raw`\tilde{x}`, [String.raw`\tilde{x}`]],
+    [String.raw`\vec{v}`, [String.raw`\vec{v}`]],
+    [String.raw`\dot{x}`, [String.raw`\dot{x}`]],
+    [String.raw`\ddot{x}`, [String.raw`\ddot{x}`]],
+    [String.raw`\underline{x}`, [String.raw`\underline{x}`]],
+
+    // ========== Multi-character content ==========
+    // Multi-character content should be kept together
+    [String.raw`\overline{abc}`, [String.raw`\overline{abc}`]],
+    [String.raw`\bar{xy}`, [String.raw`\bar{xy}`]],
+    [String.raw`\hat{AB}`, [String.raw`\hat{AB}`]],
+
+    // ========== Content with operators ==========
+    // Content with operators should be kept as a single unit (not split)
+    [String.raw`\overline{x+y}`, [String.raw`\overline{x+y}`]],
+    [String.raw`\bar{a-b}`, [String.raw`\bar{a-b}`]],
+    [String.raw`\tilde{m\cdot n}`, [String.raw`\tilde{m\cdot n}`]],
+
+    // ========== Decorators with subscripts ==========
+    // Decorated variables with subscripts
+    [String.raw`\overline{x}_i`, [String.raw`\overline{x}_{i}`]],
+    [String.raw`\bar{x}_{ij}`, [String.raw`\bar{x}_{ij}`]],
+    [String.raw`\vec{v}_1`, [String.raw`\vec{v}_1`]],
+    [String.raw`\hat{u}_{n+1}`, [String.raw`\hat{u}_{n+1}`]],
+
+    // ========== Decorators with numeric superscripts ==========
+    // Numeric superscripts should be ignored (not part of variable name)
+    [String.raw`\overline{x}^2`, [String.raw`\overline{x}`]],
+    [String.raw`\bar{y}^3`, [String.raw`\bar{y}`]],
+    [String.raw`\vec{v}^{10}`, [String.raw`\vec{v}`]],
+
+    // ========== Decorators with alphabetic superscripts ==========
+    // Pure alphabetic superscripts should be kept
+    [String.raw`\overline{x}^{sl}`, [String.raw`\overline{x}^{sl}`]],
+    [String.raw`\bar{M}^{a}`, [String.raw`\bar{M}^{a}`]],
+    [String.raw`\vec{v}^{T}`, [String.raw`\vec{v}^{T}`]],
+    [String.raw`\hat{x}^{yz}`, [String.raw`\hat{x}^{yz}`]],
+
+    // ========== Decorators with both subscripts and superscripts ==========
+    // Both modifiers present
+    [String.raw`\overline{x}_{i}^{sl}`, [String.raw`\overline{x}_{i}^{sl}`]],
+    [String.raw`\bar{M}_{n}^{a}`, [String.raw`\bar{M}_{n}^{a}`]],
+    [String.raw`\vec{v}_{x}^{T}`, [String.raw`\vec{v}_{x}^{T}`]],
+    [String.raw`\hat{F}_{net}^{total}`, [String.raw`\hat{F}_{net}^{total}`]],
+
+    // ========== Multiple decorated variables in one expression ==========
+    [String.raw`\vec{v} + \hat{u} + \bar{w}`, [String.raw`\bar{w}`, String.raw`\hat{u}`, String.raw`\vec{v}`]],
+    [String.raw`\overline{x} + \overline{y}`, [String.raw`\overline{x}`, String.raw`\overline{y}`]],
+    [String.raw`\dot{x} + \ddot{y} + z`, [String.raw`\ddot{y}`, String.raw`\dot{x}`, 'z']],
+
+    // ========== Font decorators ==========
+    // Font-changing macros
+    [String.raw`\mathbb{R}`, [String.raw`\mathbb{R}`]],
+    [String.raw`\mathcal{F}`, [String.raw`\mathcal{F}`]],
+    [String.raw`\mathbf{v}`, [String.raw`\mathbf{v}`]],
+    [String.raw`\mathfrak{g}`, [String.raw`\mathfrak{g}`]],
+    [String.raw`\mathrm{d}x`, [String.raw`\mathrm{d}`, 'x']],
+
+    // Font decorators with modifiers
+    [String.raw`\mathbb{R}^n`, [String.raw`\mathbb{R}^{n}`]],  // Single letter alphabetic superscript is kept
+    [String.raw`\mathcal{F}_{x}`, [String.raw`\mathcal{F}_{x}`]],
+    [String.raw`\mathbf{v}_i`, [String.raw`\mathbf{v}_{i}`]],
+
+    // ========== Mixed: decorators and regular variables ==========
+    [String.raw`\mathbb{R} + \mathcal{F} + x`, [String.raw`\mathbb{R}`, String.raw`\mathcal{F}`, 'x']],
+    [String.raw`x + \overline{x} + y`, ['x', String.raw`\overline{x}`, 'y']],
+
+    // ========== Decorators in complex expressions ==========
+    // Decorated variables in fractions
+    [String.raw`\frac{\overline{x}+\bar{y}}{z}`, [String.raw`\bar{y}`, String.raw`\overline{x}`, 'z']],
+    [String.raw`\frac{\vec{a}}{\vec{b}}`, [String.raw`\vec{a}`, String.raw`\vec{b}`]],
+
+    // Decorated variables with Greek letters
+    [String.raw`\vec{\alpha} + \beta`, [String.raw`\beta`, String.raw`\vec{\alpha}`]],
+    [String.raw`\bar{\theta}_1 + \theta_2`, [String.raw`\bar{\theta}_1`, String.raw`\theta_2`]],
+    [String.raw`\hat{\phi}`, [String.raw`\hat{\phi}`]],
+
+    // Decorated variables in equations
+    [String.raw`\overline{z} = a + bi`, ['a', 'b', String.raw`\overline{z}`]],
+    [String.raw`\dot{x} = v`, [String.raw`\dot{x}`, 'v']],
+    [String.raw`\ddot{x} = a`, ['a', String.raw`\ddot{x}`]],
+
+    // ========== Wide decorators ==========
+    [String.raw`\widehat{xyz}`, [String.raw`\widehat{xyz}`]],
+    [String.raw`\widetilde{abc}`, [String.raw`\widetilde{abc}`]],
+
+    // ========== Arrow decorators ==========
+    [String.raw`\overrightarrow{AB}`, [String.raw`\overrightarrow{AB}`]],
+    [String.raw`\overleftarrow{BA}`, [String.raw`\overleftarrow{BA}`]],
+    [String.raw`\overleftrightarrow{CD}`, [String.raw`\overleftrightarrow{CD}`]],
+
+    // ========== Less common decorators ==========
+    [String.raw`\mathring{A}`, [String.raw`\mathring{A}`]],
+    [String.raw`\check{C}`, [String.raw`\check{C}`]],
+    [String.raw`\breve{x}`, [String.raw`\breve{x}`]],
+    [String.raw`\acute{e}`, [String.raw`\acute{e}`]],
+    [String.raw`\grave{a}`, [String.raw`\grave{a}`]],
+
+    // ========== Decorator with complex subscript content ==========
+    // This tests that decorator + subscript combo works with operators in subscript
+    [String.raw`\bar{x}_{i+1} + \bar{x}_{i-1}`, [String.raw`\bar{x}_{i+1}`, String.raw`\bar{x}_{i-1}`]],
+
+    // ========== Multiple decorator types in engineering notation ==========
+    [String.raw`M_y = \bar{M} + \hat{M} + \tilde{M}`, ['M_{y}', String.raw`\bar{M}`, String.raw`\hat{M}`, String.raw`\tilde{M}`]],
+  ];
+
+  test.each(decoratorCases)('decorators: %s => %s', (input, expected) => {
+    const result = extractLatexVariables(input);
+    expect(result.toSorted()).toIncludeSameMembers(expected.toSorted());
+  });
+});

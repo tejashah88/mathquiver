@@ -35,6 +35,57 @@ const VARIABLE_MACROS = new Set([
   ...GREEK_VARIANTS,
 ]);
 
+// Accent/decoration macros that modify the appearance of variables
+// These are treated as part of the variable's identity (e.g., \overline{x} is one variable)
+const ACCENT_DECORATORS = [
+  // Over-decorations (above the symbol)
+  'overline',    // Long horizontal line over symbol (complex conjugate, closure)
+  'bar',         // Short horizontal bar over symbol (mean, conjugate)
+  'hat',         // Circumflex accent (unit vectors, estimators, Fourier transforms)
+  'widehat',     // Wide hat for multiple characters (operators, estimators)
+  'tilde',       // Tilde accent (equivalence, approximation, transforms)
+  'widetilde',   // Wide tilde for multiple characters (covering spaces, equivalence classes)
+  'vec',         // Arrow over symbol (vectors in physics and linear algebra)
+  'overrightarrow',   // Right-pointing arrow (vectors, directional notation)
+  'overleftarrow',    // Left-pointing arrow (reverse directions, sequences)
+  'overleftrightarrow', // Bidirectional arrow (lines in geometry)
+  'dot',         // Single dot above (time derivatives, Newton notation)
+  'ddot',        // Two dots above (second time derivatives)
+  'dddot',       // Three dots above (third derivatives)
+  'ddddot',      // Four dots above (fourth derivatives)
+  'acute',       // Acute accent (differential geometry)
+  'grave',       // Grave accent (dual spaces, covariant derivatives)
+  'breve',       // Breve/curved accent (specialized notations)
+  'check',       // Háček/inverted circumflex (Čech cohomology)
+  'mathring',    // Ring above symbol (ring operations, interior in topology)
+  // Under-decorations (below the symbol)
+  'underline',   // Horizontal line under symbol (vectors, emphasis, infimum)
+  'underbar',    // Bar under symbol (similar to underline)
+];
+
+// Font-changing macros used for mathematical typography
+// These distinguish different types of mathematical objects (e.g., \mathbb{R} for reals)
+const FONT_DECORATORS = [
+  'mathbf',      // Bold font (vectors, matrices, tensors)
+  'boldsymbol',  // Bold italic preserving Greek (vector notation with Greek symbols)
+  'bm',          // Bold math from bm package (comprehensive bold)
+  'pmb',         // Poor man's bold (fallback when bold glyphs unavailable)
+  'mathcal',     // Calligraphic uppercase (categories, sheaves, Laplace transforms, power sets)
+  'mathscr',     // Script font (sheaves, sigma-algebras, alternative to mathcal)
+  'mathbb',      // Blackboard bold uppercase (number sets ℕ, ℤ, ℚ, ℝ, ℂ)
+  'mathfrak',    // Fraktur/Gothic font (Lie algebras, ideals, cardinalities)
+  'mathrm',      // Roman upright font (operators, differentials, units, multi-letter IDs)
+  'mathsf',      // Sans-serif font (categories, types in type theory)
+  'mathtt',      // Typewriter/monospace font (computational/algorithmic notation)
+  'mathit',      // Math italic with different spacing (multi-letter variable names)
+];
+
+// Combine all decorator categories into a single Set for O(1) lookup
+const DECORATOR_MACROS = new Set([
+  ...ACCENT_DECORATORS,
+  ...FONT_DECORATORS,
+]);
+
 const KNOWN_CONSTANTS = new Set(['e', 'i', '\\pi']);
 
 // ============================================================================
@@ -235,6 +286,22 @@ function toLatexString(nodes: Ast.Node[]): string {
     } else if (node.type === 'macro') {
       if (VARIABLE_MACROS.has(node.content)) {
         parts.push(`\\${node.content}`);
+      } else if (DECORATOR_MACROS.has(node.content)) {
+        // Decorator macros: check if next node is a group (sibling pattern)
+        const nextNode = nodes[i + 1];
+        if (nextNode && nextNode.type === 'group') {
+          const groupContent = toLatexString(nextNode.content);
+          parts.push(`\\${node.content}{${groupContent}}`);
+          i++; // Skip the group since we processed it
+          continue;
+        } else if (node.args) {
+          // Fallback: if it has args property (some macros might have this)
+          const argStr = toLatexString(node.args[0].content);
+          parts.push(`\\${node.content}{${argStr}}`);
+        } else {
+          // No group follows, just output the macro name
+          parts.push(`\\${node.content}`);
+        }
       } else if ((node.content === '^' || node.content === '_') && node.args) {
         const argStr = toLatexString(node.args[0].content);
         // Apply brace convention: single char doesn't need braces
@@ -243,9 +310,15 @@ function toLatexString(nodes: Ast.Node[]): string {
         } else {
           parts.push(node.content + `{${argStr}}`);
         }
+      } else {
+        // Other macros (like \cdot, \pm, etc.): preserve them
+        parts.push(`\\${node.content}`);
       }
     } else if (node.type === 'group') {
       parts.push(toLatexString(node.content));
+    } else if (node.type === 'whitespace') {
+      // Preserve whitespace
+      parts.push(' ');
     }
   }
 
@@ -504,8 +577,64 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
             }
 
             // ----------------------------------------------------------------
-            // PHASE 3: Handle standalone modifiers (not attached to variables)
+            // PHASE 2.5: Handle decorator macros (e.g., \overline{x}, \vec{v})
             // ----------------------------------------------------------------
+            if (node.type === 'macro' && DECORATOR_MACROS.has(node.content)) {
+              let decoratedContent: string;
+              let j: number;
+
+              // Pattern 1: Macro with args property (font decorators like \mathbb, \mathcal)
+              if (node.args && node.args.length > 0) {
+                decoratedContent = toLatexString(node.args[0].content);
+                j = i + 1; // Skip only the macro
+              }
+              // Pattern 2: Macro followed by sibling group (accent decorators like \bar, \overline)
+              else {
+                const nextNode = i + 1 < nodes.length ? nodes[i + 1] : null;
+                if (nextNode && nextNode.type === 'group') {
+                  decoratedContent = toLatexString(nextNode.content);
+                  j = i + 2; // Skip both the macro and the group
+                } else {
+                  // No valid argument found, skip this macro
+                  i++;
+                  continue;
+                }
+              }
+
+              // Construct the decorated base as \decorator{content}
+              const decoratedBase = `\\${node.content}{${decoratedContent}}`;
+              const builder = new VariableBuilder(decoratedBase);
+
+              // Look ahead for subscript
+              if (j < nodes.length &&
+                nodes[j].type === 'macro') {
+                  const macro = nodes[j] as Ast.Macro;
+                  if (macro.content === '_' && macro.args) {
+                    builder.addSubscript(macro.args[0].content);
+                    j++;
+                  }
+                }
+
+                // Look ahead for superscript
+                if (j < nodes.length &&
+                  nodes[j].type === 'macro') {
+                    const macro = nodes[j] as Ast.Macro;
+                    if (macro.content === '^' && macro.args) {
+                      builder.addSuperscript(macro.args[0].content);
+                      j++;
+                    }
+                  }
+
+                  // Build and add variables
+                  builder.build().forEach(v => variables.add(v));
+
+                  i = j;
+                  continue;
+                }
+
+                // ----------------------------------------------------------------
+                // PHASE 3: Handle standalone modifiers (not attached to variables)
+                // ----------------------------------------------------------------
             if (node.type === 'macro' &&
               (node.content === '^' || node.content === '_') &&
               node.args) {
@@ -514,7 +643,8 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
                 const prevNode = i > 0 ? nodes[i - 1] : null;
                 const isAttachedToVariable = prevNode && (
                   (prevNode.type === 'string' && prevNode.content.trim().length === 1 && /[a-zA-Z]/.test(prevNode.content)) ||
-                  (prevNode.type === 'macro' && VARIABLE_MACROS.has(prevNode.content))
+                  (prevNode.type === 'macro' && VARIABLE_MACROS.has(prevNode.content)) ||
+                  (prevNode.type === 'macro' && DECORATOR_MACROS.has(prevNode.content))
                 );
 
                 if (!isAttachedToVariable) {

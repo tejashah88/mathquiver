@@ -5,7 +5,7 @@
 
 ## Overview
 
-This algorithm scans a LaTeX expreession for math variables, attempting to preserve subscript and superscript notation. It tries to distinguish between variables that should be kept together (like `M^{sl}`) and those that should be split into components (like `e^{ax+b}`).
+This algorithm scans a LaTeX expression for math variables, attempting to preserve subscript and superscript notation. It tries to distinguish between variables that should be kept together (like `M^{sl}`) and those that should be split into components (like `e^{ax+b}`).
 
 ## Design Principles
 
@@ -15,6 +15,7 @@ The algorithm makes decisions based on the content type:
 - **Pure alphabetic modifiers** → Keep together as one variable
 - **Mixed content (operators/numbers)** → Split and extract components
 - **Constants (e, π)** → Extract variables from their modifiers
+- **Decorator macros** → Treat as part of variable identity (entire decorated expression is one variable)
 
 ### Modifier Rules
 
@@ -28,6 +29,25 @@ x_{i+1}  →  x_{i+1}    (not x, i, 1)
 M^{sl}   →  M^{sl}     (pure alphabetic, keep)
 e^{ax+b} →  a, x, b    (mixed content, split)
 ```
+
+### Decorator Macros
+
+**Definition**: Macros that modify the appearance or font of variables
+
+**Categories**:
+1. **Accent decorators**: `\overline`, `\bar`, `\hat`, `\tilde`, `\vec`, `\dot`, `\ddot`, `\underline`, etc.
+2. **Font decorators**: `\mathbb`, `\mathcal`, `\mathbf`, `\mathfrak`, `\mathrm`, `\mathsf`, etc.
+
+**Behavior**: The entire decorated expression is treated as a single atomic variable
+```
+\overline{x}      →  \overline{x}       (single variable)
+\overline{x+y}    →  \overline{x+y}     (content preserved as-is)
+\vec{v}_i         →  \vec{v}_{i}        (decorator + subscript)
+\mathbb{R}        →  \mathbb{R}         (font decorator)
+\bar{M}^{sl}      →  \bar{M}^{sl}       (decorator + superscript)
+```
+
+**Key principle**: Decorator content is NOT recursively extracted - the entire `\decorator{content}` is one variable unit.
 
 ### Three-Phase Architecture
 
@@ -178,6 +198,28 @@ FUNCTION extractVariablesFromAST(nodes: Node[]) → string[]
             CONTINUE
 
         // ─────────────────────────────────────────────
+        // PHASE 2.5: Handle Decorator Macros
+        // ─────────────────────────────────────────────
+        IF node is macro AND isDecoratorMacro(node):
+            // Get decorator content (either from args or sibling group)
+            IF node has args:
+                decoratedContent ← toLatexString(node.args[0].content)
+                j ← i + 1
+            ELSE IF next node is group:
+                decoratedContent ← toLatexString(nextNode.content)
+                j ← i + 2
+
+            decoratedBase ← "\\" + node.content + "{" + decoratedContent + "}"
+            builder ← new VariableBuilder(decoratedBase)
+
+            // Look ahead for subscript/superscript (same as other phases)
+            // ... modifier lookahead logic ...
+
+            variables.addAll(builder.build())
+            i ← j
+            CONTINUE
+
+        // ─────────────────────────────────────────────
         // PHASE 3: Handle Modifiers & Other Macros
         // ─────────────────────────────────────────────
         IF node is macro with arguments:
@@ -321,6 +363,31 @@ CLASS VariableBuilder:
 5. `c`: Simple variable → `c`
 
 **Output**: `['a', 'b', 'c', 'x']`
+
+### Example 7: Decorator Macros
+
+**Input**: `\overline{x} + \vec{v}_i + \mathbb{R}`
+
+**Processing**:
+1. `\overline{x}`: Decorator macro with content 'x' → Keep as `\overline{x}`
+2. `\vec{v}_i`: Decorator `\vec{v}` with subscript `i` → `\vec{v}_{i}`
+3. `\mathbb{R}`: Font decorator with content 'R' → `\mathbb{R}`
+
+**Output**: `['\mathbb{R}', '\overline{x}', '\vec{v}_{i}']` (sorted)
+
+**Note**: Decorator content is treated as atomic - not recursively extracted.
+
+### Example 8: Decorator with Complex Content
+
+**Input**: `\overline{x+y} + z`
+
+**Processing**:
+1. `\overline{x+y}`: Decorator with content 'x+y' → Entire expression kept as `\overline{x+y}`
+2. `z`: Simple variable → `z`
+
+**Output**: `['\overline{x+y}', 'z']`
+
+**Note**: Even though `x+y` contains an operator and multiple variables, the decorator makes it a single unit.
 
 ## Special Cases Handled
 
