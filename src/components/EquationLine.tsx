@@ -122,6 +122,10 @@ const EquationLine = memo(
   // without recreating the observer on every resize event
   const isResizingRef = useRef<boolean>(false);
 
+  // Track focus mode state in a ref so the observer callback can read latest value
+  // without recreating the observer when focus mode changes
+  const inFocusModeRef = useRef<boolean>(false);
+
   // Store function to force style updates (set by MutationObserver effect)
   const forceStyleUpdateRef = useRef<(() => void) | null>(null);
 
@@ -191,6 +195,13 @@ const EquationLine = memo(
   useEffect(() => {
     isDraggingRef.current = isDragging;
   }, [isDragging]);
+
+  // Keep the focus mode ref in sync with inFocusMode property
+  useEffect(() => {
+    inFocusModeRef.current = inFocusMode;
+    // Force style update when focus mode changes
+    forceStyleUpdateRef.current?.();
+  }, [inFocusMode]);
 
   // Track window resize to skip expensive styling operations during resize
   useEffect(() => {
@@ -342,6 +353,9 @@ const EquationLine = memo(
       try {
         const charIndex = parseMathfieldDOM(mf);
         clearColors(charIndex);
+
+        // Skip gray coloring when in focus mode, while making sure to clear existing colors
+        if (inFocusModeRef.current) return;
 
         // Find markers at depth 0 (top-level, not in subscripts/superscripts)
         const equalsSign = charIndex.find(item => item.char === '=' && item.depth === 0);
