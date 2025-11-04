@@ -358,8 +358,8 @@ const EquationLine = memo(
         if (inFocusModeRef.current) return;
 
         // Find markers at depth 0 (top-level, not in subscripts/superscripts)
-        const equalsSign = charIndex.find(item => item.char === '=' && item.depth === 0);
-        const firstComma = charIndex.find(item => item.char === ',' && item.depth === 0);
+        const equalsSign = charIndex.find(item => item.char === '=' && item.depth === 0 && item.element.classList.contains('ML__cmr'));
+        const firstComma = charIndex.find(item => item.char === ',' && item.depth === 0 && item.element.classList.contains('ML__cmr'));
 
         // Color LHS (everything before equals sign) gray
         if (equalsSign) {
