@@ -31,6 +31,7 @@ import { useDebounceCallback } from 'usehooks-ts';
 // Local algorithms
 import { cycleCellRef, parseCellRef } from '@/logic/excel-cell-ref';
 import { parseMathfieldDOM } from '@/logic/mathfield-dom-parser';
+import { splitVarUnits } from '@/logic/split-var-units';
 
 // Local utilities
 import { applyStyleToRange, clearColors } from '@/logic/mathfield-dom-stylizer';
@@ -127,6 +128,9 @@ const VariableLine = memo(
 
   // Store function to force style updates (set by MutationObserver effect)
   const forceStyleUpdateRef = useRef<(() => void) | null>(null);
+
+  // Track the last value we sent to parent to distinguish round-trip updates from external changes
+  const lastSentToParentRef = useRef<string>('');
 
   ///////////
   // STATE //
@@ -228,8 +232,18 @@ const VariableLine = memo(
   ////////////////////////
 
   // Sync prop changes to local state (handles external updates like imports)
+  // Uses semantic comparison to prevent cursor jumps from formatting differences
   useEffect(() => {
-    setLocalLatexInput(latexInput);
+    // Parse both values to compare semantically
+    const { latexVar: incomingVar, units: incomingUnits } = splitVarUnits(latexInput);
+    const { latexVar: lastSentVar, units: lastSentUnits } = splitVarUnits(lastSentToParentRef.current);
+
+    // Only update if semantically different (external change like import)
+    // This prevents cursor jumps from formatting differences in round-trip updates
+    if (incomingVar !== lastSentVar || incomingUnits !== lastSentUnits) {
+      setLocalLatexInput(latexInput);
+      lastSentToParentRef.current = latexInput;
+    }
   }, [latexInput]);
 
   useEffect(() => {
@@ -384,6 +398,9 @@ const VariableLine = memo(
 
     // Update local state immediately for instant visual feedback
     setLocalLatexInput(latex);
+
+    // Remember what we're sending to parent to detect round-trip updates later
+    lastSentToParentRef.current = latex;
 
     // Debounced update to parent to reduce expensive re-renders
     debouncedOnLatexInput(latex);
