@@ -37,6 +37,19 @@ VarMap: {a: "A1", b: "B1"}
 Output: "(A1+B1)"
 ```
 
+Variable mapping supports both simple variables and complete subscripted expressions:
+```
+// Mapping individual components
+Input: ["Subscript", "f", "n"]
+VarMap: {f: "F1", n: "N1"}
+Output: "F1_N1"
+
+// Mapping complete subscripted variable
+Input: ["Subscript", "f", ["InvisibleOperator", "a", "c", "v"]]
+VarMap: {f_acv: "A1"}
+Output: "A1"
+```
+
 ## Assumptions
 
 The algorithm makes the following assumptions about its input:
@@ -369,6 +382,25 @@ return node;  // Use original variable name
 
 **Implementation**: Pass context parameter through recursion to track position in expression tree. The `convertMjsonToExcel` function signature includes `context: ConversionContext = 'default'` parameter that custom functions can access.
 
+### Edge Case 7: Complete Subscript Variable Mapping
+
+**Problem**: Users need to map complete subscripted variable names (like `f_acv`) to cell references, not just individual components.
+
+**Example**: `["Subscript", "f", ["InvisibleOperator", "a", "c", "v"]]`
+
+**With VarMap**: `{f_acv: "A1"}`
+
+**Expected Output**: `A1` (not `f_acv`)
+
+**Solution**: After constructing the subscripted variable name, check if the complete variable exists in varMap before returning:
+1. Process base and subscript components (with appropriate context)
+2. Construct complete variable name: `${base}_${subscript}`
+3. Check if complete name exists in varMap
+4. If found: return mapped value
+5. If not found: return constructed subscript expression
+
+**Use Case**: This allows users to define variables like `f_acv` in their interface and map them to specific Excel cells, which is more intuitive than requiring separate mappings for `f`, `a`, `c`, and `v`.
+
 ## Implementation Notes
 
 ### MathJSON Structure
@@ -451,7 +483,15 @@ function convertMjsonToExcel(node: Expression, varMap: VarMapping, context: Conv
     if (operation === 'Subscript') {
       const base = convertMjsonToExcel(args[0], varMap, context);
       const subscript = convertMjsonToExcel(args[1], varMap, 'subscript');
-      return `${base}_${subscript}`;
+      const completeVar = `${base}_${subscript}`;
+
+      // Check if the complete subscripted variable exists in varMap
+      // e.g., "f_acv" might be mapped to "A1"
+      if (varMap[completeVar]) {
+        return varMap[completeVar];
+      }
+
+      return completeVar;
     }
 
     // General handling

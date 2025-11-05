@@ -152,10 +152,20 @@ function convertMjsonToExcel(node: Expression, varMap: VarMapping = {}, context:
     if (!mapping) throw new MJEXTranslateError(`No Excel equivalent for operator "${op}"`);
 
     // Special handling for Subscript: second argument uses 'subscript' context
+    // NOTE: This handling comes from an unexpected case where the InvisibleOperator is generated
+    // when subscripts of multiple characters are encountered.
     if (op === 'Subscript') {
       const base = convertMjsonToExcel(args[0], varMap, context);
       const subscript = convertMjsonToExcel(args[1], varMap, 'subscript');
-      return `${base}_${subscript}`;
+      const completeVar = `${base}_${subscript}`;
+
+      // Check if the complete subscripted variable exists in varMap
+      // e.g., "f_acv" might be mapped to "A1"
+      if (varMap[completeVar]) {
+        return varMap[completeVar];
+      }
+
+      return completeVar;
     }
 
     // General handling for all other operations

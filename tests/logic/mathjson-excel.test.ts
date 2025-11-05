@@ -148,12 +148,19 @@ describe('mathjsonToExcel - InvisibleOperator handling', () => {
     expect(result).toBe(expected);
   });
 
-  test('should handle InvisibleOperator in subscript with variable mapping', () => {
+  test('should handle InvisibleOperator in subscript with component variable mapping', () => {
     const latex = String.raw`f_{ab}`;
     const mathJson = latexToMathJson(latex);
     const varMap = { f: 'F1', a: 'A1', b: 'B1' };
     const result = mathjsonToExcel(mathJson, varMap);
     expect(result).toBe('=F1_A1B1');
+  });
+
+  test('should handle InvisibleOperator in subscript with complete variable mapping', () => {
+    const mathJson: Expression = ['Subscript', 'f', ['InvisibleOperator', 'a', 'c', 'v']];
+    const varMap = { f_acv: 'A1' };
+    const result = mathjsonToExcel(mathJson, varMap);
+    expect(result).toBe('=A1');
   });
 });
 
