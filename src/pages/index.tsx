@@ -18,7 +18,7 @@ import { type VListHandle } from 'virtua';
 import Markdown from 'react-markdown';
 
 // Font Awesome Icons
-import { faBars, faEye, faEyeSlash, faPlus, faX } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faEye, faEyeSlash, faPlus, faSlash, faTable, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 // Utility methods for QoL
@@ -88,6 +88,7 @@ export default function Home() {
   // Workspace settings
   const [projectName, setProjectName] = useState<string>('');
   const [focusMode, setFocusMode] = useState<boolean>(false);
+  const [showVariablesPanel, setShowVariablesPanel] = useState<boolean>(true);
 
   //////////////////////
   // MEMOIZED VALUES ///
@@ -121,6 +122,10 @@ export default function Home() {
 
   const handleFocusModeToggle = useCallback(() => {
     setFocusMode(prev => !prev);
+  }, []);
+
+  const handleVariablesPanelToggle = useCallback(() => {
+    setShowVariablesPanel(prev => !prev);
   }, []);
 
   const handleHelpOpen = useCallback(() => {
@@ -537,7 +542,9 @@ export default function Home() {
     <div className={`flex h-dvh overflow-y-hidden bg-gray-100 ${enableCompactView ? 'flex-col' : 'md:flex-row'}`}>
       {/* Equations Panel */}
       <div className={`flex flex-col border-gray-300 ${
-        enableCompactView ? (variables.length > 0 ? 'h-3/5 border-b' : 'h-4/5 border-b') : 'h-auto w-2/3 border-r'
+        enableCompactView
+          ? (showVariablesPanel && variables.length > 0 ? 'h-3/5 border-b' : 'h-full border-b')
+          : (showVariablesPanel ? 'h-auto w-2/3 border-r' : 'h-auto w-full')
       }`}>
         <div className="flex items-center justify-between px-4 py-2 border-b border-gray-400">
           {/* Left side: Workspace name input */}
@@ -547,18 +554,38 @@ export default function Home() {
             value={projectName}
             onChange={handleProjectNameChange}
             placeholder="Untitled Project"
-            className="flex shrink items-center gap-4 w-100 px-2 py-1 rounded border border-gray-400 text-2xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="flex-1 min-w-0 px-2 py-1 mr-4 rounded border border-gray-400 text-2xl font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
 
-          {/* Right side: Focus mode + Add button */}
-          <div className="flex items-center gap-2">
+          {/* Right side: Focus mode + Variables Panel + Add button */}
+          <div className="flex items-center gap-2 flex-shrink-0">
             <button
               onClick={handleFocusModeToggle}
               title={focusMode ? 'Disable Focus Mode' : 'Enable Focus Mode'}
               className="p-2 rounded border font-semibold whitespace-nowrap border-black hover:bg-gray-200 text-black"
             >
               {'Focus Mode: '}
-              <FontAwesomeIcon className={focusMode ? 'text-green-600' : 'text-black'} icon={focusMode ? faEye : faEyeSlash} />
+              <FontAwesomeIcon className={focusMode ? 'text-green-600' : 'text-gray-500'} icon={focusMode ? faEye : faEyeSlash} />
+            </button>
+
+            <button
+              onClick={handleVariablesPanelToggle}
+              title={showVariablesPanel ? 'Hide Variables Panel' : 'Show Variables Panel'}
+              className="p-2 rounded border font-semibold whitespace-nowrap border-black hover:bg-gray-200 text-black"
+            >
+              {'Variables: '}
+              <span className="relative inline-block">
+                <FontAwesomeIcon
+                  icon={faTable}
+                  className={showVariablesPanel ? 'text-black' : 'text-gray-500'}
+                />
+                {!showVariablesPanel && (
+                  <FontAwesomeIcon
+                    icon={faSlash}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-500"
+                  />
+                )}
+              </span>
             </button>
 
             <button
@@ -590,6 +617,7 @@ export default function Home() {
       </div>
 
       {/* Variables Panel */}
+      {showVariablesPanel && (
       <div className={`flex flex-col border-gray-300 bg-gray-50 ${
         enableCompactView ? (variables.length > 0 ? 'h-2/5 border-t' : 'h-1/5 border-t') : 'h-auto w-1/3 min-w-[300px] border-l'
       }`}>
@@ -630,6 +658,7 @@ export default function Home() {
           />
         </div>
       </div>
+      )}
 
       {/* Floating Help Button */}
       <button
