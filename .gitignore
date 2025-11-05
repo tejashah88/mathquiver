@@ -45,3 +45,6 @@ next-env.d.ts
 
 # NOTE: Cloned library repositories for AI models to scan through to validate their proposed logic
 mathlive/
+
+# Claude Code settings
+.claude
