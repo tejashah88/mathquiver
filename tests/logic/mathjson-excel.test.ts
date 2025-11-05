@@ -20,23 +20,13 @@ function latexToMathJson(latex: string): Expression {
 }
 
 describe('mathjsonToExcel - Basic functionality', () => {
-  const testCases = [
-    String.raw`5`,
-    String.raw`-5`,
-    String.raw`x`,
+  const testCases: [string, string][] = [
+    [String.raw`5`, '=5'],
+    [String.raw`-5`, '=-5'],
+    [String.raw`x`, '=x'],
   ];
 
-  const expectedResults = [
-    '=5',
-    '=-5',
-    '=x',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -50,43 +40,23 @@ describe('mathjsonToExcel - Basic functionality', () => {
 });
 
 describe('mathjsonToExcel - Arithmetic operations', () => {
-  const testCases = [
+  const testCases: [string, string][] = [
     // Basic arithmetic
-    String.raw`2+3`,
-    String.raw`-x`,
-    String.raw`x`,
-    String.raw`2^3`,
-    String.raw`x^2`,
-    String.raw`\sqrt[3]{x}`,
-    String.raw`\sqrt{x^2+y^2}`,
+    [String.raw`2+3`, '=(2+3)'],
+    [String.raw`-x`, '=(-x)'],
+    [String.raw`x`, '=x'],
+    [String.raw`2^3`, '=(2^3)'],
+    [String.raw`x^2`, '=(x^2)'],
+    [String.raw`\sqrt[3]{x}`, '=(x^(1/3))'],
+    [String.raw`\sqrt{x^2+y^2}`, '=SQRT(((x^2)+(y^2)))'],
 
     // Complex expressions
-    String.raw`2^{3+4}`,
-    String.raw`-b+\sqrt{b^2-4*a*c}`,
-    String.raw`a*x^2+b*x+c`,
+    [String.raw`2^{3+4}`, '=(2^(3+4))'],
+    [String.raw`-b+\sqrt{b^2-4*a*c}`, '=((-b)+SQRT(((b^2)+(-4*a*c))))'],
+    [String.raw`a*x^2+b*x+c`, '=((a*(x^2))+(b*x)+c)'],
   ];
 
-  const expectedResults = [
-    // Basic arithmetic
-    '=(2+3)',
-    '=(-x)',
-    '=x',
-    '=(2^3)',
-    '=(x^2)',
-    '=(x^(1/3))',
-    '=SQRT(((x^2)+(y^2)))',
-
-    // Complex expressions
-    '=(2^(3+4))',
-    '=((-b)+SQRT(((b^2)+(-4*a*c))))',
-    '=((a*(x^2))+(b*x)+c)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -94,23 +64,13 @@ describe('mathjsonToExcel - Arithmetic operations', () => {
 });
 
 describe('mathjsonToExcel - Subscript handling', () => {
-  const testCases = [
-    String.raw`a_n`,
-    String.raw`a_1`,
-    String.raw`a_{n+1}`,
+  const testCases: [string, string][] = [
+    [String.raw`a_n`, '=a_n'],
+    [String.raw`a_1`, '=a_1'],
+    [String.raw`a_{n+1}`, '=a_(n+1)'],
   ];
 
-  const expectedResults = [
-    '=a_n',
-    '=a_1',
-    '=a_(n+1)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -126,23 +86,13 @@ describe('mathjsonToExcel - Subscript handling', () => {
 });
 
 describe('mathjsonToExcel - InvisibleOperator handling', () => {
-  const testCases = [
-    String.raw`f_{abcd}`,
-    String.raw`2*x`,
-    String.raw`2*x*y+3`,
+  const testCases: [string, string][] = [
+    [String.raw`f_{abcd}`, '=f_abcd'],
+    [String.raw`2*x`, '=(2*x)'],
+    [String.raw`2*x*y+3`, '=((2*x*y)+3)'],
   ];
 
-  const expectedResults = [
-    '=f_abcd',
-    '=(2*x)',
-    '=((2*x*y)+3)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -165,33 +115,18 @@ describe('mathjsonToExcel - InvisibleOperator handling', () => {
 });
 
 describe('mathjsonToExcel - Trigonometric functions', () => {
-  const testCases = [
-    String.raw`\sin(x)`,
-    String.raw`\cos(y)`,
-    String.raw`\tan(t)`,
-    String.raw`\csc(x)`,
-    String.raw`\sec(x)`,
-    String.raw`\cot(x)`,
-    String.raw`\sin^2(x)+\cos^2(x)`,
-    String.raw`\sin(b*x+c)`,
+  const testCases: [string, string][] = [
+    [String.raw`\sin(x)`, '=SIN(x)'],
+    [String.raw`\cos(y)`, '=COS(y)'],
+    [String.raw`\tan(t)`, '=TAN(t)'],
+    [String.raw`\csc(x)`, '=CSC(x)'],
+    [String.raw`\sec(x)`, '=SEC(x)'],
+    [String.raw`\cot(x)`, '=COT(x)'],
+    [String.raw`\sin^2(x)+\cos^2(x)`, '=((SIN(x)^2)+(COS(x)^2))'],
+    [String.raw`\sin(b*x+c)`, '=SIN(((b*x)+c))'],
   ];
 
-  const expectedResults = [
-    '=SIN(x)',
-    '=COS(y)',
-    '=TAN(t)',
-    '=CSC(x)',
-    '=SEC(x)',
-    '=COT(x)',
-    '=((SIN(x)^2)+(COS(x)^2))',
-    '=SIN(((b*x)+c))',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -199,23 +134,13 @@ describe('mathjsonToExcel - Trigonometric functions', () => {
 });
 
 describe('mathjsonToExcel - Inverse trigonometric functions', () => {
-  const testCases = [
-    String.raw`\arcsin(x)`,
-    String.raw`\arccos(x)`,
-    String.raw`\arctan(x)`,
+  const testCases: [string, string][] = [
+    [String.raw`\arcsin(x)`, '=ASIN(x)'],
+    [String.raw`\arccos(x)`, '=ACOS(x)'],
+    [String.raw`\arctan(x)`, '=ATAN(x)'],
   ];
 
-  const expectedResults = [
-    '=ASIN(x)',
-    '=ACOS(x)',
-    '=ATAN(x)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -223,27 +148,15 @@ describe('mathjsonToExcel - Inverse trigonometric functions', () => {
 });
 
 describe('mathjsonToExcel - Hyperbolic functions', () => {
-  const testCases = [
-    String.raw`\sinh(x)`,
-    String.raw`\cosh(x)`,
-    String.raw`\tanh(x)`,
-    String.raw`\operatorname{sech}(x)`,
-    String.raw`\coth(x)`,
+  const testCases: [string, string][] = [
+    [String.raw`\sinh(x)`, '=SINH(x)'],
+    [String.raw`\cosh(x)`, '=COSH(x)'],
+    [String.raw`\tanh(x)`, '=TANH(x)'],
+    [String.raw`\operatorname{sech}(x)`, '=SECH(x)'],
+    [String.raw`\coth(x)`, '=COTH(x)'],
   ];
 
-  const expectedResults = [
-    '=SINH(x)',
-    '=COSH(x)',
-    '=TANH(x)',
-    '=SECH(x)',
-    '=COTH(x)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -251,23 +164,13 @@ describe('mathjsonToExcel - Hyperbolic functions', () => {
 });
 
 describe('mathjsonToExcel - Logarithms and exponentials', () => {
-  const testCases = [
-    String.raw`\ln(x)`,
-    String.raw`\log(x)`,
-    String.raw`\ln(x+1)`,
+  const testCases: [string, string][] = [
+    [String.raw`\ln(x)`, '=LN(x)'],
+    [String.raw`\log(x)`, '=LOG(x)'],
+    [String.raw`\ln(x+1)`, '=LN((x+1))'],
   ];
 
-  const expectedResults = [
-    '=LN(x)',
-    '=LOG(x)',
-    '=LN((x+1))',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -275,29 +178,16 @@ describe('mathjsonToExcel - Logarithms and exponentials', () => {
 });
 
 describe('mathjsonToExcel - Constants', () => {
-  const testCases = [
-    String.raw`\pi`,
-    String.raw`e`,
-    String.raw`i`,
-    String.raw`\infty`,
-    String.raw`-\infty`,
-    String.raw`\pi r^2`,
+  const testCases: [string, string][] = [
+    [String.raw`\pi`, '=PI()'],
+    [String.raw`e`, '=EXP(1)'],
+    [String.raw`i`, '=COMPLEX(0,1)'],
+    [String.raw`\infty`, '=1E+307'],
+    [String.raw`-\infty`, '=-1E+307'],
+    [String.raw`\pi r^2`, '=(PI()*(r^2))'],
   ];
 
-  const expectedResults = [
-    '=PI()',
-    '=EXP(1)',
-    '=COMPLEX(0,1)',
-    '=1E+307',
-    '=-1E+307',
-    '=(PI()*(r^2))',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -305,23 +195,13 @@ describe('mathjsonToExcel - Constants', () => {
 });
 
 describe('mathjsonToExcel - Rounding functions', () => {
-  const testCases = [
-    String.raw`|x|`,
-    String.raw`|-5|`,
-    String.raw`\lfloor x \rfloor`,
+  const testCases: [string, string][] = [
+    [String.raw`|x|`, '=ABS(x)'],
+    [String.raw`|-5|`, '=ABS(-5)'],
+    [String.raw`\lfloor x \rfloor`, '=FLOOR(x,1)'],
   ];
 
-  const expectedResults = [
-    '=ABS(x)',
-    '=ABS(-5)',
-    '=FLOOR(x,1)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -329,29 +209,16 @@ describe('mathjsonToExcel - Rounding functions', () => {
 });
 
 describe('mathjsonToExcel - Special functions', () => {
-  const testCases = [
-    String.raw`5!`,
-    String.raw`n!`,
-    String.raw`5!!`,
-    String.raw`n!!`,
-    String.raw`\frac{a}{b}`,
-    String.raw`\operatorname{lcm}(a,b)`,
+  const testCases: [string, string][] = [
+    [String.raw`5!`, '=FACT(5)'],
+    [String.raw`n!`, '=FACT(n)'],
+    [String.raw`5!!`, '=FACTDOUBLE(5)'],
+    [String.raw`n!!`, '=FACTDOUBLE(n)'],
+    [String.raw`\frac{a}{b}`, '=(a/b)'],
+    [String.raw`\operatorname{lcm}(a,b)`, '=LCM(a,b)'],
   ];
 
-  const expectedResults = [
-    '=FACT(5)',
-    '=FACT(n)',
-    '=FACTDOUBLE(5)',
-    '=FACTDOUBLE(n)',
-    '=(a/b)',
-    '=LCM(a,b)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -359,19 +226,11 @@ describe('mathjsonToExcel - Special functions', () => {
 });
 
 describe('mathjsonToExcel - Complex numbers', () => {
-  const testCases = [
-    String.raw`\arg(z)`,
+  const testCases: [string, string][] = [
+    [String.raw`\arg(z)`, '=IMARGUMENT(z)'],
   ];
 
-  const expectedResults = [
-    '=IMARGUMENT(z)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
@@ -429,27 +288,15 @@ describe('mathjsonToExcel - Variable mapping', () => {
 });
 
 describe('mathjsonToExcel - Edge cases and complex expressions', () => {
-  const testCases = [
-    String.raw`1+2+3+4`,
-    String.raw`\frac{(a+b)\times(c+(-d))}{m^f}`,
-    String.raw`a^{b^{c^d}}`,
-    String.raw`\sqrt{a^2+\sqrt{b^2+c^2}}`,
-    String.raw`a_i+b_j+c_k`,
+  const testCases: [string, string][] = [
+    [String.raw`1+2+3+4`, '=(1+2+3+4)'],
+    [String.raw`\frac{(a+b)\times(c+(-d))}{m^f}`, '=(((a+b)*(c+(-d)))/(m^f))'],
+    [String.raw`a^{b^{c^d}}`, '=(a^(b^(c^d)))'],
+    [String.raw`\sqrt{a^2+\sqrt{b^2+c^2}}`, '=SQRT(((a^2)+SQRT(((b^2)+(c^2)))))'],
+    [String.raw`a_i+b_j+c_k`, '=(a_i+b_j+c_k)'],
   ];
 
-  const expectedResults = [
-    '=(1+2+3+4)',
-    '=(((a+b)*(c+(-d)))/(m^f))',
-    '=(a^(b^(c^d)))',
-    '=SQRT(((a^2)+SQRT(((b^2)+(c^2)))))',
-    '=(a_i+b_j+c_k)',
-  ];
-
-  const testScenarios: [string, string][] = [];
-  for (let i = 0; i < testCases.length; i++)
-    testScenarios.push([testCases[i], expectedResults[i]]);
-
-  test.each(testScenarios)('valid: %s => %s', (latex, expected) => {
+  test.each(testCases)('valid: %s => %s', (latex, expected) => {
     const mathJson = latexToMathJson(latex);
     const result = mathjsonToExcel(mathJson);
     expect(result).toBe(expected);
