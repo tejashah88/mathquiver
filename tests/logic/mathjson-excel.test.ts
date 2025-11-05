@@ -302,3 +302,34 @@ describe('mathjsonToExcel - Edge cases and complex expressions', () => {
     expect(result).toBe(expected);
   });
 });
+
+describe('setupExtendedAlgebraMode - Extended algebra mode verification', () => {
+  test('should treat D as variable, not derivative function', () => {
+    const latex = String.raw`D`;
+    const mathJson = latexToMathJson(latex);
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=D');
+  });
+
+  test('should treat N as variable, not numerical approximation function', () => {
+    const latex = String.raw`N`;
+    const mathJson = latexToMathJson(latex);
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=N');
+  });
+
+  test('should allow D in expressions: D*x+N*y', () => {
+    const latex = String.raw`D*x+N*y`;
+    const mathJson = latexToMathJson(latex);
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=((D*x)+(N*y))');
+  });
+
+  test('should allow D with variable mapping', () => {
+    const latex = String.raw`D+N`;
+    const mathJson = latexToMathJson(latex);
+    const varMap = { D: 'A1', N: 'B1' };
+    const result = mathjsonToExcel(mathJson, varMap);
+    expect(result).toBe('=(A1+B1)');
+  });
+});
