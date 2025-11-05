@@ -1,4 +1,4 @@
-import { ConstantMapping, ActionMapping, VarMapping } from '@/types';
+import { ConstantMapping, ActionMapping, VarMapping, ConversionContext } from '@/types';
 import { Expression } from 'mathlive';
 
 
@@ -34,6 +34,15 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
   'Negate': { type: 'function', custom: (args: string[]) => `(-${args[0]})` },
   'Parentheses': { type: 'function', custom: (args: string[]) => `(${args[0]})` },
   'Subscript': { type: 'function', custom: (args: string[]) => `${args[0]}_${args[1]}` },
+  'InvisibleOperator': {
+    type: 'function',
+    custom: (args: string[], context?: ConversionContext) => {
+      if (context === 'subscript') {
+        return args.join('');  // Concatenation for subscripts: abcd
+      }
+      return `(${args.join('*')})`;  // Multiplication otherwise: (a*b*c*d)
+    }
+  },
 
   // Arithmetic
   'Add': { type: 'operator', symbol: '+' },
@@ -124,10 +133,11 @@ const MATHJSON_FUNCTIONS: ActionMapping = {
 *
 * @param node - The MathJSON expression node to convert
 * @param varMap - Optional mapping of variable names to Excel cell references
+* @param context - Conversion context ('default' or 'subscript') to handle context-aware operations
 * @returns Excel formula string (without the leading '=' sign)
 * @throws {MJEXTranslateError} If an unsupported operator or unknown node type is encountered
 */
-function convertMjsonToExcel(node: Expression, varMap: VarMapping = {}): string {
+function convertMjsonToExcel(node: Expression, varMap: VarMapping = {}, context: ConversionContext = 'default'): string {
   if (typeof node === 'number') return node.toString();
 
   // Handle variables & constants
@@ -141,11 +151,19 @@ function convertMjsonToExcel(node: Expression, varMap: VarMapping = {}): string 
     const mapping = MATHJSON_FUNCTIONS[op];
     if (!mapping) throw new MJEXTranslateError(`No Excel equivalent for operator "${op}"`);
 
-    const excelArgs = args.map(arg => convertMjsonToExcel(arg, varMap));
+    // Special handling for Subscript: second argument uses 'subscript' context
+    if (op === 'Subscript') {
+      const base = convertMjsonToExcel(args[0], varMap, context);
+      const subscript = convertMjsonToExcel(args[1], varMap, 'subscript');
+      return `${base}_${subscript}`;
+    }
+
+    // General handling for all other operations
+    const excelArgs = args.map(arg => convertMjsonToExcel(arg, varMap, context));
     if (mapping.type === 'operator') return `(${excelArgs.join(mapping.symbol)})`;
     if (mapping.type === 'function') {
       if (mapping.name) return `${mapping.name}(${excelArgs.join(',')})`;
-      if (mapping.custom) return mapping.custom(excelArgs);
+      if (mapping.custom) return mapping.custom(excelArgs, context);
     }
   }
 

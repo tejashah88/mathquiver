@@ -106,6 +106,55 @@ describe('mathjsonToExcel - Subscript handling', () => {
   });
 });
 
+describe('mathjsonToExcel - InvisibleOperator handling', () => {
+  test('should handle InvisibleOperator in subscript: f_{abcd}', () => {
+    const mathJson: Expression = ['Subscript', 'f', ['InvisibleOperator', 'a', 'b', 'c', 'd']];
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=f_abcd');
+  });
+
+  test('should handle InvisibleOperator in subscript with variable mapping', () => {
+    const mathJson: Expression = ['Subscript', 'f', ['InvisibleOperator', 'a', 'b']];
+    const varMap = { f: 'F1', a: 'A1', b: 'B1' };
+    const result = mathjsonToExcel(mathJson, varMap);
+    expect(result).toBe('=F1_A1B1');
+  });
+
+  test('should handle InvisibleOperator in regular context: 2x', () => {
+    const mathJson: Expression = ['InvisibleOperator', 2, 'x'];
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=(2*x)');
+  });
+
+  test('should handle InvisibleOperator in arithmetic: 2xy + 3', () => {
+    const mathJson: Expression = ['Add', ['InvisibleOperator', 2, 'x', 'y'], 3];
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=((2*x*y)+3)');
+  });
+
+  test('should handle nested InvisibleOperator in subscript: 2*a_{ijk}', () => {
+    const mathJson: Expression = ['Multiply', 2, ['Subscript', 'a', ['InvisibleOperator', 'i', 'j', 'k']]];
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=(2*a_ijk)');
+  });
+
+  test('should handle multiple InvisibleOperators in mixed contexts', () => {
+    const mathJson: Expression = ['Add',
+      ['Subscript', 'f', ['InvisibleOperator', 'a', 'b']],
+      ['InvisibleOperator', 2, 'x']];
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=(f_ab+(2*x))');
+  });
+
+  test('should handle complex expression with subscript InvisibleOperator: f_{mn} * g_{pq}', () => {
+    const mathJson: Expression = ['Multiply',
+      ['Subscript', 'f', ['InvisibleOperator', 'm', 'n']],
+      ['Subscript', 'g', ['InvisibleOperator', 'p', 'q']]];
+    const result = mathjsonToExcel(mathJson);
+    expect(result).toBe('=(f_mn*g_pq)');
+  });
+});
+
 describe('mathjsonToExcel - Trigonometric functions', () => {
   const trigTestCases: [string, Expression, string][] = [
     ['sin(x)', ['Sin', 'x'], '=SIN(x)'],

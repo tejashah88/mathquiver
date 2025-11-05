@@ -167,6 +167,17 @@ FUNCTION customAbs(args: string[]) -> string
 
 For a complete list of all supported Excel functions organized by category, see [SUPPORTED_EXCEL_FUNCTIONS.md](../SUPPORTED_EXCEL_FUNCTIONS.md).
 
+### InvisibleOperator (Context-Aware)
+
+The `InvisibleOperator` function handles implicit operations that depend on context:
+
+- **In subscript context**: Concatenates arguments without operators
+- **In default context**: Treats as multiplication
+
+Examples:
+- `f_{abcd}` → `f_abcd` (subscript concatenation)
+- `2x` → `(2*x)` (implicit multiplication)
+
 ## MathJSON to Excel Mapping
 
 The converter uses the `MATHJSON_FUNCTIONS` object in [src/logic/mathjson-excel.ts](../../src/logic/mathjson-excel.ts) to map MathJSON function names to Excel formulas. Each mapping can be:
@@ -232,6 +243,47 @@ Magnitude(z)       -> IMABS(z)
 Norm(z)            -> IMABS(z)
 Argument(z)        -> IMARGUMENT(z)
 ImaginaryUnit      -> COMPLEX(0,1)
+```
+
+## Context-Aware Processing
+
+Some MathJSON operations require different handling based on their position in the expression tree. The converter tracks conversion context to handle these cases correctly.
+
+### Subscript Context
+
+Within subscript arguments, certain operations behave differently:
+- **InvisibleOperator**: Concatenates without operators (`abcd` not `a*b*c*d`)
+- This allows proper variable name formation like `f_abcd` from `f_{abcd}`
+
+### Default Context
+
+In regular expression contexts, operations maintain their standard mathematical meaning:
+- **InvisibleOperator**: Represents implicit multiplication (`2x` → `2*x`)
+
+### Implementation
+
+The `convertMjsonToExcel` function accepts a `context` parameter (`'default'` or `'subscript'`) that is propagated through recursive calls. The `Subscript` operation is handled specially to process its second argument with `'subscript'` context:
+
+```typescript
+if (op === 'Subscript') {
+  const base = convertMjsonToExcel(args[0], varMap, context);
+  const subscript = convertMjsonToExcel(args[1], varMap, 'subscript');
+  return `${base}_${subscript}`;
+}
+```
+
+Context-aware custom functions check the context parameter and behave accordingly:
+
+```typescript
+'InvisibleOperator': {
+  type: 'function',
+  custom: (args: string[], context?: ConversionContext) => {
+    if (context === 'subscript') {
+      return args.join('');  // Concatenation: abcd
+    }
+    return `(${args.join('*')})`;  // Multiplication: (a*b*c*d)
+  }
+}
 ```
 
 ## Edge Cases & Solutions
@@ -301,6 +353,22 @@ return node;  // Use original variable name
 
 **Solution**: Recursive processing automatically handles constants at any depth.
 
+### Edge Case 6: InvisibleOperator in Subscripts
+
+**Problem**: MathLive canonicalization produces `InvisibleOperator` in subscripts like `f_{abcd}`, which should be treated as concatenation (for variable names) rather than multiplication.
+
+**Example**: `["Subscript", "f", ["InvisibleOperator", "a", "b", "c", "d"]]`
+
+**Expected Output**: `f_abcd` (not `f_(a*b*c*d)`)
+
+**Solution**: Context-aware processing with special handling:
+- The `Subscript` operation processes its second argument with `'subscript'` context
+- `InvisibleOperator` checks the context parameter:
+  - In subscript context: Concatenates → `abcd`
+  - In default context: Multiplies → `(a*b*c*d)`
+
+**Implementation**: Pass context parameter through recursion to track position in expression tree. The `convertMjsonToExcel` function signature includes `context: ConversionContext = 'default'` parameter that custom functions can access.
+
 ## Implementation Notes
 
 ### MathJSON Structure
@@ -367,10 +435,10 @@ if (!(operation in MATHJSON_FUNCTIONS)) {
 
 ### Recursive Processing Pattern
 
-The algorithm follows a consistent recursive pattern:
+The algorithm follows a consistent recursive pattern with context-aware processing:
 
 ```typescript
-function convertMjsonToExcel(node: Expression, varMap: VarMapping): string {
+function convertMjsonToExcel(node: Expression, varMap: VarMapping, context: ConversionContext = 'default'): string {
   // Base cases
   if (typeof node === 'number') return node.toString();
   if (typeof node === 'string') return lookupStringNode(node, varMap);
@@ -378,8 +446,17 @@ function convertMjsonToExcel(node: Expression, varMap: VarMapping): string {
   // Recursive case
   if (Array.isArray(node)) {
     const [operation, ...args] = node;
-    const convertedArgs = args.map(arg => convertMjsonToExcel(arg, varMap));
-    return applyOperation(operation, convertedArgs);
+
+    // Special handling for context-sensitive operations
+    if (operation === 'Subscript') {
+      const base = convertMjsonToExcel(args[0], varMap, context);
+      const subscript = convertMjsonToExcel(args[1], varMap, 'subscript');
+      return `${base}_${subscript}`;
+    }
+
+    // General handling
+    const convertedArgs = args.map(arg => convertMjsonToExcel(arg, varMap, context));
+    return applyOperation(operation, convertedArgs, context);
   }
 
   throw new MJEXTranslateError('Unknown MathJSON node type');
