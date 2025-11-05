@@ -18,7 +18,7 @@ import { type VListHandle } from 'virtua';
 import Markdown from 'react-markdown';
 
 // Font Awesome Icons
-import { faBars, faEye, faEyeSlash, faPlus, faSlash, faTable, faX } from '@fortawesome/free-solid-svg-icons';
+import { faBars, faLightbulb, faPlus, faSlash, faTable, faX } from '@fortawesome/free-solid-svg-icons';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 
 // Utility methods for QoL
@@ -565,7 +565,18 @@ export default function Home() {
               className="p-2 rounded border font-semibold whitespace-nowrap border-black hover:bg-gray-200 text-black"
             >
               {'Focus Mode: '}
-              <FontAwesomeIcon className={focusMode ? 'text-green-600' : 'text-gray-500'} icon={focusMode ? faEye : faEyeSlash} />
+              <span className="relative inline-block">
+                <FontAwesomeIcon
+                  icon={faLightbulb}
+                  className={focusMode ? 'text-yellow-500' : 'text-gray-500'}
+                />
+                {!focusMode && (
+                  <FontAwesomeIcon
+                    icon={faSlash}
+                    className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-gray-500"
+                  />
+                )}
+              </span>
             </button>
 
             <button
