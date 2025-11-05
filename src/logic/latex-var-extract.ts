@@ -131,6 +131,14 @@ const TEXT_MACROS = new Set([
   'textsc', // Small caps text
 ]);
 
+// Operator name macros (like \operatorname, \mathop)
+// These should NOT extract variables from their content
+// But when in subscripts/superscripts, they should be treated as "alphabetic-like"
+const OPERATOR_NAME_MACROS = new Set([
+  'operatorname', // Multi-letter operator names (e.g., \operatorname{max}, \operatorname{cm})
+  'mathop', // Math operator (similar to operatorname)
+]);
+
 const KNOWN_CONSTANTS = new Set(['e', 'i', '\\pi']);
 
 // ============================================================================
@@ -193,6 +201,19 @@ function isContentPureAlphabetic(nodes: Ast.Node[]): boolean {
         continue;
       }
 
+      // Operator name macros are treated as "alphabetic-like" in modifiers
+      // (e.g., \operatorname{cm} should be considered pure alphabetic)
+      // Note: \operatorname has 2 args, where args[1] contains the actual content
+      if (OPERATOR_NAME_MACROS.has(node.content)) {
+        // Check the actual content (in args[1])
+        if (node.args && node.args.length > 1) {
+          if (!isContentPureAlphabetic(node.args[1].content)) {
+            return false;
+          }
+        }
+        continue;
+      }
+
       // Nested modifiers are OK if their content is also pure alphabetic
       if ((node.content === '^' || node.content === '_') && node.args) {
         for (const arg of node.args) {
@@ -218,6 +239,8 @@ function isContentPureAlphabetic(nodes: Ast.Node[]): boolean {
 
 /**
  * Checks if nodes contain any variables (not just numbers/operators).
+ * Note: \operatorname is NOT considered to contain variables in this context,
+ * because we want it to stay attached as part of the modifier string.
  */
 function containsVariables(nodes: Ast.Node[]): boolean {
   for (const node of nodes) {
@@ -226,8 +249,22 @@ function containsVariables(nodes: Ast.Node[]): boolean {
         return true;
       }
     } else if (node.type === 'macro') {
+      // Greek letters and other variable macros count as variables
       if (VARIABLE_MACROS.has(node.content)) {
         return true;
+      }
+      // Operator name macros are treated as containing "variables" for the purpose
+      // of keeping modifiers attached (even though we don't extract from their content)
+      if (OPERATOR_NAME_MACROS.has(node.content)) {
+        return true;
+      }
+      // Check if macro has arguments that contain variables
+      if (node.args) {
+        for (const arg of node.args) {
+          if (containsVariables(arg.content)) {
+            return true;
+          }
+        }
       }
     } else if (node.type === 'group') {
       if (containsVariables(node.content)) {
@@ -291,16 +328,22 @@ function isNumericOnly(nodes: Ast.Node[]): boolean {
       if (!isNumericOnly(node.content)) {
         return false;
       }
-    } else if (
-      node.type === 'macro' ||
-      node.type === 'whitespace' ||
-      node.type === 'parbreak'
-    ) {
-      // Skip whitespace, but any macro makes it non-numeric
-      if (node.type === 'macro') {
-        return false;
+    } else if (node.type === 'macro') {
+      // Operator name macros with numeric content are considered numeric
+      // (e.g., \operatorname{2} is treated as numeric)
+      // Note: \operatorname has 2 args, where args[1] contains the actual content
+      if (OPERATOR_NAME_MACROS.has(node.content)) {
+        if (node.args && node.args.length > 1) {
+          if (!isNumericOnly(node.args[1].content)) {
+            return false;
+          }
+        }
+        continue;
       }
+      // Any other macro makes it non-numeric
+      return false;
     }
+    // Skip whitespace, parbreak, etc.
   }
   return true;
 }
@@ -364,8 +407,31 @@ function toLatexString(nodes: Ast.Node[]): string {
           parts.push(node.content + `{${argStr}}`);
         }
       } else {
-        // Other macros (like \cdot, \pm, etc.): preserve them
-        parts.push(`\\${node.content}`);
+        // Other macros: check if they have arguments (e.g., \operatorname{cm})
+        if (node.args && node.args.length > 0) {
+          // Special handling for \operatorname which has 2 args (args[0] is empty, args[1] has content)
+          if (OPERATOR_NAME_MACROS.has(node.content) && node.args.length > 1) {
+            const argContent = toLatexString(node.args[1].content);
+            parts.push(`\\${node.content}{${argContent}}`);
+          } else {
+            // Regular macros: serialize all arguments
+            const argContents = node.args
+              .map((arg) => toLatexString(arg.content))
+              .join('');
+            parts.push(`\\${node.content}{${argContents}}`);
+          }
+        } else {
+          // Check if next node is a sibling group (similar to decorator pattern)
+          const nextNode = nodes[i + 1];
+          if (nextNode && nextNode.type === 'group') {
+            const groupContent = toLatexString(nextNode.content);
+            parts.push(`\\${node.content}{${groupContent}}`);
+            i++; // Skip the group
+          } else {
+            // No arguments, just output macro name (like \cdot, \pm, etc.)
+            parts.push(`\\${node.content}`);
+          }
+        }
       }
     } else if (node.type === 'group') {
       parts.push(toLatexString(node.content));
@@ -727,6 +793,17 @@ function extractVariablesFromAST(nodes: Ast.Node[]): string[] {
 
       // Don't extract variables from text content - completely skip it
       i = j;
+      continue;
+    }
+
+    // ----------------------------------------------------------------
+    // PHASE 2.8: Handle operator name macros (excluded from variables when standalone)
+    // ----------------------------------------------------------------
+    if (node.type === 'macro' && OPERATOR_NAME_MACROS.has(node.content)) {
+      // Note: \operatorname has 2 args (args[0] is empty, args[1] has content)
+      // We just skip the entire macro - don't extract variables from it
+      // (e.g., \operatorname{sin} should not extract 's', 'i', 'n')
+      i++;
       continue;
     }
 

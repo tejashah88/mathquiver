@@ -65,6 +65,24 @@ x + \text{plus} + y    →  ['x', 'y']
 
 **Key principle**: Text macro content is NOT examined for variables - it's completely skipped.
 
+### Operator Name Macros
+
+**Definition**: The `\operatorname` macro is used for multi-letter operator names (e.g., `\operatorname{max}`, `\operatorname{sin}`, `\operatorname{cm}`)
+
+**Behavior**:
+- **In subscripts/superscripts**: Preserved as part of the variable name (entire `\operatorname{...}` kept)
+- **Standalone**: The macro itself is not extracted as a variable, but variables in its arguments are processed normally
+
+**Examples**:
+```
+F_{\operatorname{cm}}           →  ['F_{\operatorname{cm}}']
+M^{\operatorname{max}}          →  ['M^{\operatorname{max}}']
+x_{\operatorname{net}}^{a}      →  ['x_{\operatorname{net}}^{a}']
+\operatorname{sin}(x)           →  ['x']  (operatorname not extracted)
+```
+
+**Key principle**: `\operatorname` content in modifiers is preserved as-is, maintaining the full subscript/superscript structure. This ensures that variables with operator-name subscripts/superscripts (common in engineering and physics) are kept together as single units.
+
 ### Three-Phase Architecture
 
 1. **Classification** → Analyze content type
@@ -432,6 +450,18 @@ CLASS VariableBuilder:
 **Output**: `['x', 'y']`
 
 **Note**: Even if text contains typical variable names like `\text{xy}`, no variables are extracted. Text macros are for decorative/explanatory purposes only.
+
+### Example 10: Operator Name in Subscripts
+
+**Input**: `F_{\operatorname{cm}} + G_{\operatorname{max}}`
+
+**Processing**:
+1. `F_{\operatorname{cm}}`: Base=F, Subscript={\operatorname{cm}} → Keep together: `F_{\operatorname{cm}}`
+2. `G_{\operatorname{max}}`: Base=G, Subscript={\operatorname{max}} → Keep together: `G_{\operatorname{max}}`
+
+**Output**: `['F_{\operatorname{cm}}', 'G_{\operatorname{max}}']`
+
+**Note**: `\operatorname` in subscripts is treated as part of the subscript content and fully preserved. This is common in engineering notation where operator names are used to describe the meaning of the subscript (e.g., "cm" for center of mass, "max" for maximum, "net" for net force).
 
 ## Special Cases Handled
 

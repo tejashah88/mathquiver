@@ -536,3 +536,128 @@ describe('Text Macros (Excluded from Variables)', () => {
     expect(result.toSorted()).toIncludeSameMembers(expected.toSorted());
   });
 });
+
+describe('Operator Name Macros (\\operatorname)', () => {
+  // Test cases for \operatorname which is used for multi-letter operator names
+  // When used in subscripts/superscripts, the full \operatorname{...} should be preserved
+  const operatornameCases: [string, string[]][] = [
+    // ========== Basic subscripts ==========
+    // \operatorname in subscript should be fully preserved
+    [String.raw`F_{\operatorname{cm}}`, [String.raw`F_{\operatorname{cm}}`]],
+    [String.raw`G_{\operatorname{max}}`, [String.raw`G_{\operatorname{max}}`]],
+    [String.raw`T_{\operatorname{initial}}`, [String.raw`T_{\operatorname{initial}}`]],
+
+    // ========== Subscripts with expression ==========
+    // Other variables in expression should also be extracted
+    [String.raw`F_{\operatorname{cm}} + 1`, [String.raw`F_{\operatorname{cm}}`]],
+    [String.raw`x + G_{\operatorname{net}}`, ['x', String.raw`G_{\operatorname{net}}`]],
+    [
+      String.raw`F_{\operatorname{cm}} + G_{\operatorname{max}}`,
+      [String.raw`F_{\operatorname{cm}}`, String.raw`G_{\operatorname{max}}`],
+    ],
+
+    // ========== Superscripts (pure alphabetic) ==========
+    // Pure alphabetic superscript should be kept
+    [String.raw`M^{\operatorname{sl}}`, [String.raw`M^{\operatorname{sl}}`]],
+    [String.raw`N^{\operatorname{max}}`, [String.raw`N^{\operatorname{max}}`]],
+
+    // ========== Superscripts (numeric) ==========
+    // Numeric superscripts are ignored
+    [String.raw`x^{\operatorname{2}}`, ['x']],
+
+    // ========== Both subscript and superscript ==========
+    // Both modifiers with operatorname
+    [
+      String.raw`F_{\operatorname{net}}^{\operatorname{total}}`,
+      [String.raw`F_{\operatorname{net}}^{\operatorname{total}}`],
+    ],
+    [
+      String.raw`M_{\operatorname{y}}^{\operatorname{sl}}`,
+      [String.raw`M_{\operatorname{y}}^{\operatorname{sl}}`],
+    ],
+
+    // Subscript with operatorname, numeric superscript
+    [String.raw`F_{\operatorname{cm}}^2`, [String.raw`F_{\operatorname{cm}}`]],
+
+    // Subscript with operatorname, alphabetic superscript
+    [
+      String.raw`F_{\operatorname{cm}}^{a}`,
+      [String.raw`F_{\operatorname{cm}}^{a}`],
+    ],
+
+    // ========== Greek letter base ==========
+    [
+      String.raw`\theta_{\operatorname{max}}`,
+      [String.raw`\theta_{\operatorname{max}}`],
+    ],
+    [
+      String.raw`\sigma_{\operatorname{yield}}`,
+      [String.raw`\sigma_{\operatorname{yield}}`],
+    ],
+
+    // ========== Complex subscript content ==========
+    // Subscripts with operators are never split
+    [
+      String.raw`x_{i+\operatorname{offset}}`,
+      [String.raw`x_{i+\operatorname{offset}}`],
+    ],
+    [
+      String.raw`y_{\operatorname{start}-1}`,
+      [String.raw`y_{\operatorname{start}-1}`],
+    ],
+
+    // ========== Multiple operatorname in expression ==========
+    [
+      String.raw`F_{\operatorname{x}} + F_{\operatorname{y}} + F_{\operatorname{z}}`,
+      [
+        String.raw`F_{\operatorname{x}}`,
+        String.raw`F_{\operatorname{y}}`,
+        String.raw`F_{\operatorname{z}}`,
+      ],
+    ],
+
+    // ========== Mixed with regular subscripts ==========
+    [
+      String.raw`x_i + F_{\operatorname{cm}}`,
+      ['x_{i}', String.raw`F_{\operatorname{cm}}`],
+    ],
+    [
+      String.raw`a_{n} + b_{\operatorname{max}}`,
+      ['a_{n}', String.raw`b_{\operatorname{max}}`],
+    ],
+
+    // ========== In equations ==========
+    [
+      String.raw`F_{\operatorname{net}} = ma`,
+      ['a', String.raw`F_{\operatorname{net}}`, 'm'],
+    ],
+    [
+      String.raw`\sigma_{\operatorname{yield}} = \frac{F}{A}`,
+      ['A', 'F', String.raw`\sigma_{\operatorname{yield}}`],
+    ],
+
+    // ========== Standalone operatorname (in function context) ==========
+    // Variables outside operatorname should still be extracted
+    [String.raw`\operatorname{sin}(x)`, ['x']],
+    [String.raw`\operatorname{max}(a, b)`, ['a', 'b']],
+    [String.raw`y = \operatorname{cos}(x)`, ['x', 'y']],
+
+    // ========== With decorators ==========
+    [
+      String.raw`\vec{F}_{\operatorname{net}}`,
+      [String.raw`\vec{F}_{\operatorname{net}}`],
+    ],
+    [
+      String.raw`\bar{M}_{\operatorname{avg}}`,
+      [String.raw`\bar{M}_{\operatorname{avg}}`],
+    ],
+  ];
+
+  test.each(operatornameCases)(
+    'operatorname: %s => %s',
+    (input, expected) => {
+      const result = extractLatexVariables(input);
+      expect(result.toSorted()).toIncludeSameMembers(expected.toSorted());
+    },
+  );
+});
