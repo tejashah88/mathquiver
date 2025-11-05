@@ -46,8 +46,8 @@ const enum CELL_REF_STATES { VALID, MISSING, INVALID };
 
 const CELL_REF_BORDER_STYLES = {
   [CELL_REF_STATES.VALID]: '1px solid #000',
-  [CELL_REF_STATES.MISSING]: '4px solid #fa0',
-  [CELL_REF_STATES.INVALID]: '4px solid #f00',
+  [CELL_REF_STATES.MISSING]: '3px solid #fa0',
+  [CELL_REF_STATES.INVALID]: '3px solid #f00',
 };
 
 // Static style objects (extracted to avoid recreation on every render)

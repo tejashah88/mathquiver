@@ -51,8 +51,8 @@ const enum EQUATION_STATES { VALID, INVALID, ERROR };
 
 const MF_BORDER_STYLES = {
   [EQUATION_STATES.VALID]: '1px solid #000',
-  [EQUATION_STATES.INVALID]: '4px solid #fa0',
-  [EQUATION_STATES.ERROR]: '4px solid #f00',
+  [EQUATION_STATES.INVALID]: '3px solid #fa0',
+  [EQUATION_STATES.ERROR]: '3px solid #f00',
 };
 
 // Static style objects (extracted to avoid recreation on every render)
